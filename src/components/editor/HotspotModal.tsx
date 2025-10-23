@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,8 +44,21 @@ export default function HotspotModal({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   
-  const [formData, setFormData] = useState<HotspotData>(
-    initialData || {
+  const [formData, setFormData] = useState<HotspotData>(() => {
+    // Siempre priorizar initialData si existe
+    if (initialData) {
+      return {
+        ...initialData,
+        style: initialData.style || {
+          icon: 'map-pin',
+          color: '#3b82f6',
+          size: 32,
+        }
+      };
+    }
+    
+    // Solo usar valores por defecto si NO hay initialData
+    return {
       title: '',
       description: '',
       x_position: 50,
@@ -55,8 +68,18 @@ export default function HotspotModal({
         color: '#3b82f6',
         size: 32,
       },
+    };
+  });
+
+  // Actualizar formData cuando initialData cambie
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        style: initialData.style || formData.style
+      });
     }
-  );
+  }, [initialData]);
 
   const handleSave = async () => {
     if (!formData.title.trim()) {

@@ -195,12 +195,20 @@ const Editor = () => {
     
     setIsProcessingClick(true);
     
+    console.log('🎯 Creando hotspot en:', { x, y });
+    
     setEditingHotspot({
       id: '',
       title: '',
+      description: '',
       x_position: x,
       y_position: y,
       floor_plan_id: selectedFloorPlan?.id || '',
+      style: {
+        icon: 'MapPin',
+        color: '#4285F4',
+        size: 32,
+      }
     });
     setHotspotModalOpen(true);
     setAddPointMode(false);
