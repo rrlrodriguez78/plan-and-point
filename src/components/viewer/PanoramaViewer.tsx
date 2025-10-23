@@ -468,6 +468,33 @@ export default function PanoramaViewer({
             </div>
           )}
 
+          {/* Botones de navegación entre puntos - SIEMPRE VISIBLES */}
+          {availableHotspots.length > 1 && !loadingError && (
+            <>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handlePreviousHotspot}
+                disabled={!canGoPreviousHotspot}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
+                title="Punto anterior"
+              >
+                <ChevronLeft className="w-8 h-8" />
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleNextHotspot}
+                disabled={!canGoNextHotspot}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
+                title="Punto siguiente"
+              >
+                <ChevronRight className="w-8 h-8" />
+              </Button>
+            </>
+          )}
+
           <AnimatePresence>
             {showControls && !loadingError && (
               <>
@@ -554,72 +581,47 @@ export default function PanoramaViewer({
                          </DropdownMenu>
                        )}
 
-                       {/* Navegación rápida entre puntos */}
+                       {/* Dropdown de Puntos */}
                        {availableHotspots.length > 1 && (
-                         <div className="flex items-center gap-2">
-                           <Button 
-                             variant="ghost" 
-                             size="icon"
-                             onClick={handlePreviousHotspot}
-                             disabled={!canGoPreviousHotspot}
-                             className="text-white hover:bg-white/20 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-                             title="Punto anterior"
-                           >
-                             <ChevronLeft className="w-6 h-6" />
-                           </Button>
-
-                           {/* Dropdown de Puntos */}
-                           <DropdownMenu>
-                             <DropdownMenuTrigger asChild>
-                               <Button 
-                                 variant="ghost" 
-                                 className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20"
-                               >
-                                 <MapPin className="w-5 h-5" />
-                                 <div className="flex flex-col items-start">
-                                   <span className="text-xs text-slate-400">Punto</span>
-                                   <span className="text-sm font-medium">
-                                     {currentHotspot?.title || hotspotName}
-                                   </span>
-                                 </div>
-                               </Button>
-                             </DropdownMenuTrigger>
-                             <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
-                                <div className="px-2 py-1.5 text-sm font-semibold">
-                                  Navegar a otro punto ({availableHotspots.length} disponibles)
-                                </div>
-                               <DropdownMenuSeparator className="bg-white/20" />
-                               <ScrollArea className="max-h-64">
-                                 {availableHotspots.map(hotspot => (
-                                   <DropdownMenuItem
-                                     key={hotspot.id}
-                                     onClick={() => handleNavClick(hotspot)}
-                                     className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${
-                                       hotspot.id === activePhoto?.hotspot_id ? 'bg-white/20 font-semibold' : ''
-                                     }`}
-                                   >
-                                     <MapPin className="w-4 h-4 mr-2" />
-                                     {hotspot.title}
-                                     {hotspot.id === activePhoto?.hotspot_id && (
-                                       <span className="ml-auto text-xs text-slate-400">(actual)</span>
-                                     )}
-                                   </DropdownMenuItem>
-                                 ))}
-                               </ScrollArea>
-                             </DropdownMenuContent>
-                           </DropdownMenu>
-
-                           <Button 
-                             variant="ghost" 
-                             size="icon"
-                             onClick={handleNextHotspot}
-                             disabled={!canGoNextHotspot}
-                             className="text-white hover:bg-white/20 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-                             title="Punto siguiente"
-                           >
-                             <ChevronRight className="w-6 h-6" />
-                           </Button>
-                         </div>
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button 
+                               variant="ghost" 
+                               className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20"
+                             >
+                               <MapPin className="w-5 h-5" />
+                               <div className="flex flex-col items-start">
+                                 <span className="text-xs text-slate-400">Punto</span>
+                                 <span className="text-sm font-medium">
+                                   {currentHotspot?.title || hotspotName}
+                                 </span>
+                               </div>
+                             </Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
+                              <div className="px-2 py-1.5 text-sm font-semibold">
+                                Navegar a otro punto ({availableHotspots.length} disponibles)
+                              </div>
+                             <DropdownMenuSeparator className="bg-white/20" />
+                             <ScrollArea className="max-h-64">
+                               {availableHotspots.map(hotspot => (
+                                 <DropdownMenuItem
+                                   key={hotspot.id}
+                                   onClick={() => handleNavClick(hotspot)}
+                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${
+                                     hotspot.id === activePhoto?.hotspot_id ? 'bg-white/20 font-semibold' : ''
+                                   }`}
+                                 >
+                                   <MapPin className="w-4 h-4 mr-2" />
+                                   {hotspot.title}
+                                   {hotspot.id === activePhoto?.hotspot_id && (
+                                     <span className="ml-auto text-xs text-slate-400">(actual)</span>
+                                   )}
+                                 </DropdownMenuItem>
+                               ))}
+                             </ScrollArea>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
                        )}
 
                        <div className="w-px h-8 bg-white/30" />
