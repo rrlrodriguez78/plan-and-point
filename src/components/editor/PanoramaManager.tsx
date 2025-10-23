@@ -39,6 +39,11 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploadDate, setUploadDate] = useState<Date>(new Date());
+  const [compressionStats, setCompressionStats] = useState<{
+    originalSize: number;
+    finalSize: number;
+    reduction: number;
+  } | null>(null);
 
   useEffect(() => {
     loadPhotos();
@@ -145,6 +150,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       return;
     }
 
+    const originalSize = file.size;
     setUploading(true);
     
     // Quick preview for immediate feedback
@@ -165,6 +171,20 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       if (file.size > 8 * 1024 * 1024) {
         toast.info(t('panorama.optimizing'));
         file = await optimizeHeavy360(file);
+        
+        // Calculate and display compression stats
+        const reduction = Math.round(((originalSize - file.size) / originalSize) * 100);
+        const stats = {
+          originalSize,
+          finalSize: file.size,
+          reduction
+        };
+        setCompressionStats(stats);
+        
+        toast.success(
+          `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(file.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
+          { duration: 5000 }
+        );
       }
 
       // Validate file size after optimization (max 10MB)
