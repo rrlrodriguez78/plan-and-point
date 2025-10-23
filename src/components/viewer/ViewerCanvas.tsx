@@ -5,8 +5,12 @@ import { Button } from '@/components/ui/button';
 interface Hotspot {
   id: string;
   title: string;
+  description?: string;
   x_position: number;
   y_position: number;
+  media_url?: string;
+  has_panorama?: boolean;
+  panorama_count?: number;
   style?: {
     icon?: string;
     color?: string;

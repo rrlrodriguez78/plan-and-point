@@ -92,10 +92,15 @@ const Viewer = () => {
 
             if (hotspotsData) {
               hotspotsMap[plan.id] = hotspotsData.map(h => ({
-                ...h,
-                has_panorama: h.has_panorama || false,
-                panorama_count: h.panorama_count || 0
-              })) as Hotspot[];
+                id: h.id,
+                title: h.title,
+                description: h.description,
+                x_position: h.x_position,
+                y_position: h.y_position,
+                media_url: h.media_url,
+                has_panorama: h.has_panorama ?? false,
+                panorama_count: h.panorama_count ?? 0,
+              } as Hotspot));
             }
           }
           setHotspotsByFloor(hotspotsMap);
