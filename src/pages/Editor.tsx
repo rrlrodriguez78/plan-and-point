@@ -17,12 +17,16 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Settings,
+  MapPin,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import FloorPlanManager from '@/components/editor/FloorPlanManager';
 import HotspotEditor from '@/components/editor/HotspotEditor';
 import HotspotModal from '@/components/editor/HotspotModal';
+import HotspotListManager from '@/components/editor/HotspotListManager';
+import { Badge } from '@/components/ui/badge';
 
 interface Tour {
   id: string;
@@ -77,6 +81,8 @@ const Editor = () => {
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
   const [floorPlansOpen, setFloorPlansOpen] = useState(true);
   const [hotspotsOpen, setHotspotsOpen] = useState(true);
+  const [manageHotspotsOpen, setManageHotspotsOpen] = useState(false);
+  const [addPointMode, setAddPointMode] = useState(false);
   
   // Auto-save
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -183,6 +189,8 @@ const Editor = () => {
   };
 
   const handleCanvasClick = (x: number, y: number) => {
+    if (!addPointMode) return;
+    
     setEditingHotspot({
       id: '',
       title: '',
@@ -191,6 +199,7 @@ const Editor = () => {
       floor_plan_id: selectedFloorPlan?.id || '',
     });
     setHotspotModalOpen(true);
+    setAddPointMode(false);
   };
 
   const handleHotspotDrag = async (hotspotId: string, x: number, y: number) => {
@@ -316,6 +325,51 @@ const Editor = () => {
     }
   };
 
+  const handleDuplicateHotspot = async (hotspot: Hotspot) => {
+    if (!selectedFloorPlan) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('hotspots')
+        .insert({
+          floor_plan_id: selectedFloorPlan.id,
+          title: `${hotspot.title} (copia)`,
+          description: hotspot.description,
+          x_position: hotspot.x_position + 20,
+          y_position: hotspot.y_position + 20,
+          media_url: hotspot.media_url,
+          media_type: hotspot.media_type,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setHotspots((prev) => [...prev, data]);
+      toast.success('Hotspot duplicado');
+    } catch (error) {
+      console.error('Error duplicating hotspot:', error);
+      toast.error('Error al duplicar hotspot');
+    }
+  };
+
+  const handleDeleteHotspot = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('hotspots')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setHotspots((prev) => prev.filter((h) => h.id !== id));
+      toast.success('Hotspot eliminado');
+    } catch (error) {
+      console.error('Error deleting hotspot:', error);
+      toast.error('Error al eliminar hotspot');
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -371,6 +425,39 @@ const Editor = () => {
           <div className="lg:col-span-3 space-y-4">
             {floorPlans.length > 0 ? (
               <>
+                {/* Matterport-style Header */}
+                <Card className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <MapPin className="w-5 h-5 text-[#4285F4]" />
+                        <h2 className="text-xl font-bold">Puntos Interactivos</h2>
+                        <Badge variant="secondary">{hotspots.length}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Editando para: <span className="font-medium">{selectedFloorPlan?.name}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setManageHotspotsOpen(true)}
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Gestionar Puntos
+                      </Button>
+                      <Button 
+                        onClick={() => setAddPointMode(!addPointMode)}
+                        style={{ backgroundColor: addPointMode ? '#4285F4' : undefined }}
+                        className={addPointMode ? 'text-white hover:opacity-90' : ''}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        {addPointMode ? 'Modo Activo' : 'Agregar Punto'}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
                 <Tabs
                   value={selectedFloorPlan?.id}
                   onValueChange={(value) => {
@@ -513,6 +600,24 @@ const Editor = () => {
         onSave={handleSaveHotspot}
         initialData={editingHotspot || undefined}
         mode={editingHotspot?.id ? 'edit' : 'create'}
+      />
+
+      {/* Hotspot List Manager */}
+      <HotspotListManager
+        isOpen={manageHotspotsOpen}
+        onClose={() => setManageHotspotsOpen(false)}
+        hotspots={hotspots}
+        onEdit={(hotspot) => {
+          setEditingHotspot(hotspot);
+          setHotspotModalOpen(true);
+          setManageHotspotsOpen(false);
+        }}
+        onDelete={handleDeleteHotspot}
+        onDuplicate={handleDuplicateHotspot}
+        onFocus={(hotspot) => {
+          setSelectedHotspotIds([hotspot.id]);
+          toast.info(`Enfocando: ${hotspot.title}`);
+        }}
       />
     </div>
   );

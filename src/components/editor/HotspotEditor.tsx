@@ -106,27 +106,39 @@ export default function HotspotEditor({
   const renderHotspotIcon = (hotspot: Hotspot) => {
     const iconName = hotspot.style?.icon || 'MapPin';
     const IconComponent = (LucideIcons as any)[iconName] || LucideIcons.MapPin;
-    const size = hotspot.style?.size || 32;
+    const isSelected = selectedIds.includes(hotspot.id);
     
     return (
-      <IconComponent 
-        className="w-full h-full" 
-        style={{ 
-          color: hotspot.style?.color || '#3b82f6',
-          filter: selectedIds.includes(hotspot.id) ? 'drop-shadow(0 0 8px currentColor)' : 'none'
-        }}
-      />
+      <div className="relative w-full h-full">
+        {/* Pulsing ring effect for selected */}
+        {isSelected && (
+          <div className="absolute inset-0 rounded-full bg-[#4285F4] animate-ping opacity-25" />
+        )}
+        
+        {/* Main circle */}
+        <div 
+          className="relative w-full h-full rounded-full flex items-center justify-center shadow-lg border-2 border-white transition-all"
+          style={{ 
+            backgroundColor: hotspot.style?.color || '#4285F4',
+            boxShadow: isSelected ? '0 0 0 4px rgba(66, 133, 244, 0.3)' : '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+          }}
+        >
+          <IconComponent 
+            className="w-1/2 h-1/2 text-white" 
+          />
+        </div>
+      </div>
     );
   };
 
   return (
-    <Card className="p-4">
+    <Card className="p-6 bg-[hsl(var(--accent)/0.3)]">
       <div
         ref={containerRef}
-        className="relative bg-muted rounded-lg overflow-hidden cursor-crosshair"
+        className="relative bg-background rounded-lg overflow-hidden cursor-crosshair border-2 border-dashed border-border shadow-inner"
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
-        style={{ minHeight: '400px' }}
+        style={{ minHeight: '500px' }}
       >
         <img
           ref={imageRef}
@@ -181,8 +193,8 @@ export default function HotspotEditor({
       </div>
 
       {!readOnly && (
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          Click en el plano para agregar hotspot • Arrastra hotspots para moverlos • Shift+Click para selección múltiple
+        <p className="text-xs text-muted-foreground mt-3 text-center">
+          Usa el botón <span className="font-semibold">"Agregar Punto"</span> y haz click en el plano • Arrastra hotspots para moverlos • Shift+Click para selección múltiple
         </p>
       )}
     </Card>
