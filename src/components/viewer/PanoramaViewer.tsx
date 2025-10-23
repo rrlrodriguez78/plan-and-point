@@ -124,8 +124,8 @@ export default function PanoramaViewer({
     return allHotspotsOnFloor.filter(h => hotspotIds.has(h.id));
   }, [selectedDate, photos, allHotspotsOnFloor]);
 
-  // Determinar modo de navegación
-  const navigationMode = selectedDate ? 'hotspots' : 'dates';
+  // Determinar modo de navegación: siempre hotspots (puntos)
+  const navigationMode = 'hotspots';
 
   // Ajustar activePhoto si no está en las fotos filtradas
   useEffect(() => {
@@ -340,34 +340,7 @@ export default function PanoramaViewer({
     return () => clearTimeout(timer);
   }, [showControls, currentZoom]);
 
-  // Navegación por FECHAS (sin fecha seleccionada)
-  const handleNextDate = useCallback(() => {
-    if (!activePhoto?.capture_date) return;
-    
-    const currentDateIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
-    if (currentDateIndex < uniqueDates.length - 1) {
-      const nextDate = uniqueDates[currentDateIndex + 1];
-      const nextDatePhotos = photos.filter(p => p.capture_date === nextDate);
-      if (nextDatePhotos.length > 0) {
-        setActivePhoto(nextDatePhotos[0]);
-      }
-    }
-  }, [activePhoto, uniqueDates, photos, setActivePhoto]);
-
-  const handlePrevDate = useCallback(() => {
-    if (!activePhoto?.capture_date) return;
-    
-    const currentDateIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
-    if (currentDateIndex > 0) {
-      const prevDate = uniqueDates[currentDateIndex - 1];
-      const prevDatePhotos = photos.filter(p => p.capture_date === prevDate);
-      if (prevDatePhotos.length > 0) {
-        setActivePhoto(prevDatePhotos[0]);
-      }
-    }
-  }, [activePhoto, uniqueDates, photos, setActivePhoto]);
-
-  // Navegación por HOTSPOTS (con fecha seleccionada)
+  // Navegación por HOTSPOTS (con o sin fecha seleccionada)
   const handleNextHotspot = useCallback(() => {
     if (!activePhoto) return;
     const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
@@ -392,22 +365,14 @@ export default function PanoramaViewer({
     }
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
 
-  // Función principal de navegación (usa modo dual)
+  // Función principal de navegación (siempre por hotspots)
   const handleNext = useCallback(() => {
-    if (navigationMode === 'dates') {
-      handleNextDate();
-    } else {
-      handleNextHotspot();
-    }
-  }, [navigationMode, handleNextDate, handleNextHotspot]);
+    handleNextHotspot();
+  }, [handleNextHotspot]);
 
   const handlePrev = useCallback(() => {
-    if (navigationMode === 'dates') {
-      handlePrevDate();
-    } else {
-      handlePrevHotspot();
-    }
-  }, [navigationMode, handlePrevDate, handlePrevHotspot]);
+    handlePrevHotspot();
+  }, [handlePrevHotspot]);
 
   const handleDateFilter = (date: string | null) => {
     setSelectedDate(date);
@@ -423,44 +388,28 @@ export default function PanoramaViewer({
 
   // Calcular etiquetas para flechas de navegación
   const prevLabel = useMemo(() => {
-    if (navigationMode === 'dates') {
-      if (!activePhoto?.capture_date) return null;
-      const currentIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
-      if (currentIndex > 0) {
-        return formatDate(uniqueDates[currentIndex - 1]);
-      }
-    } else {
-      if (!activePhoto) return null;
-      const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
-        ? hotspotsWithPhotosInSelectedDate 
-        : allHotspotsOnFloor;
-      const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-      if (currentIndex > 0) {
-        return hotspotList[currentIndex - 1].title;
-      }
+    if (!activePhoto) return null;
+    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
+      ? hotspotsWithPhotosInSelectedDate 
+      : allHotspotsOnFloor;
+    const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentIndex > 0) {
+      return hotspotList[currentIndex - 1].title;
     }
     return null;
-  }, [navigationMode, activePhoto, uniqueDates, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
+  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const nextLabel = useMemo(() => {
-    if (navigationMode === 'dates') {
-      if (!activePhoto?.capture_date) return null;
-      const currentIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
-      if (currentIndex < uniqueDates.length - 1) {
-        return formatDate(uniqueDates[currentIndex + 1]);
-      }
-    } else {
-      if (!activePhoto) return null;
-      const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
-        ? hotspotsWithPhotosInSelectedDate 
-        : allHotspotsOnFloor;
-      const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-      if (currentIndex < hotspotList.length - 1) {
-        return hotspotList[currentIndex + 1].title;
-      }
+    if (!activePhoto) return null;
+    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
+      ? hotspotsWithPhotosInSelectedDate 
+      : allHotspotsOnFloor;
+    const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentIndex < hotspotList.length - 1) {
+      return hotspotList[currentIndex + 1].title;
     }
     return null;
-  }, [navigationMode, activePhoto, uniqueDates, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
+  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const resetView = () => {
     lon.current = 0;
@@ -582,9 +531,9 @@ export default function PanoramaViewer({
                                transition-all duration-200 hover:px-5"
                   >
                     <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                    <div className="flex flex-col items-start">
+                     <div className="flex flex-col items-start">
                       <span className="text-xs text-slate-400 uppercase tracking-wider">
-                        {navigationMode === 'dates' ? 'Fecha anterior' : 'Punto anterior'}
+                        Punto anterior
                       </span>
                       <span className="text-sm font-medium max-w-[120px] truncate">
                         {prevLabel}
@@ -605,9 +554,9 @@ export default function PanoramaViewer({
                                flex items-center gap-3 group
                                transition-all duration-200 hover:px-5"
                   >
-                    <div className="flex flex-col items-end">
+                     <div className="flex flex-col items-end">
                       <span className="text-xs text-slate-400 uppercase tracking-wider">
-                        {navigationMode === 'dates' ? 'Fecha siguiente' : 'Punto siguiente'}
+                        Punto siguiente
                       </span>
                       <span className="text-sm font-medium max-w-[120px] truncate">
                         {nextLabel}
@@ -626,12 +575,12 @@ export default function PanoramaViewer({
                   <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-3xl pointer-events-auto">
                     <div className="flex items-center justify-center gap-4 flex-wrap">
                        {/* Indicador de modo de navegación */}
-                       {(uniqueDates.length > 1 || allHotspotsOnFloor.length > 1) && (
+                       {allHotspotsOnFloor.length > 1 && (
                          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full">
                            <Navigation className="w-4 h-4 text-white" />
                            <span className="text-xs font-medium text-white">
-                             {navigationMode === 'dates' 
-                               ? `Navegando entre ${uniqueDates.length} fechas` 
+                             {selectedDate 
+                               ? `Navegando entre ${hotspotsWithPhotosInSelectedDate.length} puntos (${formatDate(selectedDate)})`
                                : `Navegando entre ${allHotspotsOnFloor.length} puntos`}
                            </span>
                          </div>
