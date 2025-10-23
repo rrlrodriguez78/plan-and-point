@@ -180,28 +180,24 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     setUploadProgress({ progress: 30, status: t('panorama.previewReady') });
     
     try {
-      // Optimize if file is larger than 8MB
-      if (file.size > 8 * 1024 * 1024) {
-        setUploadProgress({ progress: 40, status: t('panorama.optimizing') });
-        file = await optimizeHeavy360(file);
-        
-        // Calculate and display compression stats
-        const reduction = Math.round(((originalSize - file.size) / originalSize) * 100);
-        const stats = {
-          originalSize,
-          finalSize: file.size,
-          reduction
-        };
-        setCompressionStats(stats);
-        setUploadProgress({ progress: 65, status: t('panorama.optimized') });
-        
-        toast.success(
-          `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(file.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
-          { duration: 5000 }
-        );
-      } else {
-        setUploadProgress({ progress: 50, status: t('panorama.uploadingFullQuality') });
-      }
+      // Optimize ALL photos for consistency (3-4MB target)
+      setUploadProgress({ progress: 40, status: t('panorama.optimizing') });
+      file = await optimizeHeavy360(file);
+      
+      // Calculate and display compression stats
+      const reduction = Math.round(((originalSize - file.size) / originalSize) * 100);
+      const stats = {
+        originalSize,
+        finalSize: file.size,
+        reduction
+      };
+      setCompressionStats(stats);
+      setUploadProgress({ progress: 65, status: t('panorama.optimized') });
+      
+      toast.success(
+        `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(file.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
+        { duration: 5000 }
+      );
 
       // Validate file size after optimization (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
