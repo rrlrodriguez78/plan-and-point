@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, Trash2, GripVertical, Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
@@ -441,7 +441,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                     {photo.capture_date && (
                       <Badge variant="secondary" className="text-xs">
                         <CalendarIcon className="w-3 h-3 mr-1" />
-                        {format(new Date(photo.capture_date), 'dd/MM/yyyy')}
+                        {format(parseISO(photo.capture_date), 'dd/MM/yyyy')}
                       </Badge>
                     )}
                   </div>
@@ -460,7 +460,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={photo.capture_date ? new Date(photo.capture_date) : new Date()}
+                        selected={photo.capture_date ? parseISO(photo.capture_date) : new Date()}
                         onSelect={(date) => date && updateCaptureDate(photo.id, date)}
                         locale={es}
                         disabled={(date) => date > new Date()}
