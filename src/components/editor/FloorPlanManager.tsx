@@ -21,7 +21,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
+
+const FLOOR_OPTIONS = [
+  { value: 'Sótano', label: 'Sótano' },
+  { value: 'Planta Baja', label: 'Planta Baja' },
+  { value: '1er Piso', label: '1er Piso' },
+  { value: '2do Piso', label: '2do Piso' },
+  { value: '3er Piso', label: '3er Piso' },
+  { value: '4to Piso', label: '4to Piso' },
+  { value: '5to Piso', label: '5to Piso' },
+  { value: '6to Piso', label: '6to Piso' },
+  { value: 'Ático', label: 'Ático' },
+  { value: 'Azotea', label: 'Azotea' },
+  { value: 'custom', label: 'Personalizado...' },
+];
 
 interface FloorPlan {
   id: string;
@@ -53,6 +74,7 @@ export default function FloorPlanManager({
   const [editingFloorPlan, setEditingFloorPlan] = useState<Partial<FloorPlan> | null>(null);
   const [isNewFloorPlan, setIsNewFloorPlan] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCustomFloorName, setIsCustomFloorName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -205,6 +227,7 @@ export default function FloorPlanManager({
       <Button 
         onClick={() => { 
           setIsNewFloorPlan(true); 
+          setIsCustomFloorName(false);
           setErrors({});
           setEditingFloorPlan({ 
             name: '', 
@@ -270,7 +293,9 @@ export default function FloorPlanManager({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-white z-50" onClick={e => e.stopPropagation()}>
                     <DropdownMenuItem onClick={() => { 
-                      setIsNewFloorPlan(false); 
+                      setIsNewFloorPlan(false);
+                      const isCustomName = !FLOOR_OPTIONS.some(opt => opt.value === fp.name);
+                      setIsCustomFloorName(isCustomName);
                       setEditingFloorPlan(fp); 
                       setErrors({}); 
                     }}>
@@ -292,6 +317,7 @@ export default function FloorPlanManager({
         if (!isOpen) {
           setEditingFloorPlan(null);
           setIsNewFloorPlan(false);
+          setIsCustomFloorName(false);
           setErrors({});
         }
       }}>
@@ -310,13 +336,53 @@ export default function FloorPlanManager({
             <div className="space-y-4 py-4">
               <div>
                 <Label htmlFor="floor-name">Nombre del Piso *</Label>
-                <Input
-                  id="floor-name"
-                  value={editingFloorPlan.name || ''}
-                  onChange={e => setEditingFloorPlan({...editingFloorPlan, name: e.target.value})}
-                  placeholder="Ej: Planta Baja, Primer Piso..."
-                  className={errors.name ? 'border-red-500' : ''}
-                />
+                {isCustomFloorName ? (
+                  <div className="space-y-2">
+                    <Input
+                      id="floor-name"
+                      value={editingFloorPlan.name || ''}
+                      onChange={e => setEditingFloorPlan({...editingFloorPlan, name: e.target.value})}
+                      placeholder="Escribe el nombre del piso..."
+                      className={errors.name ? 'border-red-500' : ''}
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsCustomFloorName(false);
+                        setEditingFloorPlan({...editingFloorPlan, name: ''});
+                      }}
+                      className="w-full"
+                    >
+                      Volver a opciones predefinidas
+                    </Button>
+                  </div>
+                ) : (
+                  <Select
+                    value={editingFloorPlan.name || ''}
+                    onValueChange={(value) => {
+                      if (value === 'custom') {
+                        setIsCustomFloorName(true);
+                        setEditingFloorPlan({...editingFloorPlan, name: ''});
+                      } else {
+                        setEditingFloorPlan({...editingFloorPlan, name: value});
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={errors.name ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Selecciona un piso..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FLOOR_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
               </div>
 
@@ -366,6 +432,7 @@ export default function FloorPlanManager({
               onClick={() => {
                 setEditingFloorPlan(null);
                 setIsNewFloorPlan(false);
+                setIsCustomFloorName(false);
                 setErrors({});
               }}
             >
