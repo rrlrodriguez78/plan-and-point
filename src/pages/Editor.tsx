@@ -413,25 +413,27 @@ const Editor = () => {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Floor Plans Section */}
-            <Collapsible open={floorPlansOpen} onOpenChange={setFloorPlansOpen}>
-              <Card className="p-4">
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-0 h-auto mb-2">
-                    <h3 className="font-bold">Planos ({floorPlans.length})</h3>
-                    {floorPlansOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <FloorPlanManager
-                    tour={tour!}
-                    floorPlans={floorPlans}
-                    onFloorPlanSelect={(plan) => setSelectedFloorPlan(plan)}
-                    onFloorPlansUpdate={setFloorPlans}
-                    isMobile={false}
-                  />
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
+            {tour && (
+              <Collapsible open={floorPlansOpen} onOpenChange={setFloorPlansOpen}>
+                <Card className="p-4">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between p-0 h-auto mb-2">
+                      <h3 className="font-bold">Planos ({floorPlans.length})</h3>
+                      {floorPlansOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <FloorPlanManager
+                      tour={tour}
+                      floorPlans={floorPlans}
+                      onFloorPlanSelect={(plan) => setSelectedFloorPlan(plan)}
+                      onFloorPlansUpdate={setFloorPlans}
+                      isMobile={false}
+                    />
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
 
             {/* Hotspots Section */}
             <Collapsible open={hotspotsOpen} onOpenChange={setHotspotsOpen}>
