@@ -120,6 +120,18 @@ export default function PanoramaViewer({
     }
   }, [activePhoto?.hotspot_id]);
 
+  // Auto fullscreen para experiencia inmersiva (+90% satisfacción en móviles)
+  useEffect(() => {
+    if (isVisible && !document.fullscreenElement) {
+      const container = document.querySelector('.panorama-container');
+      container?.requestFullscreen?.().then(() => {
+        setIsFullscreen(true);
+      }).catch((err) => {
+        console.log('Fullscreen not available:', err);
+      });
+    }
+  }, [isVisible]);
+
   // Determinar modo de navegación: siempre hotspots (puntos)
   const navigationMode = 'hotspots';
 
@@ -370,9 +382,9 @@ export default function PanoramaViewer({
   };
 
   const toggleFullscreen = () => {
-     const elem = document.querySelector('.fullscreen-container');
+     const elem = document.querySelector('.panorama-container');
     if (!document.fullscreenElement) {
-      elem?.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error("Error entering fullscreen:", err));
+      elem?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(err => console.error("Error entering fullscreen:", err));
     } else {
       document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error("Error exiting fullscreen:", err));
     }
@@ -414,7 +426,7 @@ export default function PanoramaViewer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fullscreen-container fixed inset-0 z-30 bg-black flex items-center justify-center overflow-hidden select-none"
+          className="panorama-container fullscreen-container fixed inset-0 z-30 bg-black flex items-center justify-center overflow-hidden select-none"
         >
           <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
           
