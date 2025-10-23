@@ -39,7 +39,12 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   const [photos, setPhotos] = useState<PanoramaPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploadDate, setUploadDate] = useState<Date>(new Date());
+  
+  // Recuperar la última fecha usada de localStorage, o usar hoy por defecto
+  const [uploadDate, setUploadDate] = useState<Date>(() => {
+    const lastUsedDate = localStorage.getItem('lastUploadDate');
+    return lastUsedDate ? new Date(lastUsedDate) : new Date();
+  });
   const [compressionStats, setCompressionStats] = useState<{
     originalSize: number;
     finalSize: number;
@@ -238,7 +243,9 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       setUploadProgress({ progress: 100, status: t('panorama.complete') });
       toast.success(t('panorama.uploadSuccess'));
-      setUploadDate(new Date()); // Reset to today
+      
+      // Guardar la fecha usada en localStorage para recordarla en el siguiente punto
+      localStorage.setItem('lastUploadDate', format(uploadDate, 'yyyy-MM-dd'));
       
       // Revoke temporary preview URL
       URL.revokeObjectURL(previewUrl);
@@ -355,7 +362,13 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
               <Calendar
                 mode="single"
                 selected={uploadDate}
-                onSelect={(date) => date && setUploadDate(date)}
+                onSelect={(date) => {
+                  if (date) {
+                    setUploadDate(date);
+                    // Guardar inmediatamente al cambiar la fecha
+                    localStorage.setItem('lastUploadDate', format(date, 'yyyy-MM-dd'));
+                  }
+                }}
                 locale={es}
                 disabled={(date) => date > new Date()}
               />
