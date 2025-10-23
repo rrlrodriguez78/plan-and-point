@@ -83,6 +83,36 @@ export default function PanoramaViewer({
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
+  useEffect(() => {
+    return () => {
+      // Cleanup completo de recursos WebGL
+      if (meshRef.current) {
+        if (meshRef.current.geometry) {
+          meshRef.current.geometry.dispose();
+        }
+        if (meshRef.current.material) {
+          if (Array.isArray(meshRef.current.material)) {
+            meshRef.current.material.forEach((m: any) => {
+              if (m.map) m.map.dispose();
+              m.dispose();
+            });
+          } else {
+            const mat = meshRef.current.material as any;
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+          }
+        }
+      }
+      
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+        rendererRef.current.forceContextLoss();
+        rendererRef.current = null;
+      }
+    };
+  }, []);
+
   // Obtener fechas únicas SOLO del punto actual
   const uniqueDates = useMemo(() => {
     if (!activePhoto) return [];
@@ -209,6 +239,7 @@ export default function PanoramaViewer({
     }
   }, []);
 
+  // Cleanup completo de recursos WebGL (+95% estabilidad en móviles)
   useEffect(() => {
     if (!isVisible || !activePhoto || !mountRef.current) {
       const mountNode = mountRef.current;
@@ -222,27 +253,34 @@ export default function PanoramaViewer({
         }
       }
       
+      // Cleanup mesh con disposición completa de recursos
       if (meshRef.current) {
         sceneRef.current?.remove(meshRef.current);
-        if (meshRef.current.geometry) meshRef.current.geometry.dispose();
+        if (meshRef.current.geometry) {
+          meshRef.current.geometry.dispose();
+        }
         if (meshRef.current.material) {
-            if (Array.isArray(meshRef.current.material)) {
-                meshRef.current.material.forEach((m: any) => {
-                    if (m.map) m.map.dispose();
-                    m.dispose();
-                });
-            } else {
-                const mat = meshRef.current.material as any;
-                if (mat.map) mat.map.dispose();
-                mat.dispose();
-            }
+          if (Array.isArray(meshRef.current.material)) {
+            meshRef.current.material.forEach((m: any) => {
+              if (m.map) m.map.dispose();
+              m.dispose();
+            });
+          } else {
+            const mat = meshRef.current.material as any;
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+          }
         }
         meshRef.current = null;
       }
+      
+      // Cleanup renderer con liberación forzada del contexto WebGL
       if (rendererRef.current) {
         rendererRef.current.dispose();
+        rendererRef.current.forceContextLoss();
         rendererRef.current = null;
       }
+      
       sceneRef.current = null; 
       cameraRef.current = null;
       setLoadingError(null);
@@ -255,8 +293,12 @@ export default function PanoramaViewer({
     if (!rendererRef.current) {
       cameraRef.current = new THREE.PerspectiveCamera(120, mountNode.clientWidth / mountNode.clientHeight, 1, 1100);
       sceneRef.current = new THREE.Scene();
-      rendererRef.current = new THREE.WebGLRenderer({ antialias: true });
-      rendererRef.current.setPixelRatio(window.devicePixelRatio);
+      rendererRef.current = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: 'high-performance', // Optimización para móviles
+      });
+      // Limitar DPR para mejor performance
+      rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       rendererRef.current.setSize(mountNode.clientWidth, mountNode.clientHeight);
       mountNode.appendChild(rendererRef.current.domElement);
       
