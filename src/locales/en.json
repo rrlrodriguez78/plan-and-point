@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "logout": "Logout",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "landing": {
+    "title": "Create Immersive Virtual Tours",
+    "subtitle": "Transform your spaces into interactive 360° experiences",
+    "getStarted": "Get Started",
+    "learnMore": "Learn More"
+  },
+  "dashboard": {
+    "title": "My Tours",
+    "createNew": "Create New Tour",
+    "noTours": "No tours yet",
+    "noToursDescription": "Create your first virtual tour to get started"
+  },
+  "editor": {
+    "tour": "Tour",
+    "panoramas": "Panoramas",
+    "hotspots": "Hotspots",
+    "floorPlan": "Floor Plan",
+    "save": "Save",
+    "back": "Back",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add"
+  },
+  "viewer": {
+    "help": "Help",
+    "share": "Share",
+    "fullscreen": "Fullscreen",
+    "exit": "Exit",
+    "linkCopied": "Link copied to clipboard",
+    "helpMessage": "Click on blue points to view more information. Use mouse wheel to zoom.",
+    "nextDate": "Next Date",
+    "prevDate": "Previous Date",
+    "nextPoint": "Next Point",
+    "prevPoint": "Previous Point",
+    "navigatingDates": "Navigating between {{count}} dates",
+    "navigatingPoints": "Navigating between {{count}} points"
+  },
+  "settings": {
+    "title": "App Settings",
+    "subtitle": "Golden rules and configuration",
+    "goldenRules": "Golden Rules",
+    "goldenRulesDescription": "Core principles that guide the development of this application",
+    "addRule": "Add Rule",
+    "editRule": "Edit Golden Rule",
+    "addNewRule": "Add New Golden Rule",
+    "updateRuleDescription": "Update the rule details below",
+    "createRuleDescription": "Create a new golden rule for the application",
+    "ruleNumber": "Rule Number",
+    "title_field": "Title",
+    "description": "Description",
+    "enterTitle": "Enter rule title",
+    "enterDescription": "Enter rule description",
+    "updateRule": "Update Rule",
+    "ruleAdded": "Rule added successfully",
+    "ruleUpdated": "Rule updated successfully",
+    "ruleDeleted": "Rule deleted successfully",
+    "errorSaving": "Error saving rule",
+    "errorDeleting": "Error deleting rule",
+    "errorLoading": "Error loading rules",
+    "fillAllFields": "Please fill in all fields",
+    "backToDashboard": "Back to Dashboard"
+  },
+  "common": {
+    "loading": "Loading...",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "confirm": "Confirm"
+  }
+}

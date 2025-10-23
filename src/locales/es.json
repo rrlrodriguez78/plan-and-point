@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "settings": "Ajustes",
+    "logout": "Salir",
+    "login": "Iniciar Sesión",
+    "signup": "Crear Cuenta"
+  },
+  "landing": {
+    "title": "Crea Tours Virtuales Inmersivos",
+    "subtitle": "Transforma tus espacios en experiencias interactivas 360°",
+    "getStarted": "Comenzar",
+    "learnMore": "Saber Más"
+  },
+  "dashboard": {
+    "title": "Mis Tours",
+    "createNew": "Crear Nuevo Tour",
+    "noTours": "No hay tours todavía",
+    "noToursDescription": "Crea tu primer tour virtual para comenzar"
+  },
+  "editor": {
+    "tour": "Tour",
+    "panoramas": "Panoramas",
+    "hotspots": "Puntos",
+    "floorPlan": "Plano",
+    "save": "Guardar",
+    "back": "Volver",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar"
+  },
+  "viewer": {
+    "help": "Ayuda",
+    "share": "Compartir",
+    "fullscreen": "Pantalla completa",
+    "exit": "Salir",
+    "linkCopied": "Enlace copiado al portapapeles",
+    "helpMessage": "Haz clic en los puntos azules para ver más información. Usa la rueda del ratón para hacer zoom.",
+    "nextDate": "Fecha siguiente",
+    "prevDate": "Fecha anterior",
+    "nextPoint": "Punto siguiente",
+    "prevPoint": "Punto anterior",
+    "navigatingDates": "Navegando entre {{count}} fechas",
+    "navigatingPoints": "Navegando entre {{count}} puntos"
+  },
+  "settings": {
+    "title": "Ajustes de la Aplicación",
+    "subtitle": "Reglas de oro y configuración",
+    "goldenRules": "Reglas de Oro",
+    "goldenRulesDescription": "Principios fundamentales que guían el desarrollo de esta aplicación",
+    "addRule": "Agregar Regla",
+    "editRule": "Editar Regla de Oro",
+    "addNewRule": "Agregar Nueva Regla de Oro",
+    "updateRuleDescription": "Actualiza los detalles de la regla abajo",
+    "createRuleDescription": "Crea una nueva regla de oro para la aplicación",
+    "ruleNumber": "Número de Regla",
+    "title_field": "Título",
+    "description": "Descripción",
+    "enterTitle": "Ingresa el título de la regla",
+    "enterDescription": "Ingresa la descripción de la regla",
+    "updateRule": "Actualizar Regla",
+    "ruleAdded": "Regla agregada exitosamente",
+    "ruleUpdated": "Regla actualizada exitosamente",
+    "ruleDeleted": "Regla eliminada exitosamente",
+    "errorSaving": "Error al guardar la regla",
+    "errorDeleting": "Error al eliminar la regla",
+    "errorLoading": "Error al cargar las reglas",
+    "fillAllFields": "Por favor completa todos los campos",
+    "backToDashboard": "Volver al Panel"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "back": "Volver",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "close": "Cerrar",
+    "confirm": "Confirmar"
+  }
+}

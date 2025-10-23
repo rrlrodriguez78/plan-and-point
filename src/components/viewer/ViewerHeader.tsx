@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Maximize2, Info, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface ViewerHeaderProps {
   tourTitle: string;
@@ -9,14 +10,16 @@ interface ViewerHeaderProps {
 }
 
 export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: ViewerHeaderProps) => {
+  const { t } = useTranslation();
+  
   const handleShare = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
-    toast.success('Enlace copiado al portapapeles');
+    toast.success(t('viewer.linkCopied'));
   };
 
   const handleHelp = () => {
-    toast.info('Haz clic en los puntos azules para ver más información. Usa la rueda del ratón para hacer zoom.');
+    toast.info(t('viewer.helpMessage'));
   };
 
   return (
@@ -29,15 +32,15 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handleHelp}>
               <Info className="w-4 h-4 mr-2" />
-              Ayuda
+              {t('viewer.help')}
             </Button>
             <Button variant="ghost" size="sm" onClick={handleShare}>
               <Share2 className="w-4 h-4 mr-2" />
-              Compartir
+              {t('viewer.share')}
             </Button>
             <Button variant="ghost" size="sm" onClick={onToggleFullscreen}>
               <Maximize2 className="w-4 h-4 mr-2" />
-              {isFullscreen ? 'Salir' : 'Pantalla completa'}
+              {isFullscreen ? t('viewer.exit') : t('viewer.fullscreen')}
             </Button>
           </div>
         </div>

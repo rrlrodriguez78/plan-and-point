@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Edit, Trash2, Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ interface GoldenRule {
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [rules, setRules] = useState<GoldenRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -65,7 +67,7 @@ const Settings = () => {
       if (data) setRules(data);
     } catch (error) {
       console.error('Error loading rules:', error);
-      toast.error('Error loading rules');
+      toast.error(t('settings.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ const Settings = () => {
 
   const handleSaveRule = async () => {
     if (!formData.title.trim() || !formData.description.trim()) {
-      toast.error('Please fill in all fields');
+      toast.error(t('settings.fillAllFields'));
       return;
     }
 
@@ -115,7 +117,7 @@ const Settings = () => {
           .eq('id', editingRule.id);
 
         if (error) throw error;
-        toast.success('Rule updated successfully');
+        toast.success(t('settings.ruleUpdated'));
       } else {
         const { error } = await supabase
           .from('golden_rules')
@@ -126,14 +128,14 @@ const Settings = () => {
           });
 
         if (error) throw error;
-        toast.success('Rule added successfully');
+        toast.success(t('settings.ruleAdded'));
       }
 
       handleCloseModal();
       loadRules();
     } catch (error) {
       console.error('Error saving rule:', error);
-      toast.error('Error saving rule');
+      toast.error(t('settings.errorSaving'));
     }
   };
 
@@ -145,11 +147,11 @@ const Settings = () => {
         .eq('id', id);
 
       if (error) throw error;
-      toast.success('Rule deleted successfully');
+      toast.success(t('settings.ruleDeleted'));
       loadRules();
     } catch (error) {
       console.error('Error deleting rule:', error);
-      toast.error('Error deleting rule');
+      toast.error(t('settings.errorDeleting'));
     }
   };
 
@@ -158,7 +160,7 @@ const Settings = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -175,15 +177,15 @@ const Settings = () => {
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
+          {t('settings.backToDashboard')}
         </Button>
 
         <div className="flex items-center gap-3 mb-8">
           <Shield className="w-8 h-8 text-primary" />
           <div>
-            <h1 className="text-4xl font-bold">App Settings</h1>
+            <h1 className="text-4xl font-bold">{t('settings.title')}</h1>
             <p className="text-muted-foreground">
-              Golden rules and configuration
+              {t('settings.subtitle')}
             </p>
           </div>
         </div>
@@ -192,14 +194,14 @@ const Settings = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-2xl">Golden Rules</CardTitle>
+                <CardTitle className="text-2xl">{t('settings.goldenRules')}</CardTitle>
                 <CardDescription>
-                  Core principles that guide the development of this application
+                  {t('settings.goldenRulesDescription')}
                 </CardDescription>
               </div>
               <Button onClick={() => handleOpenModal()}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Rule
+                {t('settings.addRule')}
               </Button>
             </div>
           </CardHeader>
@@ -248,16 +250,16 @@ const Settings = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingRule ? 'Edit Golden Rule' : 'Add New Golden Rule'}
+                {editingRule ? t('settings.editRule') : t('settings.addNewRule')}
               </DialogTitle>
               <DialogDescription>
-                {editingRule ? 'Update the rule details below' : 'Create a new golden rule for the application'}
+                {editingRule ? t('settings.updateRuleDescription') : t('settings.createRuleDescription')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="rule_number">Rule Number</Label>
+                <Label htmlFor="rule_number">{t('settings.ruleNumber')}</Label>
                 <Input
                   id="rule_number"
                   type="number"
@@ -267,22 +269,22 @@ const Settings = () => {
               </div>
 
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">{t('settings.title_field')}</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Enter rule title"
+                  placeholder={t('settings.enterTitle')}
                 />
               </div>
 
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('settings.description')}</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Enter rule description"
+                  placeholder={t('settings.enterDescription')}
                   rows={4}
                 />
               </div>
@@ -290,10 +292,10 @@ const Settings = () => {
 
             <DialogFooter>
               <Button variant="outline" onClick={handleCloseModal}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleSaveRule}>
-                {editingRule ? 'Update Rule' : 'Add Rule'}
+                {editingRule ? t('settings.updateRule') : t('settings.addRule')}
               </Button>
             </DialogFooter>
           </DialogContent>

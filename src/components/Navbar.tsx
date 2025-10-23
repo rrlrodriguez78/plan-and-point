@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { MapPin, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -20,26 +22,26 @@ export const Navbar = () => {
           {user ? (
             <>
               <Link to="/app/tours">
-                <Button variant="ghost">Dashboard</Button>
+                <Button variant="ghost">{t('nav.dashboard')}</Button>
               </Link>
               <Link to="/app/settings">
                 <Button variant="ghost">
                   <Settings className="w-4 h-4 mr-2" />
-                  Settings
+                  {t('nav.settings')}
                 </Button>
               </Link>
               <Button variant="outline" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />
-                Salir
+                {t('nav.logout')}
               </Button>
             </>
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost">Iniciar Sesión</Button>
+                <Button variant="ghost">{t('nav.login')}</Button>
               </Link>
               <Link to="/signup">
-                <Button>Crear Cuenta</Button>
+                <Button>{t('nav.signup')}</Button>
               </Link>
             </>
           )}
