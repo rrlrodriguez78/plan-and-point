@@ -12,28 +12,21 @@ export const convertContainerToImageCoordinates = (
   const containerRect = containerElement.getBoundingClientRect();
   const imageRect = imageElement.getBoundingClientRect();
 
-  // Coordenadas relativas al contenedor
-  const containerX = clientX - containerRect.left;
-  const containerY = clientY - containerRect.top;
+  // Coordenadas relativas a la imagen directamente
+  const imageX = clientX - imageRect.left;
+  const imageY = clientY - imageRect.top;
 
   // Verificar si el clic está dentro de la imagen
-  const imageLeft = imageRect.left - containerRect.left;
-  const imageTop = imageRect.top - containerRect.top;
-  
   if (
-    containerX < imageLeft ||
-    containerX > imageLeft + imageRect.width ||
-    containerY < imageTop ||
-    containerY > imageTop + imageRect.height
+    imageX < 0 ||
+    imageX > imageRect.width ||
+    imageY < 0 ||
+    imageY > imageRect.height
   ) {
     return null; // Fuera de la imagen
   }
 
-  // Convertir a coordenadas relativas a la imagen
-  const imageX = containerX - imageLeft;
-  const imageY = containerY - imageTop;
-
-  // Convertir a porcentajes
+  // Convertir a porcentajes basados en las dimensiones reales de la imagen
   const percentX = (imageX / imageRect.width) * 100;
   const percentY = (imageY / imageRect.height) * 100;
 

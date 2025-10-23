@@ -50,6 +50,10 @@ export default function HotspotEditor({
     const image = imageRef.current;
     if (!container || !image) return;
 
+    // Prevenir el comportamiento por defecto y asegurar coordenadas precisas
+    e.preventDefault();
+    e.stopPropagation();
+
     const coords = convertContainerToImageCoordinates(
       e.clientX,
       e.clientY,
@@ -58,6 +62,7 @@ export default function HotspotEditor({
     );
 
     if (coords) {
+      console.log('Clic en coordenadas:', coords); // Debug log
       onCanvasClick(coords.x, coords.y);
     }
   };
@@ -73,6 +78,8 @@ export default function HotspotEditor({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!draggingId || readOnly) return;
 
+    e.preventDefault();
+    
     const container = containerRef.current;
     const image = imageRef.current;
     if (!container || !image) return;
