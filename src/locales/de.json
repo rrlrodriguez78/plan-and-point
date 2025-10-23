@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "login": "Anmelden",
+    "signup": "Registrieren"
+  },
+  "landing": {
+    "title": "Erstellen Sie immersive virtuelle Touren",
+    "subtitle": "Verwandeln Sie Ihre Räume in interaktive 360°-Erlebnisse",
+    "getStarted": "Loslegen",
+    "learnMore": "Mehr erfahren"
+  },
+  "dashboard": {
+    "title": "Meine Touren",
+    "createNew": "Neue Tour erstellen",
+    "noTours": "Noch keine Touren",
+    "noToursDescription": "Erstellen Sie Ihre erste virtuelle Tour, um zu beginnen"
+  },
+  "editor": {
+    "tour": "Tour",
+    "panoramas": "Panoramen",
+    "hotspots": "Punkte",
+    "floorPlan": "Grundriss",
+    "save": "Speichern",
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen"
+  },
+  "viewer": {
+    "help": "Hilfe",
+    "share": "Teilen",
+    "fullscreen": "Vollbild",
+    "exit": "Beenden",
+    "linkCopied": "Link in Zwischenablage kopiert",
+    "helpMessage": "Klicken Sie auf die blauen Punkte, um weitere Informationen anzuzeigen. Verwenden Sie das Mausrad zum Zoomen.",
+    "nextDate": "Nächstes Datum",
+    "prevDate": "Vorheriges Datum",
+    "nextPoint": "Nächster Punkt",
+    "prevPoint": "Vorheriger Punkt",
+    "navigatingDates": "Navigation zwischen {{count}} Daten",
+    "navigatingPoints": "Navigation zwischen {{count}} Punkten"
+  },
+  "settings": {
+    "title": "App-Einstellungen",
+    "subtitle": "Goldene Regeln und Konfiguration",
+    "goldenRules": "Goldene Regeln",
+    "goldenRulesDescription": "Kernprinzipien, die die Entwicklung dieser Anwendung leiten",
+    "addRule": "Regel hinzufügen",
+    "editRule": "Goldene Regel bearbeiten",
+    "addNewRule": "Neue goldene Regel hinzufügen",
+    "updateRuleDescription": "Aktualisieren Sie die Regeldetails unten",
+    "createRuleDescription": "Erstellen Sie eine neue goldene Regel für die Anwendung",
+    "ruleNumber": "Regelnummer",
+    "title_field": "Titel",
+    "description": "Beschreibung",
+    "enterTitle": "Regeltitel eingeben",
+    "enterDescription": "Regelbeschreibung eingeben",
+    "updateRule": "Regel aktualisieren",
+    "ruleAdded": "Regel erfolgreich hinzugefügt",
+    "ruleUpdated": "Regel erfolgreich aktualisiert",
+    "ruleDeleted": "Regel erfolgreich gelöscht",
+    "errorSaving": "Fehler beim Speichern der Regel",
+    "errorDeleting": "Fehler beim Löschen der Regel",
+    "errorLoading": "Fehler beim Laden der Regeln",
+    "fillAllFields": "Bitte füllen Sie alle Felder aus",
+    "backToDashboard": "Zurück zum Dashboard"
+  },
+  "common": {
+    "loading": "Wird geladen...",
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "close": "Schließen",
+    "confirm": "Bestätigen"
+  }
+}

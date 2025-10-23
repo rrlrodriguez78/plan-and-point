@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -19,6 +20,7 @@ export const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-4">
+          <LanguageSwitcher />
           {user ? (
             <>
               <Link to="/app/tours">

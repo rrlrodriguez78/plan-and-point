@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "login": "Connexion",
+    "signup": "S'inscrire"
+  },
+  "landing": {
+    "title": "Créez des visites virtuelles immersives",
+    "subtitle": "Transformez vos espaces en expériences interactives 360°",
+    "getStarted": "Commencer",
+    "learnMore": "En savoir plus"
+  },
+  "dashboard": {
+    "title": "Mes visites",
+    "createNew": "Créer une nouvelle visite",
+    "noTours": "Pas encore de visites",
+    "noToursDescription": "Créez votre première visite virtuelle pour commencer"
+  },
+  "editor": {
+    "tour": "Visite",
+    "panoramas": "Panoramas",
+    "hotspots": "Points",
+    "floorPlan": "Plan",
+    "save": "Enregistrer",
+    "back": "Retour",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter"
+  },
+  "viewer": {
+    "help": "Aide",
+    "share": "Partager",
+    "fullscreen": "Plein écran",
+    "exit": "Quitter",
+    "linkCopied": "Lien copié dans le presse-papiers",
+    "helpMessage": "Cliquez sur les points bleus pour voir plus d'informations. Utilisez la molette de la souris pour zoomer.",
+    "nextDate": "Date suivante",
+    "prevDate": "Date précédente",
+    "nextPoint": "Point suivant",
+    "prevPoint": "Point précédent",
+    "navigatingDates": "Navigation entre {{count}} dates",
+    "navigatingPoints": "Navigation entre {{count}} points"
+  },
+  "settings": {
+    "title": "Paramètres de l'application",
+    "subtitle": "Règles d'or et configuration",
+    "goldenRules": "Règles d'or",
+    "goldenRulesDescription": "Principes fondamentaux qui guident le développement de cette application",
+    "addRule": "Ajouter une règle",
+    "editRule": "Modifier la règle d'or",
+    "addNewRule": "Ajouter une nouvelle règle d'or",
+    "updateRuleDescription": "Mettez à jour les détails de la règle ci-dessous",
+    "createRuleDescription": "Créer une nouvelle règle d'or pour l'application",
+    "ruleNumber": "Numéro de règle",
+    "title_field": "Titre",
+    "description": "Description",
+    "enterTitle": "Entrez le titre de la règle",
+    "enterDescription": "Entrez la description de la règle",
+    "updateRule": "Mettre à jour la règle",
+    "ruleAdded": "Règle ajoutée avec succès",
+    "ruleUpdated": "Règle mise à jour avec succès",
+    "ruleDeleted": "Règle supprimée avec succès",
+    "errorSaving": "Erreur lors de l'enregistrement de la règle",
+    "errorDeleting": "Erreur lors de la suppression de la règle",
+    "errorLoading": "Erreur lors du chargement des règles",
+    "fillAllFields": "Veuillez remplir tous les champs",
+    "backToDashboard": "Retour au tableau de bord"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "back": "Retour",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "close": "Fermer",
+    "confirm": "Confirmer"
+  }
+}
