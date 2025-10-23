@@ -54,8 +54,51 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     }
   };
 
+  const optimizeHeavy360 = async (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Para 8MB+, reducir a 4000px máximo
+        const maxSize = 4000; // Mantener detalle 360
+        let width = img.width;
+        let height = img.height;
+        
+        // Calcular nuevo tamaño manteniendo ratio
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Alta calidad pero comprimido
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Compresión más agresiva (70% para 8MB+)
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const optimizedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(optimizedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.7);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
@@ -64,16 +107,22 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error(t('panorama.imageTooLarge'));
-      return;
-    }
-
     setUploading(true);
     try {
+      // Optimize if file is larger than 8MB
+      if (file.size > 8 * 1024 * 1024) {
+        toast.info(t('panorama.optimizing'));
+        file = await optimizeHeavy360(file);
+      }
+
+      // Validate file size after optimization (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(t('panorama.imageTooLarge'));
+        return;
+      }
+
       // Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop();
+      const fileExt = 'jpg';
       const fileName = `${hotspotId}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError, data } = await supabase.storage
