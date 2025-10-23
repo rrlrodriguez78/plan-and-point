@@ -54,6 +54,39 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     }
   };
 
+  const createThumbnail = async (file: File, maxSize: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(URL.createObjectURL(blob));
+          } else {
+            resolve('');
+          }
+        }, 'image/jpeg', 0.8);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const optimizeHeavy360 = async (file: File): Promise<File> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -108,6 +141,20 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     }
 
     setUploading(true);
+    
+    // Quick preview for immediate feedback
+    const previewUrl = await createThumbnail(file, 1000);
+    const tempId = `temp-${Date.now()}`;
+    
+    // Add temporary preview to show immediately
+    setPhotos((prev) => [...prev, {
+      id: tempId,
+      hotspot_id: hotspotId,
+      photo_url: previewUrl,
+      display_order: prev.length,
+      capture_date: format(uploadDate, 'yyyy-MM-dd'),
+    }]);
+    
     try {
       // Optimize if file is larger than 8MB
       if (file.size > 8 * 1024 * 1024) {
@@ -118,6 +165,8 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       // Validate file size after optimization (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(t('panorama.imageTooLarge'));
+        // Remove temp preview
+        setPhotos((prev) => prev.filter(p => p.id !== tempId));
         return;
       }
 
@@ -150,10 +199,17 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       toast.success(t('panorama.uploadSuccess'));
       setUploadDate(new Date()); // Reset to today
+      
+      // Revoke temporary preview URL
+      URL.revokeObjectURL(previewUrl);
+      
+      // Reload to get the real photo
       loadPhotos();
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error(t('panorama.errorUploading'));
+      // Remove temp preview on error
+      setPhotos((prev) => prev.filter(p => p.id !== tempId));
     } finally {
       setUploading(false);
       // Reset input
