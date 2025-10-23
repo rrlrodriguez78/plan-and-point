@@ -97,44 +97,42 @@ export default function PanoramaViewer({
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Obtener fechas únicas de las fotos
+  // Obtener fechas únicas SOLO del punto actual
   const uniqueDates = useMemo(() => {
+    if (!activePhoto) return [];
     const dates = photos
+      .filter(p => p.hotspot_id === activePhoto.hotspot_id)
       .map(p => p.capture_date)
       .filter((date): date is string => !!date)
       .filter((date, index, self) => self.indexOf(date) === index)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
     return dates;
-  }, [photos]);
+  }, [photos, activePhoto]);
 
-  // Filtrar fotos por fecha seleccionada
+  // Filtrar fotos por el punto actual y opcionalmente por fecha
   const filteredPhotos = useMemo(() => {
-    if (!selectedDate) return photos;
-    return photos.filter(p => p.capture_date === selectedDate);
-  }, [photos, selectedDate]);
-
-  // Hotspots con fotos en la fecha seleccionada (ordenados por creación)
-  const hotspotsWithPhotosInSelectedDate = useMemo(() => {
-    if (!selectedDate) return [];
-    const hotspotIds = new Set(
-      photos
-        .filter(p => p.capture_date === selectedDate)
-        .map(p => p.hotspot_id)
-    );
-    return allHotspotsOnFloor.filter(h => hotspotIds.has(h.id));
-  }, [selectedDate, photos, allHotspotsOnFloor]);
-
-  // Resetear filtro de fecha si el hotspot actual no tiene fotos en la fecha seleccionada
-  useEffect(() => {
-    if (selectedDate && activePhoto) {
-      const hasPhotosInDate = photos.some(
-        p => p.hotspot_id === activePhoto.hotspot_id && p.capture_date === selectedDate
-      );
-      if (!hasPhotosInDate) {
-        setSelectedDate(null);
-      }
+    if (!activePhoto) return photos;
+    let filtered = photos.filter(p => p.hotspot_id === activePhoto.hotspot_id);
+    if (selectedDate) {
+      filtered = filtered.filter(p => p.capture_date === selectedDate);
     }
-  }, [activePhoto, selectedDate, photos]);
+    return filtered;
+  }, [selectedDate, photos, activePhoto]);
+
+  // Obtener TODOS los hotspots del floor que tengan fotos panorámicas
+  const availableHotspots = useMemo(() => {
+    const hotspotIds = new Set(photos.map(p => p.hotspot_id));
+    return allHotspotsOnFloor
+      .filter(h => hotspotIds.has(h.id))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [photos, allHotspotsOnFloor]);
+
+  // Resetear filtro de fecha cuando se navega a otro punto
+  useEffect(() => {
+    if (activePhoto) {
+      setSelectedDate(null);
+    }
+  }, [activePhoto?.hotspot_id]);
 
   // Determinar modo de navegación: siempre hotspots (puntos)
   const navigationMode = 'hotspots';
@@ -366,13 +364,6 @@ export default function PanoramaViewer({
     }
   };
 
-  // Obtener hotspots disponibles según filtro de fecha
-  const availableHotspots = useMemo(() => {
-    if (selectedDate && hotspotsWithPhotosInSelectedDate.length > 0) {
-      return hotspotsWithPhotosInSelectedDate;
-    }
-    return allHotspotsOnFloor;
-  }, [selectedDate, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   // Obtener el hotspot actual
   const currentHotspot = useMemo(() => {
@@ -408,6 +399,7 @@ export default function PanoramaViewer({
   };
 
   const handleNavClick = (hotspot: Hotspot) => {
+    setSelectedDate(null); // Resetear filtro de fecha al cambiar de punto
     setShowNavList(false);
     onNavigate(hotspot);
   };
@@ -519,7 +511,7 @@ export default function PanoramaViewer({
                                className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20 font-semibold' : ''}`}
                              >
                                <Calendar className="w-4 h-4 mr-2" />
-                               Todas las fechas ({photos.length} fotos)
+                               Todas las fechas ({filteredPhotos.filter(p => p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
                              </DropdownMenuItem>
                              <DropdownMenuSeparator className="bg-white/20" />
                              <ScrollArea className="max-h-64">
@@ -530,7 +522,7 @@ export default function PanoramaViewer({
                                    className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20 font-semibold' : ''}`}
                                  >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   {formatDate(date)} ({photos.filter(p => p.capture_date === date).length} fotos)
+                                   {formatDate(date)} ({photos.filter(p => p.capture_date === date && p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
                                  </DropdownMenuItem>
                                ))}
                              </ScrollArea>
@@ -556,14 +548,9 @@ export default function PanoramaViewer({
                              </Button>
                            </DropdownMenuTrigger>
                            <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
-                             <div className="px-2 py-1.5 text-sm font-semibold">
-                               Seleccionar punto
-                               {selectedDate && (
-                                 <span className="text-xs text-slate-400 block">
-                                   Filtrado por: {formatDate(selectedDate)}
-                                 </span>
-                               )}
-                             </div>
+                              <div className="px-2 py-1.5 text-sm font-semibold">
+                                Navegar a otro punto ({availableHotspots.length} disponibles)
+                              </div>
                              <DropdownMenuSeparator className="bg-white/20" />
                              <ScrollArea className="max-h-64">
                                {availableHotspots.map(hotspot => (
