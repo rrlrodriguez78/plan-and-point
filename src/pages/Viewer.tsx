@@ -3,12 +3,14 @@ import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { ViewerHeader } from '@/components/viewer/ViewerHeader';
 import ViewerControls from '@/components/viewer/ViewerControls';
 import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
 import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
+import { ManagementToolbar } from '@/components/viewer/ManagementToolbar';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 
 const Viewer = () => {
@@ -24,6 +26,12 @@ const Viewer = () => {
   const [panoramaPhotos, setPanoramaPhotos] = useState<PanoramaPhoto[]>([]);
   const [showPanoramaViewer, setShowPanoramaViewer] = useState(false);
   const [activePanoramaPhoto, setActivePanoramaPhoto] = useState<PanoramaPhoto | null>(null);
+  
+  // Management modes
+  const [isManagementMode, setIsManagementMode] = useState(false);
+  const [isMoveMode, setIsMoveMode] = useState(false);
+  const [selectedHotspots, setSelectedHotspots] = useState<string[]>([]);
+  const [copiedHotspots, setCopiedHotspots] = useState<Hotspot[]>([]);
 
   useEffect(() => {
     loadTourData();
@@ -124,7 +132,20 @@ const Viewer = () => {
     }
   };
 
-  const handleHotspotClick = async (hotspot: Hotspot) => {
+  const handleHotspotClick = async (hotspot: Hotspot, event?: React.MouseEvent) => {
+    // Management mode: toggle selection
+    if (isManagementMode) {
+      event?.preventDefault();
+      event?.stopPropagation();
+      setSelectedHotspots(prev => 
+        prev.includes(hotspot.id)
+          ? prev.filter(id => id !== hotspot.id)
+          : [...prev, hotspot.id]
+      );
+      return;
+    }
+
+    // Normal mode: open hotspot details
     setSelectedHotspot(hotspot);
     
     if (hotspot.has_panorama && hotspot.panorama_count && hotspot.panorama_count > 0) {
@@ -134,12 +155,64 @@ const Viewer = () => {
         setActivePanoramaPhoto(photos[0]);
         setShowPanoramaViewer(true);
       } else {
-        // If has_panorama is true but no photos found, show regular modal
         setShowPanoramaViewer(false);
       }
     } else {
       setShowPanoramaViewer(false);
     }
+  };
+
+  const handleCopyHotspots = () => {
+    const hotspotsToCopy = currentHotspots.filter(h => selectedHotspots.includes(h.id));
+    setCopiedHotspots(hotspotsToCopy);
+    toast.success(`${hotspotsToCopy.length} hotspot(s) copiados`);
+  };
+
+  const handleDeleteHotspots = async () => {
+    if (selectedHotspots.length === 0) return;
+    
+    const confirmed = window.confirm(
+      `¿Eliminar ${selectedHotspots.length} hotspot(s)? Esta acción no se puede deshacer.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('hotspots')
+        .delete()
+        .in('id', selectedHotspots);
+
+      if (error) throw error;
+
+      // Update local state
+      setHotspotsByFloor(prev => ({
+        ...prev,
+        [currentFloorPlanId!]: prev[currentFloorPlanId!].filter(
+          h => !selectedHotspots.includes(h.id)
+        )
+      }));
+
+      toast.success(`${selectedHotspots.length} hotspot(s) eliminados`);
+      setSelectedHotspots([]);
+    } catch (error) {
+      console.error('Error deleting hotspots:', error);
+      toast.error('Error al eliminar hotspots');
+    }
+  };
+
+  const handleToggleManagement = () => {
+    setIsManagementMode(prev => !prev);
+    setIsMoveMode(false);
+    setSelectedHotspots([]);
+  };
+
+  const handleToggleMoveMode = () => {
+    setIsMoveMode(prev => !prev);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedHotspots([]);
   };
 
   const currentFloorPlan = floorPlans.find(fp => fp.id === currentFloorPlanId);
@@ -221,12 +294,26 @@ const Viewer = () => {
         isFullscreen={isFullscreen}
       />
 
+      {/* Management Toolbar */}
+      <ManagementToolbar
+        isManagementMode={isManagementMode}
+        isMoveMode={isMoveMode}
+        selectedCount={selectedHotspots.length}
+        onToggleManagement={handleToggleManagement}
+        onToggleMoveMode={handleToggleMoveMode}
+        onCopy={handleCopyHotspots}
+        onDelete={handleDeleteHotspots}
+        onClearSelection={handleClearSelection}
+      />
+
       {/* Canvas */}
       <div className="flex-1 relative">
         <ViewerCanvas
           imageUrl={currentFloorPlan.image_url}
           hotspots={currentHotspots}
           onHotspotClick={handleHotspotClick}
+          isManagementMode={isManagementMode}
+          selectedHotspots={selectedHotspots}
           renderHotspot={(hotspot, index) => (
             <HotspotPoint
               key={hotspot.id}
@@ -234,8 +321,10 @@ const Viewer = () => {
               title={hotspot.title}
               x={hotspot.x_position}
               y={hotspot.y_position}
-              onClick={() => handleHotspotClick(hotspot)}
+              onClick={(e) => handleHotspotClick(hotspot, e)}
               hasPanorama={hotspot.has_panorama}
+              isSelected={selectedHotspots.includes(hotspot.id)}
+              isManagementMode={isManagementMode}
             />
           )}
         />

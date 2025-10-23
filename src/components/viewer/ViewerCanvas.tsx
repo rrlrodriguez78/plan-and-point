@@ -6,11 +6,20 @@ import { Hotspot } from '@/types/tour';
 interface ViewerCanvasProps {
   imageUrl: string;
   hotspots: Hotspot[];
-  onHotspotClick: (hotspot: Hotspot) => void;
+  onHotspotClick: (hotspot: Hotspot, event?: React.MouseEvent) => void;
   renderHotspot: (hotspot: Hotspot, index: number) => React.ReactNode;
+  isManagementMode?: boolean;
+  selectedHotspots?: string[];
 }
 
-export const ViewerCanvas = ({ imageUrl, hotspots, onHotspotClick, renderHotspot }: ViewerCanvasProps) => {
+export const ViewerCanvas = ({ 
+  imageUrl, 
+  hotspots, 
+  onHotspotClick, 
+  renderHotspot,
+  isManagementMode = false,
+  selectedHotspots = []
+}: ViewerCanvasProps) => {
   return (
     <div className="relative w-full h-full bg-accent/30">
       <TransformWrapper

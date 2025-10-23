@@ -6,8 +6,10 @@ interface HotspotPointProps {
   title: string;
   x: number;
   y: number;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   hasPanorama?: boolean;
+  isSelected?: boolean;
+  isManagementMode?: boolean;
   style?: {
     icon?: string;
     color?: string;
@@ -15,12 +17,23 @@ interface HotspotPointProps {
   };
 }
 
-export const HotspotPoint = ({ index, title, x, y, onClick, hasPanorama, style }: HotspotPointProps) => {
+export const HotspotPoint = ({ 
+  index, 
+  title, 
+  x, 
+  y, 
+  onClick, 
+  hasPanorama, 
+  isSelected = false,
+  isManagementMode = false,
+  style 
+}: HotspotPointProps) => {
   const IconComponent = style?.icon 
     ? (LucideIcons as any)[style.icon] || MapPin 
     : MapPin;
   
-  const color = style?.color || '#4285F4';
+  const baseColor = style?.color || '#4285F4';
+  const color = isSelected ? '#10b981' : baseColor;
   const size = style?.size || 40;
 
   return (
@@ -45,7 +58,9 @@ export const HotspotPoint = ({ index, title, x, y, onClick, hasPanorama, style }
       
       {/* Main point */}
       <div
-        className="relative rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform group-hover:scale-125"
+        className={`relative rounded-full border-2 shadow-lg flex items-center justify-center transition-all group-hover:scale-125 ${
+          isSelected ? 'border-green-400 border-4 ring-4 ring-green-400/30' : 'border-white'
+        }`}
         style={{
           backgroundColor: color,
           width: `${size}px`,
@@ -53,6 +68,13 @@ export const HotspotPoint = ({ index, title, x, y, onClick, hasPanorama, style }
         }}
       >
         <IconComponent className="text-white" style={{ width: size * 0.5, height: size * 0.5 }} />
+        
+        {/* Selection indicator */}
+        {isManagementMode && isSelected && (
+          <div className="absolute -top-1 -left-1 bg-green-500 rounded-full p-0.5 border-2 border-white shadow-lg">
+            <LucideIcons.Check className="w-3 h-3 text-white" />
+          </div>
+        )}
         
         {/* 360° Badge */}
         {hasPanorama && (
