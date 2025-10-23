@@ -85,7 +85,7 @@ export default function HotspotModal({
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error('El título es requerido');
+      toast.error(t('hotspot.titleRequired'));
       return;
     }
 
@@ -95,7 +95,7 @@ export default function HotspotModal({
       onClose();
     } catch (error) {
       console.error('Error saving hotspot:', error);
-      toast.error('Error al guardar hotspot');
+      toast.error(t('hotspot.errorSaving'));
     } finally {
       setSaving(false);
     }
@@ -108,10 +108,10 @@ export default function HotspotModal({
     setUploading(true);
     try {
       // TODO: Implement actual upload to storage
-      toast.success('Imagen subida exitosamente');
+      toast.success(t('hotspot.imageUploaded'));
     } catch (error) {
       console.error('Error uploading media:', error);
-      toast.error('Error al subir imagen');
+      toast.error(t('hotspot.uploadError'));
     } finally {
       setUploading(false);
     }
@@ -122,7 +122,7 @@ export default function HotspotModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'create' ? 'Nuevo Hotspot' : 'Editar Hotspot'}
+            {mode === 'create' ? t('hotspot.new') : t('hotspot.edit')}
           </DialogTitle>
         </DialogHeader>
 
@@ -130,38 +130,38 @@ export default function HotspotModal({
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="info" className="gap-2">
               <Info className="w-4 h-4" />
-              Información
+              {t('hotspot.information')}
             </TabsTrigger>
             <TabsTrigger value="style" className="gap-2">
               <Palette className="w-4 h-4" />
-              Estilo
+              {t('hotspot.style')}
             </TabsTrigger>
             <TabsTrigger value="panorama" className="gap-2">
               <Eye className="w-4 h-4" />
-              Fotos 360°
+              {t('hotspot.photos360')}
             </TabsTrigger>
             <TabsTrigger value="media" className="gap-2">
               <Camera className="w-4 h-4" />
-              Media
+              {t('hotspot.media')}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
+              <Label htmlFor="title">{t('hotspot.title')} *</Label>
               <Input
                 id="title"
-                placeholder="Ej: Sala principal"
+                placeholder={t('hotspot.titlePlaceholder')}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="description">{t('hotspot.description')}</Label>
               <Textarea
                 id="description"
-                placeholder="Describe este punto de interés..."
+                placeholder={t('hotspot.descriptionPlaceholder')}
                 rows={4}
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -170,7 +170,7 @@ export default function HotspotModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="x_position">Posición X (%)</Label>
+                <Label htmlFor="x_position">{t('hotspot.positionX')}</Label>
                 <Input
                   id="x_position"
                   type="number"
@@ -184,7 +184,7 @@ export default function HotspotModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="y_position">Posición Y (%)</Label>
+                <Label htmlFor="y_position">{t('hotspot.positionY')}</Label>
                 <Input
                   id="y_position"
                   type="number"
@@ -203,7 +203,7 @@ export default function HotspotModal({
           <TabsContent value="style" className="space-y-4 mt-4">
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold mb-3 block">Icono</Label>
+                <Label className="text-base font-semibold mb-3 block">{t('hotspot.icon')}</Label>
                 <div className="grid grid-cols-4 gap-2">
                   {[
                     { icon: MapPin, name: 'map-pin' },
@@ -231,7 +231,7 @@ export default function HotspotModal({
 
               <div>
                 <Label htmlFor="icon-color" className="text-base font-semibold">
-                  Color
+                  {t('hotspot.color')}
                 </Label>
                 <div className="flex items-center gap-2 mt-2">
                   <Input
@@ -262,7 +262,7 @@ export default function HotspotModal({
 
               <div>
                 <Label className="text-base font-semibold">
-                  Tamaño: {formData.style?.size || 32}px
+                  {t('hotspot.size')}: {formData.style?.size || 32}px
                 </Label>
                 <Slider
                   value={[formData.style?.size || 32]}
@@ -280,7 +280,7 @@ export default function HotspotModal({
               </div>
 
               <div className="bg-muted p-6 rounded-lg">
-                <Label className="text-sm font-semibold mb-2 block">Vista Previa</Label>
+                <Label className="text-sm font-semibold mb-2 block">{t('hotspot.preview')}</Label>
                 <div className="flex items-center justify-center p-4 bg-background rounded">
                   {(() => {
                     const iconName = formData.style?.icon || 'map-pin';
@@ -311,14 +311,14 @@ export default function HotspotModal({
               <PanoramaManager hotspotId={initialData.id} />
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">Guarda el hotspot primero para agregar fotos 360°</p>
+                <p className="text-sm">{t('hotspot.saveFirst')}</p>
               </div>
             )}
           </TabsContent>
 
           <TabsContent value="media" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label>Foto 360° o Imagen</Label>
+              <Label>{t('hotspot.media')}</Label>
               <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
                 {formData.media_url ? (
                   <div className="space-y-2">
@@ -332,17 +332,17 @@ export default function HotspotModal({
                       size="sm"
                       onClick={() => setFormData({ ...formData, media_url: undefined })}
                     >
-                      Eliminar
+                      {t('common.delete')}
                     </Button>
                   </div>
                 ) : (
                   <label htmlFor="media-upload" className="cursor-pointer">
                     <Upload className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground mb-2">
-                      Click para subir imagen o foto 360°
+                      {t('hotspot.uploadImage')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Formatos: JPG, PNG, JPEG
+                      {t('hotspot.formats')}
                     </p>
                     <input
                       id="media-upload"
@@ -361,10 +361,10 @@ export default function HotspotModal({
 
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Guardando...' : mode === 'create' ? 'Crear' : 'Guardar'}
+            {saving ? t('common.saving') : mode === 'create' ? t('hotspot.creating') : t('common.save')}
           </Button>
         </div>
       </DialogContent>

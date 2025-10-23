@@ -118,7 +118,10 @@
     "errorLogin": "Error al iniciar sesión",
     "errorSignup": "Error al crear cuenta",
     "emailAlreadyRegistered": "Este email ya está registrado",
-    "unexpectedError": "Ocurrió un error inesperado"
+    "unexpectedError": "Ocurrió un error inesperado",
+    "placeholderName": "Juan Pérez",
+    "placeholderEmail": "tu@email.com",
+    "placeholderPassword": "••••••••"
   },
   "notFound": {
     "title": "404",

@@ -35,18 +35,18 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 
-const FLOOR_OPTIONS = [
-  { value: 'Sótano', label: 'Sótano' },
-  { value: 'Planta Baja', label: 'Planta Baja' },
-  { value: '1er Piso', label: '1er Piso' },
-  { value: '2do Piso', label: '2do Piso' },
-  { value: '3er Piso', label: '3er Piso' },
-  { value: '4to Piso', label: '4to Piso' },
-  { value: '5to Piso', label: '5to Piso' },
-  { value: '6to Piso', label: '6to Piso' },
-  { value: 'Ático', label: 'Ático' },
-  { value: 'Azotea', label: 'Azotea' },
-  { value: 'custom', label: 'Personalizado...' },
+const getFloorOptions = (t: any) => [
+  { value: 'basement', label: t('floorPlan.floors.basement') },
+  { value: 'groundFloor', label: t('floorPlan.floors.groundFloor') },
+  { value: 'firstFloor', label: t('floorPlan.floors.firstFloor') },
+  { value: 'secondFloor', label: t('floorPlan.floors.secondFloor') },
+  { value: 'thirdFloor', label: t('floorPlan.floors.thirdFloor') },
+  { value: 'fourthFloor', label: t('floorPlan.floors.fourthFloor') },
+  { value: 'fifthFloor', label: t('floorPlan.floors.fifthFloor') },
+  { value: 'sixthFloor', label: t('floorPlan.floors.sixthFloor') },
+  { value: 'attic', label: t('floorPlan.floors.attic') },
+  { value: 'rooftop', label: t('floorPlan.floors.rooftop') },
+  { value: 'custom', label: t('floorPlan.customName') },
 ];
 
 interface FloorPlan {
@@ -89,11 +89,11 @@ export default function FloorPlanManager({
     const newErrors: Record<string, string> = {};
     
     if (!floorData.name?.trim()) {
-      newErrors.name = "El nombre del piso es requerido";
+      newErrors.name = t('floorPlan.floorNameRequired');
     }
     
     if (isNewFloorPlan && !floorData.image_url) {
-      newErrors.image_url = "Debes subir una imagen para el plano del piso";
+      newErrors.image_url = t('floorPlan.imageRequired');
     }
 
     setErrors(newErrors);
@@ -152,12 +152,12 @@ export default function FloorPlanManager({
       setErrors({});
     } catch (error) {
       console.error('Error saving floor plan:', error);
-      alert('Error al guardar el piso.');
+      alert(t('floorPlan.errorSaving'));
     }
   };
 
   const handleDelete = async (floorPlanId: string, floorPlanName: string) => {
-    if (!confirm(`¿Seguro que quieres eliminar "${floorPlanName}"?`)) {
+    if (!confirm(`${t('floorPlan.deleteConfirm')} "${floorPlanName}"?`)) {
       return;
     }
     try {
@@ -172,7 +172,7 @@ export default function FloorPlanManager({
       onFloorPlansUpdate(updatedFloorPlans);
     } catch (error) {
       console.error('Error deleting floor plan:', error);
-      alert('Error al eliminar el piso.');
+      alert(t('floorPlan.errorDeleting'));
     }
   };
 
@@ -215,8 +215,8 @@ export default function FloorPlanManager({
       URL.revokeObjectURL(objectUrl);
     } catch (error) {
       console.error('Error uploading floor plan file:', error);
-      alert('Error al subir el archivo del plano.');
-      setErrors(prev => ({ ...prev, image_url: 'Error al subir el archivo.' }));
+      alert(t('floorPlan.errorUploading'));
+      setErrors(prev => ({ ...prev, image_url: t('floorPlan.uploadError') }));
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -250,19 +250,19 @@ export default function FloorPlanManager({
         className="w-full bg-indigo-600 hover:bg-indigo-700"
       >
         <Plus className="w-4 h-4 mr-2" />
-        Añadir Nuevo Piso
+        {t('floorPlan.addNew')}
       </Button>
 
       {!tour.id && (
         <p className="text-xs text-center text-slate-500 mt-2">
-          Guarda el tour para poder añadir pisos.
+          {t('floorPlan.saveFirst')}
         </p>
       )}
 
       {floorPlans.length === 0 ? (
         <div className="text-center text-slate-500 py-6 border-2 border-dashed rounded-lg">
-          <p>No hay pisos en este tour.</p>
-          <p className="text-sm">Añade uno para empezar.</p>
+          <p>{t('floorPlan.noFloors')}</p>
+          <p className="text-sm">{t('floorPlan.addToStart')}</p>
         </div>
       ) : (
         <ScrollArea className="h-64 pr-3">
@@ -289,7 +289,7 @@ export default function FloorPlanManager({
                   <div className="flex items-center gap-2 mt-1">
                     {activeFloorPlanId === fp.id && (
                       <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
-                        Activo
+                        {t('floorPlan.active')}
                       </Badge>
                     )}
                     {fp.capture_date && (
@@ -310,16 +310,17 @@ export default function FloorPlanManager({
                   <DropdownMenuContent align="end" className="bg-white z-50" onClick={e => e.stopPropagation()}>
                     <DropdownMenuItem onClick={() => { 
                       setIsNewFloorPlan(false);
+                      const FLOOR_OPTIONS = getFloorOptions(t);
                       const isCustomName = !FLOOR_OPTIONS.some(opt => opt.value === fp.name);
                       setIsCustomFloorName(isCustomName);
                       setEditingFloorPlan(fp); 
                       setErrors({}); 
                     }}>
-                      <Edit className="w-4 h-4 mr-2" /> Editar
+                      <Edit className="w-4 h-4 mr-2" /> {t('common.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(fp.id, fp.name)}>
-                      <Trash2 className="w-4 h-4 mr-2" /> Eliminar
+                      <Trash2 className="w-4 h-4 mr-2" /> {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -339,11 +340,11 @@ export default function FloorPlanManager({
       }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{isNewFloorPlan ? 'Añadir Nuevo Piso' : 'Editar Piso'}</DialogTitle>
+            <DialogTitle>{isNewFloorPlan ? t('floorPlan.addFloor') : t('floorPlan.editFloor')}</DialogTitle>
             <DialogDescription>
               {isNewFloorPlan 
-                ? 'Configura los detalles del nuevo piso.'
-                : 'Actualiza la información del piso.'
+                ? t('floorPlan.configureDetails')
+                : t('floorPlan.updateInfo')
               }
             </DialogDescription>
           </DialogHeader>
@@ -351,14 +352,14 @@ export default function FloorPlanManager({
           {editingFloorPlan && (
             <div className="space-y-4 py-4">
               <div>
-                <Label htmlFor="floor-name">Nombre del Piso *</Label>
+                <Label htmlFor="floor-name">{t('floorPlan.floorName')} *</Label>
                 {isCustomFloorName ? (
                   <div className="space-y-2">
                     <Input
                       id="floor-name"
                       value={editingFloorPlan.name || ''}
                       onChange={e => setEditingFloorPlan({...editingFloorPlan, name: e.target.value})}
-                      placeholder="Escribe el nombre del piso..."
+                      placeholder={t('floorPlan.enterName')}
                       className={errors.name ? 'border-red-500' : ''}
                       autoFocus
                     />
@@ -372,7 +373,7 @@ export default function FloorPlanManager({
                       }}
                       className="w-full"
                     >
-                      Volver a opciones predefinidas
+                      {t('floorPlan.backToOptions')}
                     </Button>
                   </div>
                 ) : (
@@ -388,10 +389,10 @@ export default function FloorPlanManager({
                     }}
                   >
                     <SelectTrigger className={errors.name ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Selecciona un piso..." />
+                      <SelectValue placeholder={t('floorPlan.selectFloor')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {FLOOR_OPTIONS.map(option => (
+                      {getFloorOptions(t).map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -403,7 +404,7 @@ export default function FloorPlanManager({
               </div>
 
               <div>
-                <Label htmlFor="capture-date">Fecha de Captura</Label>
+                <Label htmlFor="capture-date">{t('floorPlan.captureDate')}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -414,7 +415,7 @@ export default function FloorPlanManager({
                       {editingFloorPlan.capture_date ? (
                         format(new Date(editingFloorPlan.capture_date), 'PPP', { locale: es })
                       ) : (
-                        <span>Selecciona una fecha</span>
+                        <span>{t('floorPlan.selectDate')}</span>
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -435,12 +436,12 @@ export default function FloorPlanManager({
                   </PopoverContent>
                 </Popover>
                 <p className="text-xs text-slate-500 mt-1">
-                  Fecha en que se tomó o capturó el plano
+                  {t('floorPlan.captureDateDesc')}
                 </p>
               </div>
 
               <div>
-                <Label>Imagen del Plano {isNewFloorPlan && '*'}</Label>
+                <Label>{t('floorPlan.floorImage')} {isNewFloorPlan && '*'}</Label>
                 <div className="flex items-center gap-2 mt-2">
                   <Button 
                     type="button" 
@@ -452,12 +453,12 @@ export default function FloorPlanManager({
                     {isUploading ? (
                       <>
                         <RotateCw className="w-4 h-4 mr-2 animate-spin" />
-                        Subiendo...
+                        {t('common.uploading')}
                       </>
                     ) : (
                       <>
                         <Upload className="w-4 h-4 mr-2" />
-                        {editingFloorPlan.image_url ? 'Cambiar imagen' : 'Subir imagen'}
+                        {editingFloorPlan.image_url ? t('floorPlan.changeImage') : t('floorPlan.uploadImage')}
                       </>
                     )}
                   </Button>
@@ -470,7 +471,7 @@ export default function FloorPlanManager({
                       className="w-full h-40 object-contain rounded border"
                     />
                     <p className="text-xs text-slate-500 mt-1">
-                      Dimensiones: {editingFloorPlan.width}x{editingFloorPlan.height}px
+                      {t('floorPlan.dimensions')} {editingFloorPlan.width}x{editingFloorPlan.height}px
                     </p>
                   </div>
                 )}
@@ -490,7 +491,7 @@ export default function FloorPlanManager({
               }}
             >
               <X className="w-4 h-4 mr-2" />
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button 
               onClick={handleSaveFloorPlan}
@@ -498,7 +499,7 @@ export default function FloorPlanManager({
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Check className="w-4 h-4 mr-2" />
-              {isNewFloorPlan ? 'Crear Piso' : 'Guardar Cambios'}
+              {isNewFloorPlan ? t('common.add') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

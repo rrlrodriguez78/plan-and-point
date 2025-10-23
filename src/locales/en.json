@@ -118,7 +118,10 @@
     "errorLogin": "Error logging in",
     "errorSignup": "Error creating account",
     "emailAlreadyRegistered": "This email is already registered",
-    "unexpectedError": "An unexpected error occurred"
+    "unexpectedError": "An unexpected error occurred",
+    "placeholderName": "John Doe",
+    "placeholderEmail": "your@email.com",
+    "placeholderPassword": "••••••••"
   },
   "notFound": {
     "title": "404",
