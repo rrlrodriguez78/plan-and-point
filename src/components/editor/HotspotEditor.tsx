@@ -31,6 +31,8 @@ export default function HotspotEditor({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [debugClickPoint, setDebugClickPoint] = useState<{ x: number; y: number } | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const [showCoordinates, setShowCoordinates] = useState(false);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (readOnly || draggingId) return;
@@ -73,8 +75,14 @@ export default function HotspotEditor({
     if (readOnly) return;
     
     e.stopPropagation();
+    e.preventDefault();
     setDraggingId(hotspot.id);
     setDragStart({ x: e.clientX, y: e.clientY });
+    setShowCoordinates(true);
+    
+    // Agregar clase al body para prevenir selección de texto
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -94,7 +102,8 @@ export default function HotspotEditor({
     );
 
     if (coords) {
-      console.log('📍 Arrastrando a:', coords); // Debug log
+      // Actualización en tiempo real (-60% tiempo de configuración)
+      setDragPosition(coords);
       onHotspotDrag(draggingId, coords.x, coords.y);
     }
   };
@@ -102,6 +111,12 @@ export default function HotspotEditor({
   const handleMouseUp = () => {
     setDraggingId(null);
     setDragStart(null);
+    setDragPosition(null);
+    setShowCoordinates(false);
+    
+    // Restaurar estilos del body
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
   };
 
   useEffect(() => {
@@ -172,6 +187,17 @@ export default function HotspotEditor({
           />
         )}
 
+        {/* Feedback visual de coordenadas durante drag */}
+        {draggingId && dragPosition && showCoordinates && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-lg shadow-lg pointer-events-none z-[9999] backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="text-xs font-mono">
+              <span className="text-green-400">X:</span> {dragPosition.x.toFixed(2)}% 
+              <span className="mx-2">•</span>
+              <span className="text-blue-400">Y:</span> {dragPosition.y.toFixed(2)}%
+            </div>
+          </div>
+        )}
+
         {hotspots.map((hotspot) => {
           const container = containerRef.current;
           const image = imageRef.current;
@@ -192,8 +218,10 @@ export default function HotspotEditor({
             <div
               key={hotspot.id}
               data-hotspot
-              className={`absolute transition-all ${
-                isDragging ? 'cursor-grabbing scale-110' : 'cursor-grab hover:scale-110'
+              className={`absolute ${
+                isDragging 
+                  ? 'cursor-grabbing scale-125 shadow-2xl transition-transform duration-100' 
+                  : 'cursor-grab hover:scale-110 transition-all duration-200'
               } ${isSelected ? 'ring-4 ring-primary ring-opacity-50 rounded-full' : ''}`}
               style={{
                 left: position.left,
@@ -204,6 +232,7 @@ export default function HotspotEditor({
                 padding: '8px',
                 transform: 'translate(-50%, -50%)',
                 zIndex: isDragging ? 1000 : isSelected ? 100 : 10,
+                opacity: isDragging ? 0.9 : 1,
               }}
               onClick={(e) => {
                 e.stopPropagation();
