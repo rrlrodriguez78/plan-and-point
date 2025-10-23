@@ -19,22 +19,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-interface Hotspot {
-  id: string;
-  title: string;
-  description?: string;
-  x_position: number;
-  y_position: number;
-  media_url?: string;
-  media_type?: string;
-  floor_plan_id: string;
-  style?: {
-    icon: string;
-    color: string;
-    size: number;
-  };
-}
+import { Hotspot } from '@/types/tour';
 
 interface HotspotListManagerProps {
   isOpen: boolean;

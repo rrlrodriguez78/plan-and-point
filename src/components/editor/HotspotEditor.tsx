@@ -4,18 +4,7 @@ import { Button } from '@/components/ui/button';
 import { convertContainerToImageCoordinates, convertImageToContainerPosition } from '@/components/shared/ImageCoordinateCalculator';
 import * as LucideIcons from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-interface Hotspot {
-  id: string;
-  title: string;
-  x_position: number;
-  y_position: number;
-  style?: {
-    icon: string;
-    color: string;
-    size: number;
-  };
-}
+import { Hotspot } from '@/types/tour';
 
 interface HotspotEditorProps {
   imageUrl: string;

@@ -10,21 +10,9 @@ import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart, Eye } from 'l
 import { toast } from 'sonner';
 import PanoramaManager from './PanoramaManager';
 import { useTranslation } from 'react-i18next';
+import { Hotspot } from '@/types/tour';
 
-interface HotspotData {
-  id?: string;
-  title: string;
-  description?: string;
-  x_position: number;
-  y_position: number;
-  media_url?: string;
-  media_type?: string;
-  style?: {
-    icon: string;
-    color: string;
-    size: number;
-  };
-}
+export type HotspotData = Omit<Hotspot, 'floor_plan_id' | 'created_at' | 'id'> & { id?: string };
 
 interface HotspotModalProps {
   isOpen: boolean;

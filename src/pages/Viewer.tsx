@@ -9,41 +9,7 @@ import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
 import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
-
-interface Tour {
-  title: string;
-  description: string;
-}
-
-interface FloorPlan {
-  id: string;
-  name: string;
-  image_url: string;
-}
-
-interface Hotspot {
-  id: string;
-  title: string;
-  description?: string;
-  x_position: number;
-  y_position: number;
-  media_url?: string;
-  has_panorama?: boolean;
-  panorama_count?: number;
-  style?: {
-    icon?: string;
-    color?: string;
-    size?: number;
-  };
-}
-
-interface PanoramaPhoto {
-  id: string;
-  hotspot_id: string;
-  photo_url: string;
-  description?: string;
-  display_order: number;
-}
+import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 
 const Viewer = () => {
   const { id } = useParams();

@@ -28,38 +28,7 @@ import HotspotEditor from '@/components/editor/HotspotEditor';
 import HotspotModal from '@/components/editor/HotspotModal';
 import HotspotListManager from '@/components/editor/HotspotListManager';
 import { Badge } from '@/components/ui/badge';
-
-interface Tour {
-  id: string;
-  title: string;
-  is_published: boolean;
-}
-
-interface FloorPlan {
-  id: string;
-  name: string;
-  image_url: string;
-  width: number;
-  height: number;
-  tour_id: string;
-  created_at: string;
-}
-
-interface Hotspot {
-  id: string;
-  title: string;
-  description?: string;
-  x_position: number;
-  y_position: number;
-  media_url?: string;
-  media_type?: string;
-  floor_plan_id: string;
-  style?: {
-    icon: string;
-    color: string;
-    size: number;
-  };
-}
+import { Tour, FloorPlan, Hotspot } from '@/types/tour';
 
 const Editor = () => {
   const { id } = useParams();

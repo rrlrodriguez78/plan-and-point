@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
+import { FloorPlan } from '@/types/tour';
 
 const getFloorOptions = (t: any) => [
   { value: 'basement', label: t('floorPlan.floors.basement') },
@@ -48,17 +49,6 @@ const getFloorOptions = (t: any) => [
   { value: 'rooftop', label: t('floorPlan.floors.rooftop') },
   { value: 'custom', label: t('floorPlan.customName') },
 ];
-
-interface FloorPlan {
-  id: string;
-  name: string;
-  image_url: string;
-  width: number;
-  height: number;
-  tour_id: string;
-  created_at: string;
-  capture_date?: string;
-}
 
 interface FloorPlanManagerProps {
   tour: any;
