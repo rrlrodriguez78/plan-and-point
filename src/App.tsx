@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/signup" element={<Auth />} />
               <Route path="/app/tours" element={<Dashboard />} />
               <Route path="/app/editor/:id" element={<Editor />} />
+              <Route path="/app/settings" element={<Settings />} />
               <Route path="/viewer/:id" element={<Viewer />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

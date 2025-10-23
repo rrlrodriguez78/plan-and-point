@@ -1,0 +1,306 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Navbar } from '@/components/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { ArrowLeft, Plus, Edit, Trash2, Shield } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
+interface GoldenRule {
+  id: string;
+  rule_number: number;
+  title: string;
+  description: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+const Settings = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const [rules, setRules] = useState<GoldenRule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<GoldenRule | null>(null);
+  const [formData, setFormData] = useState({
+    rule_number: 0,
+    title: '',
+    description: '',
+  });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadRules();
+    }
+  }, [user]);
+
+  const loadRules = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('golden_rules')
+        .select('*')
+        .eq('is_active', true)
+        .order('rule_number', { ascending: true });
+
+      if (error) throw error;
+      if (data) setRules(data);
+    } catch (error) {
+      console.error('Error loading rules:', error);
+      toast.error('Error loading rules');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenModal = (rule?: GoldenRule) => {
+    if (rule) {
+      setEditingRule(rule);
+      setFormData({
+        rule_number: rule.rule_number,
+        title: rule.title,
+        description: rule.description,
+      });
+    } else {
+      setEditingRule(null);
+      const nextRuleNumber = rules.length > 0 ? Math.max(...rules.map(r => r.rule_number)) + 1 : 3;
+      setFormData({
+        rule_number: nextRuleNumber,
+        title: '',
+        description: '',
+      });
+    }
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingRule(null);
+    setFormData({ rule_number: 0, title: '', description: '' });
+  };
+
+  const handleSaveRule = async () => {
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      if (editingRule) {
+        const { error } = await supabase
+          .from('golden_rules')
+          .update({
+            rule_number: formData.rule_number,
+            title: formData.title,
+            description: formData.description,
+          })
+          .eq('id', editingRule.id);
+
+        if (error) throw error;
+        toast.success('Rule updated successfully');
+      } else {
+        const { error } = await supabase
+          .from('golden_rules')
+          .insert({
+            rule_number: formData.rule_number,
+            title: formData.title,
+            description: formData.description,
+          });
+
+        if (error) throw error;
+        toast.success('Rule added successfully');
+      }
+
+      handleCloseModal();
+      loadRules();
+    } catch (error) {
+      console.error('Error saving rule:', error);
+      toast.error('Error saving rule');
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('golden_rules')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Rule deleted successfully');
+      loadRules();
+    } catch (error) {
+      console.error('Error deleting rule:', error);
+      toast.error('Error deleting rule');
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      
+      <div className="container mx-auto px-4 pt-24 pb-12 max-w-4xl">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/app/tours')}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Dashboard
+        </Button>
+
+        <div className="flex items-center gap-3 mb-8">
+          <Shield className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-4xl font-bold">App Settings</h1>
+            <p className="text-muted-foreground">
+              Golden rules and configuration
+            </p>
+          </div>
+        </div>
+
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Golden Rules</CardTitle>
+                <CardDescription>
+                  Core principles that guide the development of this application
+                </CardDescription>
+              </div>
+              <Button onClick={() => handleOpenModal()}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Rule
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {rules.map((rule) => (
+                <Card key={rule.id} className="border-l-4 border-l-primary">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-semibold text-primary">
+                            Rule #{rule.rule_number}
+                          </span>
+                        </div>
+                        <CardTitle className="text-lg">{rule.title}</CardTitle>
+                        <CardDescription className="mt-2">
+                          {rule.description}
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenModal(rule)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteRule(rule.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingRule ? 'Edit Golden Rule' : 'Add New Golden Rule'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingRule ? 'Update the rule details below' : 'Create a new golden rule for the application'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="rule_number">Rule Number</Label>
+                <Input
+                  id="rule_number"
+                  type="number"
+                  value={formData.rule_number}
+                  onChange={(e) => setFormData({ ...formData, rule_number: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Enter rule title"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter rule description"
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseModal}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveRule}>
+                {editingRule ? 'Update Rule' : 'Add Rule'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;

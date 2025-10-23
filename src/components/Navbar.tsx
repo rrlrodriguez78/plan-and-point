@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, LogOut } from 'lucide-react';
+import { MapPin, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const Navbar = () => {
@@ -21,6 +21,12 @@ export const Navbar = () => {
             <>
               <Link to="/app/tours">
                 <Button variant="ghost">Dashboard</Button>
+              </Link>
+              <Link to="/app/settings">
+                <Button variant="ghost">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
               </Link>
               <Button variant="outline" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />

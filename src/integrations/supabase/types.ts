@@ -55,6 +55,36 @@ export type Database = {
           },
         ]
       }
+      golden_rules: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          rule_number: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          rule_number: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          rule_number?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hotspots: {
         Row: {
           created_at: string
