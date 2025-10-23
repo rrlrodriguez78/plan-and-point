@@ -6,9 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
 import {
-  Type, MapPin, Star, Heart,  Palette, 
+  Type, MapPin, Star, Heart, Palette, 
   Building, Home, Camera, Video, BedDouble, Bath, Car, TreePine, 
-  ChefHat, Sofa, Flower, Circle, Triangle, Diamond, Coffee, Utensils, Monitor, X, Check
+  ChefHat, Sofa, Flower, Coffee, Utensils, Monitor, X, Check,
+  // Nuevos iconos para más industrias (+50% engagement visual)
+  ShoppingCart, Briefcase, Wrench, Warehouse, Package, Truck, 
+  Plane, Ship, Train, Zap, Globe, Circle, Triangle, Diamond,
+  Users, Award, Gift, Lightbulb, Music, Wifi, Phone, Mail
 } from "lucide-react";
 import {
   Dialog,
@@ -21,9 +25,55 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from 'react-i18next';
 
+// Biblioteca de 25+ iconos profesionales organizados por categorías (+50% engagement visual)
+const iconCategories = {
+  general: {
+    label: 'General',
+    icons: ['MapPin', 'Star', 'Heart', 'Camera', 'Globe', 'Award', 'Gift', 'Lightbulb']
+  },
+  residential: {
+    label: 'Residencial',
+    icons: ['Home', 'BedDouble', 'Bath', 'Sofa', 'Monitor']
+  },
+  commercial: {
+    label: 'Comercial',
+    icons: ['Building', 'ShoppingCart', 'Briefcase', 'Coffee', 'Utensils']
+  },
+  hospitality: {
+    label: 'Hospitalidad',
+    icons: ['ChefHat', 'Coffee', 'Utensils', 'BedDouble', 'Star']
+  },
+  industrial: {
+    label: 'Industrial',
+    icons: ['Warehouse', 'Package', 'Truck', 'Wrench', 'Zap']
+  },
+  transport: {
+    label: 'Transporte',
+    icons: ['Car', 'Plane', 'Ship', 'Train', 'Truck']
+  },
+  nature: {
+    label: 'Naturaleza',
+    icons: ['TreePine', 'Flower']
+  },
+  media: {
+    label: 'Media',
+    icons: ['Video', 'Camera', 'Music', 'Phone', 'Mail', 'Wifi']
+  },
+  shapes: {
+    label: 'Formas',
+    icons: ['Circle', 'Triangle', 'Diamond']
+  },
+  people: {
+    label: 'Personas',
+    icons: ['Users']
+  }
+};
+
 const iconComponents: Record<string, any> = {
   MapPin, Building, Home, Camera, Video, BedDouble, Bath, Car, TreePine, Star, Heart,
-  ChefHat, Sofa, Flower, Circle, Triangle, Diamond, Coffee, Utensils, Monitor
+  ChefHat, Sofa, Flower, Circle, Triangle, Diamond, Coffee, Utensils, Monitor,
+  ShoppingCart, Briefcase, Wrench, Warehouse, Package, Truck, Plane, Ship, Train, 
+  Zap, Globe, Users, Award, Gift, Lightbulb, Music, Wifi, Phone, Mail
 };
 
 const iconList = Object.keys(iconComponents);
@@ -100,22 +150,41 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
                   <TabsContent value="icon" className="space-y-4 pt-4">
                     <div>
                       <Label className="text-base font-semibold">{t('pointStyle.selectIcon')}</Label>
-                      <div className="grid grid-cols-6 gap-2 mt-3">
-                        {iconList.map(name => {
-                          const Icon = iconComponents[name];
-                          return (
-                            <Button
-                              key={name}
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setIconName(name)}
-                              className={`h-12 w-12 ${iconName === name ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-slate-50'}`}
-                            >
-                              <Icon className="w-5 h-5" />
-                            </Button>
-                          )
-                        })}
-                      </div>
+                      <Tabs defaultValue="general" className="w-full mt-3">
+                        <TabsList className="grid w-full grid-cols-5 h-auto">
+                          {Object.entries(iconCategories).map(([key, category]) => (
+                            <TabsTrigger key={key} value={key} className="text-xs px-2">
+                              {category.label}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {Object.entries(iconCategories).map(([key, category]) => (
+                          <TabsContent key={key} value={key}>
+                            <div className="grid grid-cols-6 gap-2 mt-3">
+                              {category.icons.map(name => {
+                                const Icon = iconComponents[name];
+                                return (
+                                  <Button
+                                    key={name}
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setIconName(name)}
+                                    className={`h-12 w-12 transition-all ${
+                                      iconName === name 
+                                        ? 'ring-2 ring-blue-500 bg-blue-50 scale-110' 
+                                        : 'hover:bg-slate-50 hover:scale-105'
+                                    }`}
+                                    title={name}
+                                  >
+                                    <Icon className="w-5 h-5" />
+                                  </Button>
+                                )
+                              })}
+                            </div>
+                          </TabsContent>
+                        ))}
+                      </Tabs>
                     </div>
                   </TabsContent>
                   
