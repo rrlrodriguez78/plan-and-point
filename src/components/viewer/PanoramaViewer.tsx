@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { 
-  X, ChevronLeft, ChevronRight, RotateCw, ZoomIn, ZoomOut, 
-  Maximize, Minimize, Info, Navigation, MapPin, Calendar
+  X, RotateCw, ZoomIn, ZoomOut, 
+  Maximize, Minimize, Info, MapPin, Calendar
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -340,43 +340,7 @@ export default function PanoramaViewer({
     return () => clearTimeout(timer);
   }, [showControls, currentZoom]);
 
-  // Navegación circular por HOTSPOTS (con o sin fecha seleccionada)
-  const handleNextHotspot = useCallback(() => {
-    if (!activePhoto) return;
-    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
-      ? hotspotsWithPhotosInSelectedDate 
-      : allHotspotsOnFloor;
-    const currentHotspotIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentHotspotIndex === -1) return;
-    
-    // Navegación circular: si estamos en el último, ir al primero
-    const nextIndex = currentHotspotIndex === hotspotList.length - 1 ? 0 : currentHotspotIndex + 1;
-    const nextHotspot = hotspotList[nextIndex];
-    onNavigate(nextHotspot);
-  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
-
-  const handlePrevHotspot = useCallback(() => {
-    if (!activePhoto) return;
-    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
-      ? hotspotsWithPhotosInSelectedDate 
-      : allHotspotsOnFloor;
-    const currentHotspotIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentHotspotIndex === -1) return;
-    
-    // Navegación circular: si estamos en el primero, ir al último
-    const prevIndex = currentHotspotIndex === 0 ? hotspotList.length - 1 : currentHotspotIndex - 1;
-    const prevHotspot = hotspotList[prevIndex];
-    onNavigate(prevHotspot);
-  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
-
-  // Función principal de navegación (siempre por hotspots)
-  const handleNext = useCallback(() => {
-    handleNextHotspot();
-  }, [handleNextHotspot]);
-
-  const handlePrev = useCallback(() => {
-    handlePrevHotspot();
-  }, [handlePrevHotspot]);
+  // Navegación por punto seleccionado desde dropdown
 
   const handleDateFilter = (date: string | null) => {
     setSelectedDate(date);
@@ -390,32 +354,19 @@ export default function PanoramaViewer({
     }
   };
 
-  // Calcular etiquetas para flechas de navegación (circular)
-  const prevLabel = useMemo(() => {
-    if (!activePhoto) return null;
-    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
-      ? hotspotsWithPhotosInSelectedDate 
-      : allHotspotsOnFloor;
-    const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentIndex === -1 || hotspotList.length === 0) return null;
-    
-    // Navegación circular: si estamos en el primero, mostrar el último
-    const prevIndex = currentIndex === 0 ? hotspotList.length - 1 : currentIndex - 1;
-    return hotspotList[prevIndex].title;
-  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
+  // Obtener hotspots disponibles según filtro de fecha
+  const availableHotspots = useMemo(() => {
+    if (selectedDate && hotspotsWithPhotosInSelectedDate.length > 0) {
+      return hotspotsWithPhotosInSelectedDate;
+    }
+    return allHotspotsOnFloor;
+  }, [selectedDate, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
-  const nextLabel = useMemo(() => {
+  // Obtener el hotspot actual
+  const currentHotspot = useMemo(() => {
     if (!activePhoto) return null;
-    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
-      ? hotspotsWithPhotosInSelectedDate 
-      : allHotspotsOnFloor;
-    const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentIndex === -1 || hotspotList.length === 0) return null;
-    
-    // Navegación circular: si estamos en el último, mostrar el primero
-    const nextIndex = currentIndex === hotspotList.length - 1 ? 0 : currentIndex + 1;
-    return hotspotList[nextIndex].title;
-  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
+    return allHotspotsOnFloor.find(h => h.id === activePhoto.hotspot_id);
+  }, [activePhoto, allHotspotsOnFloor]);
 
   const resetView = () => {
     lon.current = 0;
@@ -523,147 +474,127 @@ export default function PanoramaViewer({
                   </div>
                 </motion.div>
 
-                {/* Flechas de navegación con nombres */}
-                {prevLabel && (
-                  <motion.button
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    onClick={handlePrev}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 
-                               bg-black/60 backdrop-blur-sm hover:bg-black/80 
-                               text-white rounded-lg px-4 py-6 
-                               flex items-center gap-3 group
-                               transition-all duration-200 hover:px-5"
-                  >
-                    <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                     <div className="flex flex-col items-start">
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">
-                        Punto anterior
-                      </span>
-                      <span className="text-sm font-medium max-w-[120px] truncate">
-                        {prevLabel}
-                      </span>
-                    </div>
-                  </motion.button>
-                )}
-
-                {nextLabel && (
-                  <motion.button
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    onClick={handleNext}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 
-                               bg-black/60 backdrop-blur-sm hover:bg-black/80 
-                               text-white rounded-lg px-4 py-6 
-                               flex items-center gap-3 group
-                               transition-all duration-200 hover:px-5"
-                  >
-                     <div className="flex flex-col items-end">
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">
-                        Punto siguiente
-                      </span>
-                      <span className="text-sm font-medium max-w-[120px] truncate">
-                        {nextLabel}
-                      </span>
-                    </div>
-                    <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  </motion.button>
-                )}
-
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none"
                 >
-                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-3xl pointer-events-auto">
-                    <div className="flex items-center justify-center gap-4 flex-wrap">
-                       {/* Indicador de modo de navegación */}
-                       {allHotspotsOnFloor.length > 1 && (
-                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full">
-                           <Navigation className="w-4 h-4 text-white" />
-                           <span className="text-xs font-medium text-white">
-                             {selectedDate 
-                               ? `Navegando entre ${hotspotsWithPhotosInSelectedDate.length} puntos (${formatDate(selectedDate)})`
-                               : `Navegando entre ${allHotspotsOnFloor.length} puntos`}
-                           </span>
-                         </div>
-                       )}
-                       <div className="w-px h-6 bg-white/30" />
-                       <Button variant="ghost" size="icon" onClick={() => zoomInOut(5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom >= 120}><ZoomOut className="w-5 h-5" /></Button>
-                       <span className="text-white text-sm font-medium min-w-16 text-center">{Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%</span>
-                       <Button variant="ghost" size="icon" onClick={() => zoomInOut(-5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom <= 30}><ZoomIn className="w-5 h-5" /></Button>
-                       <div className="w-px h-6 bg-white/30 mx-2" />
-                       <Button variant="ghost" size="icon" onClick={resetView} className="text-white hover:bg-white/20 rounded-full"><RotateCw className="w-5 h-5" /></Button>
-                       <div className="w-px h-6 bg-white/30 mx-2" />
-                       
-                       {/* Menú de Navegación entre Puntos */}
-                       <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
-                             <MapPin className="w-5 h-5" />
-                           </Button>
-                         </DropdownMenuTrigger>
-                         <DropdownMenuContent className="w-64 bg-black/90 backdrop-blur-lg border-white/20 text-white">
-                           <div className="px-2 py-1.5 text-sm font-semibold">Navegar a otro punto</div>
-                           <DropdownMenuSeparator className="bg-white/20" />
-                           <ScrollArea className="h-64">
-                             {allHotspotsOnFloor && allHotspotsOnFloor.filter(h => h.id !== activePhoto?.hotspot_id).map(hotspot => (
-                               <DropdownMenuItem
-                                 key={hotspot.id}
-                                 onClick={() => handleNavClick(hotspot)}
-                                 className="cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white"
-                               >
-                                 <MapPin className="w-4 h-4 mr-2" />
-                                 {hotspot.title}
-                               </DropdownMenuItem>
-                             ))}
-                             {(!allHotspotsOnFloor || allHotspotsOnFloor.filter(h => h.id !== activePhoto?.hotspot_id).length === 0) && (
-                               <div className="px-2 py-4 text-sm text-slate-400 text-center">
-                                 No hay otros puntos disponibles
+                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-4xl pointer-events-auto">
+                    <div className="flex items-center justify-center gap-3 flex-wrap">
+                       {/* Dropdown de Fechas - Primer paso */}
+                       {uniqueDates.length > 0 && (
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button 
+                               variant="ghost" 
+                               className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20"
+                             >
+                               <Calendar className="w-5 h-5" />
+                               <div className="flex flex-col items-start">
+                                 <span className="text-xs text-slate-400">Fecha</span>
+                                 <span className="text-sm font-medium">
+                                   {selectedDate ? formatDate(selectedDate) : 'Todas las fechas'}
+                                 </span>
                                </div>
-                             )}
-                           </ScrollArea>
-                         </DropdownMenuContent>
-                       </DropdownMenu>
-
-                       {/* Menú de Fechas */}
-                       {uniqueDates.length > 1 && (
-                         <>
-                           <div className="w-px h-6 bg-white/30 mx-2" />
-                           <DropdownMenu>
-                             <DropdownMenuTrigger asChild>
-                               <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
-                                 <Calendar className="w-5 h-5" />
-                               </Button>
-                             </DropdownMenuTrigger>
-                             <DropdownMenuContent className="w-64 bg-black/90 backdrop-blur-lg border-white/20 text-white">
-                               <div className="px-2 py-1.5 text-sm font-semibold">Filtrar por fecha</div>
-                               <DropdownMenuSeparator className="bg-white/20" />
-                               <DropdownMenuItem
-                                 onClick={() => handleDateFilter(null)}
-                                 className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20' : ''}`}
-                               >
-                                 <Calendar className="w-4 h-4 mr-2" />
-                                 Todas las fechas ({photos.length})
-                               </DropdownMenuItem>
-                               <DropdownMenuSeparator className="bg-white/20" />
+                             </Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
+                             <div className="px-2 py-1.5 text-sm font-semibold">Seleccionar fecha</div>
+                             <DropdownMenuSeparator className="bg-white/20" />
+                             <DropdownMenuItem
+                               onClick={() => handleDateFilter(null)}
+                               className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20 font-semibold' : ''}`}
+                             >
+                               <Calendar className="w-4 h-4 mr-2" />
+                               Todas las fechas ({photos.length} fotos)
+                             </DropdownMenuItem>
+                             <DropdownMenuSeparator className="bg-white/20" />
+                             <ScrollArea className="max-h-64">
                                {uniqueDates.map(date => (
                                  <DropdownMenuItem
                                    key={date}
                                    onClick={() => handleDateFilter(date)}
-                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20' : ''}`}
+                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20 font-semibold' : ''}`}
                                  >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   {formatDate(date)} ({photos.filter(p => p.capture_date === date).length})
+                                   {formatDate(date)} ({photos.filter(p => p.capture_date === date).length} fotos)
                                  </DropdownMenuItem>
                                ))}
-                             </DropdownMenuContent>
-                           </DropdownMenu>
-                         </>
+                             </ScrollArea>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
                        )}
+
+                       {/* Dropdown de Puntos - Segundo paso */}
+                       {availableHotspots.length > 1 && (
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button 
+                               variant="ghost" 
+                               className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20"
+                             >
+                               <MapPin className="w-5 h-5" />
+                               <div className="flex flex-col items-start">
+                                 <span className="text-xs text-slate-400">Punto</span>
+                                 <span className="text-sm font-medium">
+                                   {currentHotspot?.title || hotspotName}
+                                 </span>
+                               </div>
+                             </Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
+                             <div className="px-2 py-1.5 text-sm font-semibold">
+                               Seleccionar punto
+                               {selectedDate && (
+                                 <span className="text-xs text-slate-400 block">
+                                   Filtrado por: {formatDate(selectedDate)}
+                                 </span>
+                               )}
+                             </div>
+                             <DropdownMenuSeparator className="bg-white/20" />
+                             <ScrollArea className="max-h-64">
+                               {availableHotspots.map(hotspot => (
+                                 <DropdownMenuItem
+                                   key={hotspot.id}
+                                   onClick={() => handleNavClick(hotspot)}
+                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${
+                                     hotspot.id === activePhoto?.hotspot_id ? 'bg-white/20 font-semibold' : ''
+                                   }`}
+                                 >
+                                   <MapPin className="w-4 h-4 mr-2" />
+                                   {hotspot.title}
+                                   {hotspot.id === activePhoto?.hotspot_id && (
+                                     <span className="ml-auto text-xs text-slate-400">(actual)</span>
+                                   )}
+                                 </DropdownMenuItem>
+                               ))}
+                             </ScrollArea>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
+                       )}
+
+                       <div className="w-px h-8 bg-white/30" />
+                       
+                       {/* Controles de Zoom */}
+                       <div className="flex items-center gap-2">
+                         <Button variant="ghost" size="icon" onClick={() => zoomInOut(5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom >= 120}>
+                           <ZoomOut className="w-5 h-5" />
+                         </Button>
+                         <span className="text-white text-sm font-medium min-w-16 text-center">
+                           {Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%
+                         </span>
+                         <Button variant="ghost" size="icon" onClick={() => zoomInOut(-5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom <= 30}>
+                           <ZoomIn className="w-5 h-5" />
+                         </Button>
+                       </div>
+
+                       <div className="w-px h-8 bg-white/30" />
+                       
+                       {/* Reset View */}
+                       <Button variant="ghost" size="icon" onClick={resetView} className="text-white hover:bg-white/20 rounded-full" title="Resetear vista">
+                         <RotateCw className="w-5 h-5" />
+                       </Button>
                     </div>
                   </div>
                 </motion.div>
