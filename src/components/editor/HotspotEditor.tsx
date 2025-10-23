@@ -154,7 +154,9 @@ export default function HotspotEditor({
     <Card className="p-6 bg-[hsl(var(--accent)/0.3)]">
       <div
         ref={containerRef}
-        className="relative bg-background rounded-lg overflow-hidden cursor-crosshair border-2 border-dashed border-border shadow-inner"
+        className={`relative bg-background rounded-lg overflow-hidden border-2 border-dashed border-border shadow-inner ${
+          readOnly ? 'cursor-default' : 'cursor-crosshair'
+        }`}
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
         style={{ minHeight: '500px' }}
@@ -207,14 +209,20 @@ export default function HotspotEditor({
                 top: position.top,
                 width: `${size}px`,
                 height: `${size}px`,
+                // Área de clic más grande (padding invisible)
+                padding: '8px',
                 transform: 'translate(-50%, -50%)',
                 zIndex: isDragging ? 1000 : isSelected ? 100 : 10,
               }}
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 onHotspotClick(hotspot.id, e);
               }}
-              onMouseDown={(e) => handleHotspotMouseDown(hotspot, e)}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleHotspotMouseDown(hotspot, e);
+              }}
               title={hotspot.title}
             >
               {renderHotspotIcon(hotspot)}
@@ -223,11 +231,17 @@ export default function HotspotEditor({
         })}
       </div>
 
-      {!readOnly && (
-        <p className="text-xs text-muted-foreground mt-3 text-center">
-          Usa el botón <span className="font-semibold">"Agregar Punto"</span> y haz click en el plano • Arrastra hotspots para moverlos • Shift+Click para selección múltiple
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground mt-3 text-center">
+        {readOnly ? (
+          <>
+            <span className="font-semibold">Modo Vista:</span> Haz clic en los puntos para editarlos • Arrastra para moverlos • Shift+Click para selección múltiple
+          </>
+        ) : (
+          <>
+            <span className="font-semibold text-primary">Modo Agregar:</span> Haz click en el plano donde quieres agregar un punto
+          </>
+        )}
+      </p>
     </Card>
   );
 }

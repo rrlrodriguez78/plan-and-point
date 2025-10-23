@@ -83,6 +83,7 @@ const Editor = () => {
   const [hotspotsOpen, setHotspotsOpen] = useState(true);
   const [manageHotspotsOpen, setManageHotspotsOpen] = useState(false);
   const [addPointMode, setAddPointMode] = useState(false);
+  const [isProcessingClick, setIsProcessingClick] = useState(false);
   
   // Auto-save
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -189,7 +190,10 @@ const Editor = () => {
   };
 
   const handleCanvasClick = (x: number, y: number) => {
-    if (!addPointMode) return;
+    // Protección contra clics duplicados
+    if (!addPointMode || isProcessingClick || hotspotModalOpen) return;
+    
+    setIsProcessingClick(true);
     
     setEditingHotspot({
       id: '',
@@ -200,6 +204,9 @@ const Editor = () => {
     });
     setHotspotModalOpen(true);
     setAddPointMode(false);
+    
+    // Reset el flag después de un pequeño delay
+    setTimeout(() => setIsProcessingClick(false), 500);
   };
 
   const handleHotspotDrag = async (hotspotId: string, x: number, y: number) => {
@@ -482,6 +489,7 @@ const Editor = () => {
                         onHotspotClick={handleHotspotClick}
                         onHotspotDrag={handleHotspotDrag}
                         onCanvasClick={handleCanvasClick}
+                        readOnly={!addPointMode}
                       />
                     </TabsContent>
                   ))}
