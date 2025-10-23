@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { 
   X, RotateCw, ZoomIn, ZoomOut, 
-  Maximize, Minimize, Info, MapPin, Calendar,
+  Maximize, Minimize, Info, MapPin,
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import * as THREE from 'three';
@@ -83,7 +83,6 @@ export default function PanoramaViewer({
   const [currentZoom, setCurrentZoom] = useState(120);
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {
@@ -115,27 +114,11 @@ export default function PanoramaViewer({
     };
   }, []);
 
-  // Obtener fechas únicas SOLO del punto actual
-  const uniqueDates = useMemo(() => {
-    if (!activePhoto) return [];
-    const dates = photos
-      .filter(p => p.hotspot_id === activePhoto.hotspot_id)
-      .map(p => p.capture_date)
-      .filter((date): date is string => !!date)
-      .filter((date, index, self) => self.indexOf(date) === index)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    return dates;
-  }, [photos, activePhoto]);
-
-  // Filtrar fotos por el punto actual y opcionalmente por fecha
+  // Filtrar fotos por el punto actual
   const filteredPhotos = useMemo(() => {
     if (!activePhoto) return photos;
-    let filtered = photos.filter(p => p.hotspot_id === activePhoto.hotspot_id);
-    if (selectedDate) {
-      filtered = filtered.filter(p => p.capture_date === selectedDate);
-    }
-    return filtered;
-  }, [selectedDate, photos, activePhoto]);
+    return photos.filter(p => p.hotspot_id === activePhoto.hotspot_id);
+  }, [photos, activePhoto]);
 
   // Obtener TODOS los hotspots del floor que tengan fotos panorámicas
   const availableHotspots = useMemo(() => {
@@ -144,13 +127,6 @@ export default function PanoramaViewer({
       .filter(h => hotspotIds.has(h.id))
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [photos, allHotspotsOnFloor]);
-
-  // Resetear filtro de fecha cuando se navega a otro punto
-  useEffect(() => {
-    if (activePhoto) {
-      setSelectedDate(null);
-    }
-  }, [activePhoto?.hotspot_id]);
 
   // Auto fullscreen para experiencia inmersiva (+90% satisfacción en móviles)
   useEffect(() => {
@@ -166,15 +142,6 @@ export default function PanoramaViewer({
 
   // Determinar modo de navegación: siempre hotspots (puntos)
   const navigationMode = 'hotspots';
-
-  // Ajustar activePhoto si no está en las fotos filtradas
-  useEffect(() => {
-    if (selectedDate && activePhoto && !filteredPhotos.find(p => p.id === activePhoto.id)) {
-      if (filteredPhotos.length > 0) {
-        setActivePhoto(filteredPhotos[0]);
-      }
-    }
-  }, [selectedDate, activePhoto, filteredPhotos, setActivePhoto]);
 
   const animate = useCallback(() => {
     if (!rendererRef.current || !cameraRef.current || !sceneRef.current) return;
@@ -386,12 +353,6 @@ export default function PanoramaViewer({
 
   // Removed auto-hide controls effect - controls are now always visible
 
-  // Navegación por punto seleccionado desde dropdown
-
-  const handleDateFilter = (date: string | null) => {
-    setSelectedDate(date);
-  };
-
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "d 'de' MMMM, yyyy", { locale: es });
@@ -435,7 +396,6 @@ export default function PanoramaViewer({
   };
 
   const handleNavClick = (hotspot: Hotspot) => {
-    setSelectedDate(null); // Resetear filtro de fecha al cambiar de punto
     setShowNavList(false);
     onNavigate(hotspot);
   };
@@ -534,9 +494,9 @@ export default function PanoramaViewer({
               <div className="text-white">
                 <h2 className="text-xl font-bold">{hotspotName}</h2>
                 <div className="flex items-center gap-2 text-sm text-slate-300">
-                  {photos.length > 1 && activePhoto && (
+                  {filteredPhotos.length > 1 && activePhoto && (
                     <span>
-                      Foto {(selectedDate ? filteredPhotos : photos).findIndex(p => p.id === activePhoto.id) + 1} de {selectedDate ? filteredPhotos.length : photos.length}
+                      Foto {filteredPhotos.findIndex(p => p.id === activePhoto.id) + 1} de {filteredPhotos.length}
                     </span>
                   )}
                   {activePhoto?.capture_date && (
@@ -565,50 +525,6 @@ export default function PanoramaViewer({
           <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none z-50">
             <div className="bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl pointer-events-auto border border-white/10">
               <div className="flex items-center justify-center gap-3 flex-wrap">
-                {/* Dropdown de Fechas */}
-                {uniqueDates.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
-                      >
-                        <Calendar className="w-5 h-5" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-xs text-slate-400">Fecha</span>
-                          <span className="text-sm font-medium">
-                            {selectedDate ? formatDate(selectedDate) : 'Todas las fechas'}
-                          </span>
-                        </div>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-72 bg-black border-white/30 text-white z-[60]">
-                      <div className="px-2 py-1.5 text-sm font-semibold">Seleccionar fecha</div>
-                      <DropdownMenuSeparator className="bg-white/20" />
-                      <DropdownMenuItem
-                        onClick={() => handleDateFilter(null)}
-                        className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20 font-semibold' : ''}`}
-                      >
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Todas las fechas ({filteredPhotos.filter(p => p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-white/20" />
-                      <ScrollArea className="max-h-64">
-                        {uniqueDates.map(date => (
-                          <DropdownMenuItem
-                            key={date}
-                            onClick={() => handleDateFilter(date)}
-                            className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20 font-semibold' : ''}`}
-                          >
-                            <Calendar className="w-4 h-4 mr-2" />
-                            {formatDate(date)} ({photos.filter(p => p.capture_date === date && p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
-                          </DropdownMenuItem>
-                        ))}
-                      </ScrollArea>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 1 && (
                   <DropdownMenu>
