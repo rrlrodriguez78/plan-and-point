@@ -43,7 +43,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   // Recuperar la última fecha usada de localStorage, o usar hoy por defecto
   const [uploadDate, setUploadDate] = useState<Date>(() => {
     const lastUsedDate = localStorage.getItem('lastUploadDate');
-    return lastUsedDate ? new Date(lastUsedDate) : new Date();
+    return lastUsedDate ? parseISO(lastUsedDate) : new Date();
   });
   const [compressionStats, setCompressionStats] = useState<{
     originalSize: number;
