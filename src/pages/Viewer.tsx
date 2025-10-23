@@ -387,6 +387,17 @@ const Viewer = () => {
           onPrevious={selectedHotspotIndex > 0 ? handlePreviousHotspot : undefined}
           currentIndex={selectedHotspotIndex}
           totalCount={currentHotspots.length}
+          availableHotspots={currentHotspots}
+          onHotspotSelect={(hotspot) => {
+            const fullHotspot = currentHotspots.find(h => h.id === hotspot.id);
+            if (fullHotspot) {
+              setSelectedHotspot(null);
+              setTimeout(() => handleHotspotClick(fullHotspot), 100);
+            }
+          }}
+          floorPlans={floorPlans}
+          currentFloorPlan={currentFloorPlan}
+          onFloorChange={setCurrentFloorPlanId}
         />
       )}
 
@@ -410,6 +421,13 @@ const Viewer = () => {
             setPanoramaPhotos(photos);
             setActivePanoramaPhoto(photos[0]);
           }
+        }}
+        floorPlans={floorPlans}
+        currentFloorPlan={currentFloorPlan}
+        onFloorChange={(floorPlanId) => {
+          setCurrentFloorPlanId(floorPlanId);
+          setShowPanoramaViewer(false);
+          setSelectedHotspot(null);
         }}
       />
 

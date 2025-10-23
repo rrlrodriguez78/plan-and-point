@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { 
   X, RotateCw, ZoomIn, ZoomOut, 
   Maximize, Minimize, Info, MapPin,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Building2
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { PanoramaPhoto, Hotspot } from '@/types/tour';
+import { PanoramaPhoto, Hotspot, FloorPlan } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 
 interface PanoramaViewerProps {
@@ -29,6 +29,9 @@ interface PanoramaViewerProps {
   hotspotName: string;
   allHotspotsOnFloor: Hotspot[];
   onNavigate: (hotspot: Hotspot) => void;
+  floorPlans?: FloorPlan[];
+  currentFloorPlan?: FloorPlan;
+  onFloorChange?: (floorPlanId: string) => void;
 }
 
 export default function PanoramaViewer({ 
@@ -39,7 +42,10 @@ export default function PanoramaViewer({
   setActivePhoto, 
   hotspotName,
   allHotspotsOnFloor,
-  onNavigate
+  onNavigate,
+  floorPlans = [],
+  currentFloorPlan,
+  onFloorChange
 }: PanoramaViewerProps) {
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -491,21 +497,49 @@ export default function PanoramaViewer({
           {/* Header superior - SIEMPRE VISIBLE */}
           <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-50">
             <div className="flex justify-between items-center pointer-events-auto">
-              <div className="text-white">
-                <h2 className="text-xl font-bold">{hotspotName}</h2>
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  {filteredPhotos.length > 1 && activePhoto && (
-                    <span>
-                      Foto {filteredPhotos.findIndex(p => p.id === activePhoto.id) + 1} de {filteredPhotos.length}
-                    </span>
-                  )}
-                  {activePhoto?.capture_date && (
-                    <>
-                      <span className="text-slate-500">•</span>
-                      <span>{formatDate(activePhoto.capture_date)}</span>
-                    </>
-                  )}
+              <div className="text-white flex items-start gap-3">
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold">{hotspotName}</h2>
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    {filteredPhotos.length > 1 && activePhoto && (
+                      <span>
+                        Foto {filteredPhotos.findIndex(p => p.id === activePhoto.id) + 1} de {filteredPhotos.length}
+                      </span>
+                    )}
+                    {activePhoto?.capture_date && (
+                      <>
+                        <span className="text-slate-500">•</span>
+                        <span>{formatDate(activePhoto.capture_date)}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
+                {/* Floor Selector */}
+                {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 rounded-full gap-2 backdrop-blur-sm bg-black/30">
+                        <Building2 className="w-4 h-4" />
+                        {currentFloorPlan.name}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="bg-black/90 backdrop-blur-sm border-white/20">
+                      {floorPlans.map((floor) => (
+                        <DropdownMenuItem
+                          key={floor.id}
+                          onClick={() => {
+                            onFloorChange(floor.id);
+                            onClose();
+                          }}
+                          className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
+                        >
+                          <Building2 className="w-4 h-4 mr-2" />
+                          {floor.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full">
