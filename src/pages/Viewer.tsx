@@ -383,8 +383,8 @@ const Viewer = () => {
         <HotspotModal
           hotspot={selectedHotspot}
           onClose={() => setSelectedHotspot(null)}
-          onNext={selectedHotspotIndex < currentHotspots.length - 1 ? handleNextHotspot : undefined}
-          onPrevious={selectedHotspotIndex > 0 ? handlePreviousHotspot : undefined}
+          onNext={handleNextHotspot}
+          onPrevious={handlePreviousHotspot}
           currentIndex={selectedHotspotIndex}
           totalCount={currentHotspots.length}
           availableHotspots={currentHotspots}

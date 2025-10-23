@@ -126,13 +126,10 @@ export default function PanoramaViewer({
     return photos.filter(p => p.hotspot_id === activePhoto.hotspot_id);
   }, [photos, activePhoto]);
 
-  // Obtener TODOS los hotspots del floor que tengan fotos panorámicas
+  // Obtener TODOS los hotspots del floor (no solo los que tienen panoramas)
   const availableHotspots = useMemo(() => {
-    const hotspotIds = new Set(photos.map(p => p.hotspot_id));
-    return allHotspotsOnFloor
-      .filter(h => hotspotIds.has(h.id))
-      .sort((a, b) => a.title.localeCompare(b.title));
-  }, [photos, allHotspotsOnFloor]);
+    return allHotspotsOnFloor.sort((a, b) => a.title.localeCompare(b.title));
+  }, [allHotspotsOnFloor]);
 
   // Auto fullscreen para experiencia inmersiva (+90% satisfacción en móviles)
   useEffect(() => {
@@ -468,7 +465,7 @@ export default function PanoramaViewer({
           )}
 
           {/* Botones de navegación entre puntos - SIEMPRE VISIBLES */}
-          {availableHotspots.length > 1 && !loadingError && (
+          {!loadingError && (
             <>
               <Button 
                 variant="ghost" 
@@ -560,7 +557,7 @@ export default function PanoramaViewer({
             <div className="bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl pointer-events-auto border border-white/10">
               <div className="flex items-center justify-center gap-3 flex-wrap">
                 {/* Dropdown de Puntos */}
-                {availableHotspots.length > 1 && (
+                {availableHotspots.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
