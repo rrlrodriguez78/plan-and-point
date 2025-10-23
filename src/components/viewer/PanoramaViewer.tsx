@@ -1,12 +1,21 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { 
   X, ChevronLeft, ChevronRight, RotateCw, ZoomIn, ZoomOut, 
-  Maximize, Minimize, Info, Navigation, MapPin
+  Maximize, Minimize, Info, Navigation, MapPin, Calendar
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface PanoramaPhoto {
   id: string;
@@ -14,6 +23,7 @@ interface PanoramaPhoto {
   photo_url: string;
   description?: string;
   display_order: number;
+  capture_date?: string;
 }
 
 interface Hotspot {
@@ -85,6 +95,32 @@ export default function PanoramaViewer({
   const [currentZoom, setCurrentZoom] = useState(120);
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Obtener fechas únicas de las fotos
+  const uniqueDates = useMemo(() => {
+    const dates = photos
+      .map(p => p.capture_date)
+      .filter((date): date is string => !!date)
+      .filter((date, index, self) => self.indexOf(date) === index)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    return dates;
+  }, [photos]);
+
+  // Filtrar fotos por fecha seleccionada
+  const filteredPhotos = useMemo(() => {
+    if (!selectedDate) return photos;
+    return photos.filter(p => p.capture_date === selectedDate);
+  }, [photos, selectedDate]);
+
+  // Ajustar activePhoto si no está en las fotos filtradas
+  useEffect(() => {
+    if (selectedDate && activePhoto && !filteredPhotos.find(p => p.id === activePhoto.id)) {
+      if (filteredPhotos.length > 0) {
+        setActivePhoto(filteredPhotos[0]);
+      }
+    }
+  }, [selectedDate, activePhoto, filteredPhotos, setActivePhoto]);
 
   const animate = useCallback(() => {
     if (!rendererRef.current || !cameraRef.current || !sceneRef.current) return;
@@ -291,15 +327,29 @@ export default function PanoramaViewer({
   }, [showControls, currentZoom]);
 
   const handleNext = () => {
-    const currentIndex = photos.findIndex(p => p.id === activePhoto?.id);
-    const nextIndex = (currentIndex + 1) % photos.length;
-    setActivePhoto(photos[nextIndex]);
+    const photoList = selectedDate ? filteredPhotos : photos;
+    const currentIndex = photoList.findIndex(p => p.id === activePhoto?.id);
+    const nextIndex = (currentIndex + 1) % photoList.length;
+    setActivePhoto(photoList[nextIndex]);
   };
 
   const handlePrev = () => {
-    const currentIndex = photos.findIndex(p => p.id === activePhoto?.id);
-    const prevIndex = (currentIndex - 1 + photos.length) % photos.length;
-    setActivePhoto(photos[prevIndex]);
+    const photoList = selectedDate ? filteredPhotos : photos;
+    const currentIndex = photoList.findIndex(p => p.id === activePhoto?.id);
+    const prevIndex = (currentIndex - 1 + photoList.length) % photoList.length;
+    setActivePhoto(photoList[prevIndex]);
+  };
+
+  const handleDateFilter = (date: string | null) => {
+    setSelectedDate(date);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "d 'de' MMMM, yyyy", { locale: es });
+    } catch {
+      return dateString;
+    }
   };
 
   const resetView = () => {
@@ -386,11 +436,19 @@ export default function PanoramaViewer({
                   <div className="flex justify-between items-center pointer-events-auto">
                     <div className="text-white">
                       <h2 className="text-xl font-bold">{hotspotName}</h2>
-                      {photos.length > 1 && activePhoto && (
-                        <p className="text-sm text-slate-300">
-                          Foto {photos.findIndex(p => p.id === activePhoto.id) + 1} de {photos.length}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-slate-300">
+                        {photos.length > 1 && activePhoto && (
+                          <span>
+                            Foto {(selectedDate ? filteredPhotos : photos).findIndex(p => p.id === activePhoto.id) + 1} de {selectedDate ? filteredPhotos.length : photos.length}
+                          </span>
+                        )}
+                        {activePhoto?.capture_date && (
+                          <>
+                            <span className="text-slate-500">•</span>
+                            <span>{formatDate(activePhoto.capture_date)}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                        <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full"><Info className="w-5 h-5" /></Button>
@@ -417,7 +475,7 @@ export default function PanoramaViewer({
                   exit={{ opacity: 0, y: 20 }}
                   className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none"
                 >
-                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-md pointer-events-auto">
+                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-2xl pointer-events-auto">
                     <div className="flex items-center justify-center gap-4">
                        <Button variant="ghost" size="icon" onClick={() => zoomInOut(5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom >= 120}><ZoomOut className="w-5 h-5" /></Button>
                        <span className="text-white text-sm font-medium min-w-16 text-center">{Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%</span>
@@ -425,7 +483,72 @@ export default function PanoramaViewer({
                        <div className="w-px h-6 bg-white/30 mx-2" />
                        <Button variant="ghost" size="icon" onClick={resetView} className="text-white hover:bg-white/20 rounded-full"><RotateCw className="w-5 h-5" /></Button>
                        <div className="w-px h-6 bg-white/30 mx-2" />
-                       <Button variant="ghost" size="icon" onClick={() => setShowNavList(!showNavList)} className="text-white hover:bg-white/20 rounded-full"><Navigation className="w-5 h-5" /></Button>
+                       
+                       {/* Menú de Navegación entre Puntos */}
+                       <DropdownMenu>
+                         <DropdownMenuTrigger asChild>
+                           <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+                             <MapPin className="w-5 h-5" />
+                           </Button>
+                         </DropdownMenuTrigger>
+                         <DropdownMenuContent className="w-64 bg-black/90 backdrop-blur-lg border-white/20 text-white">
+                           <div className="px-2 py-1.5 text-sm font-semibold">Navegar a otro punto</div>
+                           <DropdownMenuSeparator className="bg-white/20" />
+                           <ScrollArea className="h-64">
+                             {allHotspotsOnFloor && allHotspotsOnFloor.filter(h => h.id !== activePhoto?.hotspot_id).map(hotspot => (
+                               <DropdownMenuItem
+                                 key={hotspot.id}
+                                 onClick={() => handleNavClick(hotspot)}
+                                 className="cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                               >
+                                 <MapPin className="w-4 h-4 mr-2" />
+                                 {hotspot.title}
+                               </DropdownMenuItem>
+                             ))}
+                             {(!allHotspotsOnFloor || allHotspotsOnFloor.filter(h => h.id !== activePhoto?.hotspot_id).length === 0) && (
+                               <div className="px-2 py-4 text-sm text-slate-400 text-center">
+                                 No hay otros puntos disponibles
+                               </div>
+                             )}
+                           </ScrollArea>
+                         </DropdownMenuContent>
+                       </DropdownMenu>
+
+                       {/* Menú de Fechas */}
+                       {uniqueDates.length > 1 && (
+                         <>
+                           <div className="w-px h-6 bg-white/30 mx-2" />
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+                                 <Calendar className="w-5 h-5" />
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent className="w-64 bg-black/90 backdrop-blur-lg border-white/20 text-white">
+                               <div className="px-2 py-1.5 text-sm font-semibold">Filtrar por fecha</div>
+                               <DropdownMenuSeparator className="bg-white/20" />
+                               <DropdownMenuItem
+                                 onClick={() => handleDateFilter(null)}
+                                 className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20' : ''}`}
+                               >
+                                 <Calendar className="w-4 h-4 mr-2" />
+                                 Todas las fechas ({photos.length})
+                               </DropdownMenuItem>
+                               <DropdownMenuSeparator className="bg-white/20" />
+                               {uniqueDates.map(date => (
+                                 <DropdownMenuItem
+                                   key={date}
+                                   onClick={() => handleDateFilter(date)}
+                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20' : ''}`}
+                                 >
+                                   <Calendar className="w-4 h-4 mr-2" />
+                                   {formatDate(date)} ({photos.filter(p => p.capture_date === date).length})
+                                 </DropdownMenuItem>
+                               ))}
+                             </DropdownMenuContent>
+                           </DropdownMenu>
+                         </>
+                       )}
                     </div>
                   </div>
                 </motion.div>
@@ -433,38 +556,6 @@ export default function PanoramaViewer({
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {showNavList && !loadingError && (
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                className="absolute bottom-24 bg-black/70 backdrop-blur-lg border border-white/20 rounded-xl shadow-2xl w-80 pointer-events-auto z-40"
-              >
-                <div className="p-3 border-b border-white/20 flex justify-between items-center">
-                  <h3 className="font-semibold text-white">Navegar a...</h3>
-                  <Button variant="ghost" size="icon" onClick={() => setShowNavList(false)} className="text-white hover:bg-white/20 h-7 w-7 rounded-full"><X className="w-4 h-4" /></Button>
-                </div>
-                <ScrollArea className="h-64">
-                  <div className="p-2 space-y-1">
-                    {allHotspotsOnFloor && allHotspotsOnFloor.filter(h => h.id !== activePhoto?.hotspot_id).map(hotspot => (
-                      <button
-                        key={hotspot.id}
-                        onClick={() => handleNavClick(hotspot)}
-                        className="w-full text-left p-2 rounded-md hover:bg-white/10 transition-colors flex items-center gap-3 text-white"
-                      >
-                        <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="flex-grow">{hotspot.title}</span>
-                      </button>
-                    ))}
-                    {(!allHotspotsOnFloor || allHotspotsOnFloor.filter(h => h.id !== activePhoto?.hotspot_id).length === 0) && (
-                        <p className="p-2 text-sm text-slate-400">No hay otros puntos de interés para navegar en este piso.</p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <AnimatePresence>
             {showInfo && activePhoto?.description && !loadingError && (
