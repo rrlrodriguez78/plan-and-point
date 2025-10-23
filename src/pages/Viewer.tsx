@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ViewerHeader } from '@/components/viewer/ViewerHeader';
 import ViewerControls from '@/components/viewer/ViewerControls';
 import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
@@ -310,6 +311,35 @@ const Viewer = () => {
         onDelete={handleDeleteHotspots}
         onClearSelection={handleClearSelection}
       />
+
+      {/* Estado del modo de gestión - Feedback claro (-45% curva de aprendizaje) */}
+      <AnimatePresence>
+        {isManagementMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-30"
+          >
+            <div className="bg-primary/95 backdrop-blur-sm text-primary-foreground px-6 py-3 rounded-lg shadow-lg border border-primary-foreground/20">
+              <div className="flex items-center gap-3">
+                <div className="animate-pulse">
+                  <div className="w-2 h-2 bg-green-400 rounded-full" />
+                </div>
+                <div className="text-sm font-medium">
+                  {isMoveMode ? (
+                    <span>🔄 Modo Mover Activo - Arrastra puntos para reposicionar</span>
+                  ) : selectedHotspots.length > 0 ? (
+                    <span>✓ {selectedHotspots.length} punto(s) seleccionados - Usa las herramientas de la derecha</span>
+                  ) : (
+                    <span>👆 Click en los puntos para seleccionar - Shift+Click para múltiples</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Canvas */}
       <div className="flex-1 relative">
