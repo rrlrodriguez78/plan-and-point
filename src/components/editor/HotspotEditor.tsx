@@ -39,6 +39,7 @@ export default function HotspotEditor({
   const imageRef = useRef<HTMLImageElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [debugClickPoint, setDebugClickPoint] = useState<{ x: number; y: number } | null>(null);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (readOnly || draggingId) return;
@@ -62,7 +63,17 @@ export default function HotspotEditor({
     );
 
     if (coords) {
-      console.log('Clic en coordenadas:', coords); // Debug log
+      // Logs de debug mejorados
+      console.group('🎯 Debug de Coordenadas');
+      console.log('Click en:', { clientX: e.clientX, clientY: e.clientY });
+      console.log('Imagen rect:', image.getBoundingClientRect());
+      console.log('Coordenadas %:', coords);
+      console.groupEnd();
+      
+      // Mostrar punto de debug temporal
+      setDebugClickPoint({ x: e.clientX, y: e.clientY });
+      setTimeout(() => setDebugClickPoint(null), 2000);
+      
       onCanvasClick(coords.x, coords.y);
     }
   };
@@ -92,6 +103,7 @@ export default function HotspotEditor({
     );
 
     if (coords) {
+      console.log('📍 Arrastrando a:', coords); // Debug log
       onHotspotDrag(draggingId, coords.x, coords.y);
     }
   };
@@ -154,6 +166,18 @@ export default function HotspotEditor({
           className="w-full h-auto select-none"
           draggable={false}
         />
+
+        {/* Indicador visual temporal de clic */}
+        {debugClickPoint && (
+          <div
+            className="absolute w-3 h-3 bg-red-500 rounded-full pointer-events-none z-[9999] animate-ping"
+            style={{
+              left: `${debugClickPoint.x}px`,
+              top: `${debugClickPoint.y}px`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          />
+        )}
 
         {hotspots.map((hotspot) => {
           const container = containerRef.current;
