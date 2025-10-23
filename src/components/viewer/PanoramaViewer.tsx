@@ -90,7 +90,7 @@ export default function PanoramaViewer({
   const onPointerDownLat = useRef(0);
   const phi = useRef(0);
   const theta = useRef(0);
-  const [showControls, setShowControls] = useState(true);
+  // Removed showControls state - controls are now always visible
   const [showInfo, setShowInfo] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(120);
@@ -343,13 +343,7 @@ export default function PanoramaViewer({
 
   }, [isVisible, activePhoto, animate, onPointerDown, onDocumentWheel, handleResize]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (showControls) {
-      timer = setTimeout(() => setShowControls(false), 3000);
-    }
-    return () => clearTimeout(timer);
-  }, [showControls, currentZoom]);
+  // Removed auto-hide controls effect - controls are now always visible
 
   // Navegación por punto seleccionado desde dropdown
 
@@ -436,8 +430,6 @@ export default function PanoramaViewer({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fullscreen-container fixed inset-0 z-30 bg-black flex items-center justify-center overflow-hidden select-none"
-          onMouseMove={() => setShowControls(true)}
-          onMouseEnter={() => setShowControls(true)}
         >
           <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
           
@@ -495,162 +487,174 @@ export default function PanoramaViewer({
             </>
           )}
 
-          <AnimatePresence>
-            {showControls && !loadingError && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none"
-                >
-                  <div className="flex justify-between items-center pointer-events-auto">
-                    <div className="text-white">
-                      <h2 className="text-xl font-bold">{hotspotName}</h2>
-                      <div className="flex items-center gap-2 text-sm text-slate-300">
-                        {photos.length > 1 && activePhoto && (
-                          <span>
-                            Foto {(selectedDate ? filteredPhotos : photos).findIndex(p => p.id === activePhoto.id) + 1} de {selectedDate ? filteredPhotos.length : photos.length}
+          {/* Header superior - SIEMPRE VISIBLE */}
+          <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-50">
+            <div className="flex justify-between items-center pointer-events-auto">
+              <div className="text-white">
+                <h2 className="text-xl font-bold">{hotspotName}</h2>
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  {photos.length > 1 && activePhoto && (
+                    <span>
+                      Foto {(selectedDate ? filteredPhotos : photos).findIndex(p => p.id === activePhoto.id) + 1} de {selectedDate ? filteredPhotos.length : photos.length}
+                    </span>
+                  )}
+                  {activePhoto?.capture_date && (
+                    <>
+                      <span className="text-slate-500">•</span>
+                      <span>{formatDate(activePhoto.capture_date)}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full">
+                  <Info className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 rounded-full">
+                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                </Button>
+                <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full">
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Controles inferiores - SIEMPRE VISIBLES */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none z-50">
+            <div className="bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl pointer-events-auto border border-white/10">
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                {/* Dropdown de Fechas */}
+                {uniqueDates.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                      >
+                        <Calendar className="w-5 h-5" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs text-slate-400">Fecha</span>
+                          <span className="text-sm font-medium">
+                            {selectedDate ? formatDate(selectedDate) : 'Todas las fechas'}
                           </span>
-                        )}
-                        {activePhoto?.capture_date && (
-                          <>
-                            <span className="text-slate-500">•</span>
-                            <span>{formatDate(activePhoto.capture_date)}</span>
-                          </>
-                        )}
+                        </div>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-72 bg-black border-white/30 text-white z-[60]">
+                      <div className="px-2 py-1.5 text-sm font-semibold">Seleccionar fecha</div>
+                      <DropdownMenuSeparator className="bg-white/20" />
+                      <DropdownMenuItem
+                        onClick={() => handleDateFilter(null)}
+                        className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20 font-semibold' : ''}`}
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Todas las fechas ({filteredPhotos.filter(p => p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-white/20" />
+                      <ScrollArea className="max-h-64">
+                        {uniqueDates.map(date => (
+                          <DropdownMenuItem
+                            key={date}
+                            onClick={() => handleDateFilter(date)}
+                            className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20 font-semibold' : ''}`}
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            {formatDate(date)} ({photos.filter(p => p.capture_date === date && p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
+                          </DropdownMenuItem>
+                        ))}
+                      </ScrollArea>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {/* Dropdown de Puntos */}
+                {availableHotspots.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                      >
+                        <MapPin className="w-5 h-5" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs text-slate-400">Punto</span>
+                          <span className="text-sm font-medium">
+                            {currentHotspot?.title || hotspotName}
+                          </span>
+                        </div>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-72 bg-black border-white/30 text-white z-[60]">
+                      <div className="px-2 py-1.5 text-sm font-semibold">
+                        Navegar a otro punto ({availableHotspots.length} disponibles)
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full"><Info className="w-5 h-5" /></Button>
-                       <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 rounded-full">{isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}</Button>
-                       <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full"><X className="w-6 h-6" /></Button>
-                    </div>
-                  </div>
-                </motion.div>
+                      <DropdownMenuSeparator className="bg-white/20" />
+                      <ScrollArea className="max-h-64">
+                        {availableHotspots.map(hotspot => (
+                          <DropdownMenuItem
+                            key={hotspot.id}
+                            onClick={() => handleNavClick(hotspot)}
+                            className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${
+                              hotspot.id === activePhoto?.hotspot_id ? 'bg-white/20 font-semibold' : ''
+                            }`}
+                          >
+                            <MapPin className="w-4 h-4 mr-2" />
+                            {hotspot.title}
+                            {hotspot.id === activePhoto?.hotspot_id && (
+                              <span className="ml-auto text-xs text-slate-400">(actual)</span>
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </ScrollArea>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none"
+                <div className="w-px h-8 bg-white/30" />
+                
+                {/* Controles de Zoom */}
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => zoomInOut(5)} 
+                    className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                    disabled={currentZoom >= 120}
+                    title="Alejar"
+                  >
+                    <ZoomOut className="w-5 h-5" />
+                  </Button>
+                  <span className="text-white text-sm font-medium min-w-16 text-center">
+                    {Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => zoomInOut(-5)} 
+                    className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                    disabled={currentZoom <= 30}
+                    title="Acercar"
+                  >
+                    <ZoomIn className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                <div className="w-px h-8 bg-white/30" />
+                
+                {/* Reset View */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={resetView} 
+                  className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                  title="Resetear vista"
                 >
-                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-4xl pointer-events-auto">
-                    <div className="flex items-center justify-center gap-3 flex-wrap">
-                       {/* Dropdown de Fechas - Primer paso */}
-                       {uniqueDates.length > 0 && (
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button 
-                               variant="ghost" 
-                               className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20"
-                             >
-                               <Calendar className="w-5 h-5" />
-                               <div className="flex flex-col items-start">
-                                 <span className="text-xs text-slate-400">Fecha</span>
-                                 <span className="text-sm font-medium">
-                                   {selectedDate ? formatDate(selectedDate) : 'Todas las fechas'}
-                                 </span>
-                               </div>
-                             </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
-                             <div className="px-2 py-1.5 text-sm font-semibold">Seleccionar fecha</div>
-                             <DropdownMenuSeparator className="bg-white/20" />
-                             <DropdownMenuItem
-                               onClick={() => handleDateFilter(null)}
-                               className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${!selectedDate ? 'bg-white/20 font-semibold' : ''}`}
-                             >
-                               <Calendar className="w-4 h-4 mr-2" />
-                               Todas las fechas ({filteredPhotos.filter(p => p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
-                             </DropdownMenuItem>
-                             <DropdownMenuSeparator className="bg-white/20" />
-                             <ScrollArea className="max-h-64">
-                               {uniqueDates.map(date => (
-                                 <DropdownMenuItem
-                                   key={date}
-                                   onClick={() => handleDateFilter(date)}
-                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${selectedDate === date ? 'bg-white/20 font-semibold' : ''}`}
-                                 >
-                                   <Calendar className="w-4 h-4 mr-2" />
-                                   {formatDate(date)} ({photos.filter(p => p.capture_date === date && p.hotspot_id === activePhoto?.hotspot_id).length} fotos)
-                                 </DropdownMenuItem>
-                               ))}
-                             </ScrollArea>
-                           </DropdownMenuContent>
-                         </DropdownMenu>
-                       )}
-
-                       {/* Dropdown de Puntos */}
-                       {availableHotspots.length > 1 && (
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button 
-                               variant="ghost" 
-                               className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20"
-                             >
-                               <MapPin className="w-5 h-5" />
-                               <div className="flex flex-col items-start">
-                                 <span className="text-xs text-slate-400">Punto</span>
-                                 <span className="text-sm font-medium">
-                                   {currentHotspot?.title || hotspotName}
-                                 </span>
-                               </div>
-                             </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-lg border-white/20 text-white z-50">
-                              <div className="px-2 py-1.5 text-sm font-semibold">
-                                Navegar a otro punto ({availableHotspots.length} disponibles)
-                              </div>
-                             <DropdownMenuSeparator className="bg-white/20" />
-                             <ScrollArea className="max-h-64">
-                               {availableHotspots.map(hotspot => (
-                                 <DropdownMenuItem
-                                   key={hotspot.id}
-                                   onClick={() => handleNavClick(hotspot)}
-                                   className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${
-                                     hotspot.id === activePhoto?.hotspot_id ? 'bg-white/20 font-semibold' : ''
-                                   }`}
-                                 >
-                                   <MapPin className="w-4 h-4 mr-2" />
-                                   {hotspot.title}
-                                   {hotspot.id === activePhoto?.hotspot_id && (
-                                     <span className="ml-auto text-xs text-slate-400">(actual)</span>
-                                   )}
-                                 </DropdownMenuItem>
-                               ))}
-                             </ScrollArea>
-                           </DropdownMenuContent>
-                         </DropdownMenu>
-                       )}
-
-                       <div className="w-px h-8 bg-white/30" />
-                       
-                       {/* Controles de Zoom */}
-                       <div className="flex items-center gap-2">
-                         <Button variant="ghost" size="icon" onClick={() => zoomInOut(5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom >= 120}>
-                           <ZoomOut className="w-5 h-5" />
-                         </Button>
-                         <span className="text-white text-sm font-medium min-w-16 text-center">
-                           {Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%
-                         </span>
-                         <Button variant="ghost" size="icon" onClick={() => zoomInOut(-5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom <= 30}>
-                           <ZoomIn className="w-5 h-5" />
-                         </Button>
-                       </div>
-
-                       <div className="w-px h-8 bg-white/30" />
-                       
-                       {/* Reset View */}
-                       <Button variant="ghost" size="icon" onClick={resetView} className="text-white hover:bg-white/20 rounded-full" title="Resetear vista">
-                         <RotateCw className="w-5 h-5" />
-                       </Button>
-                    </div>
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+                  <RotateCw className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
 
 
           <AnimatePresence>
