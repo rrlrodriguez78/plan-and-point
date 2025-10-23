@@ -24,9 +24,14 @@ const initI18n = () => {
         }
       },
       lng: 'en', // Default language (Golden Rule #1: Main pages in English)
-      fallbackLng: 'en',
+      fallbackLng: 'en', // Fallback to English
+      supportedLngs: ['en', 'es', 'fr', 'de'], // Supported languages
+      nonExplicitSupportedLngs: true,
       interpolation: {
-        escapeValue: false
+        escapeValue: false // React already escapes values
+      },
+      react: {
+        useSuspense: false // Disable suspense for better control
       }
     });
 };
