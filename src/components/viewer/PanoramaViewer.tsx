@@ -17,22 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-interface PanoramaPhoto {
-  id: string;
-  hotspot_id: string;
-  photo_url: string;
-  description?: string;
-  display_order: number;
-  capture_date?: string;
-}
-
-interface Hotspot {
-  id: string;
-  title: string;
-  x_position: number;
-  y_position: number;
-}
+import { PanoramaPhoto, Hotspot } from '@/types/tour';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
