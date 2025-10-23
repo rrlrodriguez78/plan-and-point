@@ -193,7 +193,14 @@
     "imageTooLarge": "Das ausgewählte Bild ist zu groß.",
     "connectionProblem": "Verbindungsproblem",
     "editImage": "Titelbild Bearbeiten",
-    "adjustImage": "Passen Sie Ihr Bild vor dem Hochladen an"
+    "adjustImage": "Passen Sie Ihr Bild vor dem Hochladen an",
+    "selectValidImage": "Bitte wählen Sie eine gültige Bilddatei.",
+    "imageTooLargeTitle": "Bild zu groß",
+    "imageWeighs": "Das Bild wiegt",
+    "optimizeQuestion": "Möchten Sie es optimieren?",
+    "yesOptimize": "Ja, optimieren",
+    "creating": "Erstellen...",
+    "createTour": "Meine Tour Erstellen!"
   },
   "hotspot": {
     "new": "Neuer Hotspot",

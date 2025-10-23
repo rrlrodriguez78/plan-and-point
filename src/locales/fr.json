@@ -193,7 +193,14 @@
     "imageTooLarge": "L'image sélectionnée est trop grande.",
     "connectionProblem": "Problème de Connexion",
     "editImage": "Modifier l'Image de Couverture",
-    "adjustImage": "Ajustez votre image avant de la télécharger"
+    "adjustImage": "Ajustez votre image avant de la télécharger",
+    "selectValidImage": "Veuillez sélectionner un fichier image valide.",
+    "imageTooLargeTitle": "Image trop lourde",
+    "imageWeighs": "L'image pèse",
+    "optimizeQuestion": "Voulez-vous l'optimiser?",
+    "yesOptimize": "Oui, optimiser",
+    "creating": "Création...",
+    "createTour": "Créer Ma Visite!"
   },
   "hotspot": {
     "new": "Nouveau Hotspot",

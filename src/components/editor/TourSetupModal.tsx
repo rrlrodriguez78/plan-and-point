@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 
 const ProgressBar = ({ current, total }: { current: number; total: number }) => {
+  const { t } = useTranslation();
   const percentage = (current / total) * 100;
   return (
     <div className="w-full bg-slate-200 rounded-full h-3 mb-6">
@@ -27,8 +28,8 @@ const ProgressBar = ({ current, total }: { current: number; total: number }) => 
         style={{ width: `${percentage}%` }}
       ></div>
       <div className="flex justify-between mt-2 text-xs text-slate-500">
-        <span>Paso {current} de {total}</span>
-        <span>{Math.round(percentage)}% completado</span>
+        <span>{t('tourSetup.step')} {current} {t('tourSetup.of')} {total}</span>
+        <span>{Math.round(percentage)}% {t('tourSetup.completed')}</span>
       </div>
     </div>
   );
@@ -67,13 +68,13 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
       case 1:
         if (!tourData.title.trim()) {
           isValid = false;
-          newErrors.title = "El título del tour es requerido";
+          newErrors.title = t('tourSetup.titleRequired');
         }
         break;
       case 2:
         if (!tourData.description.trim()) {
           isValid = false;
-          newErrors.description = "La descripción del tour es requerida";
+          newErrors.description = t('tourSetup.descriptionRequired');
         }
         break;
       default:
@@ -136,7 +137,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
     }
 
     if (!file.type.startsWith('image/')) {
-      setErrors(prev => ({ ...prev, thumbnail_url: 'Por favor selecciona un archivo de imagen válido.' }));
+      setErrors(prev => ({ ...prev, thumbnail_url: t('tourSetup.selectValidImage') }));
       e.target.value = '';
       return;
     }
@@ -172,7 +173,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
       setTourData(prev => ({ ...prev, thumbnail_url: file_url || '' }));
     } catch (err) {
       console.error("Error uploading edited thumbnail:", err);
-      setErrors(prev => ({ ...prev, thumbnail_url: 'Error al subir la imagen' }));
+      setErrors(prev => ({ ...prev, thumbnail_url: t('tourSetup.imageError') }));
     } finally {
       setIsUploadingCover(false);
     }
@@ -260,7 +261,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
   const handleCoverSizeReductionCancel = () => {
     setShowCoverSizeDialog(false);
     setPendingCoverFile(null);
-    setErrors(prev => ({ ...prev, thumbnail_url: 'La imagen seleccionada es demasiado grande.' }));
+    setErrors(prev => ({ ...prev, thumbnail_url: t('tourSetup.imageTooLarge') }));
   };
 
   if (!isOpen && !isEditingThumbnail && !showCoverSizeDialog) return null;
@@ -282,8 +283,8 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
         }}>
           <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-y-auto">
             <DialogHeader className="flex-shrink-0">
-              <DialogTitle>Editar Imagen de Portada</DialogTitle>
-              <DialogDescription>Ajusta tu imagen antes de subirla</DialogDescription>
+              <DialogTitle>{t('tourSetup.editImage')}</DialogTitle>
+              <DialogDescription>{t('tourSetup.adjustImage')}</DialogDescription>
             </DialogHeader>
             <div className="h-[600px] w-full flex-shrink-0">
               <ImageEditor
@@ -308,10 +309,10 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
               </div>
               <div>
                 <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Crear Nuevo Tour Virtual
+                  {t('tourSetup.title')}
                 </DialogTitle>
                 <DialogDescription className="text-sm sm:text-base mt-1">
-                  Te guiaré paso a paso para configurar tu tour
+                  {t('tourSetup.subtitle')}
                 </DialogDescription>
               </div>
             </div>
@@ -329,7 +330,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <AlertCircle className="w-5 h-5 text-amber-600" />
-                    <h4 className="font-semibold text-amber-800">Problema de Conexión</h4>
+                    <h4 className="font-semibold text-amber-800">{t('tourSetup.connectionProblem')}</h4>
                   </div>
                   <p className="text-amber-700 mb-3">{serverError.message}</p>
                 </motion.div>
@@ -350,15 +351,15 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                         <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Empecemos!</h3>
-                        <p className="text-base sm:text-lg font-semibold text-blue-600 mb-4">1. ¿Cuál es el título de tu tour? *</p>
-                        <p className="text-sm text-slate-500 mb-6">Dale un nombre atractivo que describa el espacio</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{t('tourSetup.step1Title')}</h3>
+                        <p className="text-base sm:text-lg font-semibold text-blue-600 mb-4">{t('tourSetup.step1Question')}</p>
+                        <p className="text-sm text-slate-500 mb-6">{t('tourSetup.step1Description')}</p>
                       </div>
                       <div className="max-w-md mx-auto">
                         <Input
                           value={tourData.title}
                           onChange={(e) => handleInputChange('title', e.target.value)}
-                          placeholder="Ej: Casa Moderna en la Playa, Apartamento Céntrico..."
+                          placeholder={t('tourSetup.step1Placeholder')}
                           className={`text-base sm:text-lg h-10 sm:h-12 text-center ${errors.title ? 'border-red-500' : 'border-blue-300 focus:border-blue-500'}`}
                         />
                         {errors.title && <p className="text-red-500 text-sm mt-2">{errors.title}</p>}
@@ -372,15 +373,15 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                         <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Perfecto!</h3>
-                        <p className="text-base sm:text-lg font-semibold text-green-600 mb-4">2. Describe tu tour *</p>
-                        <p className="text-sm text-slate-500 mb-6">Cuéntanos qué hace especial este espacio</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{t('tourSetup.step2Title')}</h3>
+                        <p className="text-base sm:text-lg font-semibold text-green-600 mb-4">{t('tourSetup.step2Question')}</p>
+                        <p className="text-sm text-slate-500 mb-6">{t('tourSetup.step2Description')}</p>
                       </div>
                       <div className="max-w-md mx-auto">
                         <Textarea
                           value={tourData.description}
                           onChange={(e) => handleInputChange('description', e.target.value)}
-                          placeholder="Ej: Un hermoso espacio de 120m² con vistas espectaculares..."
+                          placeholder={t('tourSetup.step2Placeholder')}
                           rows={4}
                           className={`text-center ${errors.description ? 'border-red-500' : 'border-green-300 focus:border-green-500'}`}
                         />
@@ -395,9 +396,9 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                         <Camera className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Casi terminamos!</h3>
-                        <p className="text-base sm:text-lg font-semibold text-purple-600 mb-4">3. Imagen de portada (Opcional)</p>
-                        <p className="text-sm text-slate-500 mb-6">Una imagen atractiva que represente tu tour</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{t('tourSetup.step3Title')}</h3>
+                        <p className="text-base sm:text-lg font-semibold text-purple-600 mb-4">{t('tourSetup.step3Question')}</p>
+                        <p className="text-sm text-slate-500 mb-6">{t('tourSetup.step3Description')}</p>
                       </div>
 
                       {tourData.thumbnail_url ? (
@@ -407,14 +408,14 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                             alt="Portada"
                             className="w-full h-32 sm:h-40 object-cover rounded-lg border-2 border-purple-300 shadow-lg"
                           />
-                          <p className="text-sm text-green-600 font-semibold mt-2">¡Imagen subida correctamente! ✓</p>
+                          <p className="text-sm text-green-600 font-semibold mt-2">{t('tourSetup.uploadSuccess')}</p>
                           <Button
                             variant="outline"
                             onClick={() => coverInputRef.current?.click()}
                             disabled={isUploadingCover}
                             className="mt-3"
                           >
-                            Cambiar imagen
+                            {t('tourSetup.changeImage')}
                           </Button>
                         </div>
                       ) : (
@@ -427,12 +428,12 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                           {isUploadingCover ? (
                             <>
                               <RotateCw className="w-5 h-5 sm:w-6 sm:h-6 mr-2 animate-spin" />
-                              Subiendo...
+                              {t('common.uploading')}
                             </>
                           ) : (
                             <>
                               <Upload className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
-                              Haz clic para subir imagen
+                              {t('tourSetup.clickToUpload')}
                             </>
                           )}
                         </Button>
@@ -453,7 +454,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                 disabled={isSaving}
                 className="px-3 sm:px-4 text-sm sm:text-base"
               >
-                {currentStep === 1 ? 'Cancelar' : 'Anterior'}
+                {currentStep === 1 ? t('common.cancel') : t('common.previous')}
               </Button>
 
               <div className="flex gap-2 sm:gap-3">
@@ -469,7 +470,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                     className="bg-gradient-to-r from-blue-500 to-purple-600"
                   >
                     <ArrowRight className="w-4 h-4 mr-1 sm:mr-2" />
-                    Siguiente
+                    {t('common.next')}
                   </Button>
                 )}
 
@@ -482,12 +483,12 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                     {isSaving ? (
                       <>
                         <RotateCw className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
-                        Creando...
+                        {t('tourSetup.creating')}
                       </>
                     ) : (
                       <>
                         <Check className="w-4 h-4 mr-1 sm:mr-2" />
-                        ¡Crear Mi Tour!
+                        {t('tourSetup.createTour')}
                       </>
                     )}
                   </Button>
@@ -503,24 +504,24 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-500" />
-              Imagen muy pesada
+              {t('tourSetup.imageTooLargeTitle')}
             </DialogTitle>
             <DialogDescription>
               {pendingCoverFile && (
                 <>
-                  La imagen pesa <strong>{(pendingCoverFile.size / 1024 / 1024).toFixed(1)}MB</strong>.
-                  ¿Quieres optimizarla?
+                  {t('tourSetup.imageWeighs')} <strong>{(pendingCoverFile.size / 1024 / 1024).toFixed(1)}MB</strong>.
+                  {t('tourSetup.optimizeQuestion')}
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={handleCoverSizeReductionCancel}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleCoverSizeReductionConfirm} className="bg-green-600">
               <Check className="w-4 h-4 mr-2" />
-              Sí, optimizar
+              {t('tourSetup.yesOptimize')}
             </Button>
           </DialogFooter>
         </DialogContent>

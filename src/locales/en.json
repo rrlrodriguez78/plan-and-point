@@ -193,7 +193,14 @@
     "imageTooLarge": "Selected image is too large.",
     "connectionProblem": "Connection Problem",
     "editImage": "Edit Cover Image",
-    "adjustImage": "Adjust your image before uploading"
+    "adjustImage": "Adjust your image before uploading",
+    "selectValidImage": "Please select a valid image file.",
+    "imageTooLargeTitle": "Image too large",
+    "imageWeighs": "The image weighs",
+    "optimizeQuestion": "Would you like to optimize it?",
+    "yesOptimize": "Yes, optimize",
+    "creating": "Creating...",
+    "createTour": "Create My Tour!"
   },
   "hotspot": {
     "new": "New Hotspot",
