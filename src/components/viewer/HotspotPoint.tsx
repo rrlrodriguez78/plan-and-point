@@ -1,4 +1,4 @@
-import { MapPin } from 'lucide-react';
+import { MapPin, Eye } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 interface HotspotPointProps {
@@ -7,6 +7,7 @@ interface HotspotPointProps {
   x: number;
   y: number;
   onClick: () => void;
+  hasPanorama?: boolean;
   style?: {
     icon?: string;
     color?: string;
@@ -14,7 +15,7 @@ interface HotspotPointProps {
   };
 }
 
-export const HotspotPoint = ({ index, title, x, y, onClick, style }: HotspotPointProps) => {
+export const HotspotPoint = ({ index, title, x, y, onClick, hasPanorama, style }: HotspotPointProps) => {
   const IconComponent = style?.icon 
     ? (LucideIcons as any)[style.icon] || MapPin 
     : MapPin;
@@ -52,6 +53,13 @@ export const HotspotPoint = ({ index, title, x, y, onClick, style }: HotspotPoin
         }}
       >
         <IconComponent className="text-white" style={{ width: size * 0.5, height: size * 0.5 }} />
+        
+        {/* 360° Badge */}
+        {hasPanorama && (
+          <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1 border-2 border-white shadow-lg">
+            <Eye className="w-3 h-3 text-white" />
+          </div>
+        )}
       </div>
 
       {/* Tooltip */}

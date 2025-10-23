@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart } from 'lucide-react';
+import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import PanoramaManager from './PanoramaManager';
 
 interface HotspotData {
   id?: string;
@@ -101,7 +102,7 @@ export default function HotspotModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="info" className="gap-2">
               <Info className="w-4 h-4" />
               Información
@@ -110,9 +111,13 @@ export default function HotspotModal({
               <Palette className="w-4 h-4" />
               Estilo
             </TabsTrigger>
+            <TabsTrigger value="panorama" className="gap-2">
+              <Eye className="w-4 h-4" />
+              Fotos 360°
+            </TabsTrigger>
             <TabsTrigger value="media" className="gap-2">
               <Camera className="w-4 h-4" />
-              Foto 360°
+              Media
             </TabsTrigger>
           </TabsList>
 
@@ -274,6 +279,16 @@ export default function HotspotModal({
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="panorama" className="space-y-4 mt-4">
+            {initialData?.id ? (
+              <PanoramaManager hotspotId={initialData.id} />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Guarda el hotspot primero para agregar fotos 360°</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="media" className="space-y-4 mt-4">

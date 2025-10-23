@@ -7,6 +7,7 @@ import { FloorNavigator } from '@/components/viewer/FloorNavigator';
 import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
 import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
+import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 
 interface Tour {
   title: string;
@@ -26,11 +27,21 @@ interface Hotspot {
   x_position: number;
   y_position: number;
   media_url?: string;
+  has_panorama?: boolean;
+  panorama_count?: number;
   style?: {
     icon?: string;
     color?: string;
     size?: number;
   };
+}
+
+interface PanoramaPhoto {
+  id: string;
+  hotspot_id: string;
+  photo_url: string;
+  description?: string;
+  display_order: number;
 }
 
 const Viewer = () => {
@@ -42,6 +53,9 @@ const Viewer = () => {
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [panoramaPhotos, setPanoramaPhotos] = useState<PanoramaPhoto[]>([]);
+  const [showPanoramaViewer, setShowPanoramaViewer] = useState(false);
+  const [activePanoramaPhoto, setActivePanoramaPhoto] = useState<PanoramaPhoto | null>(null);
 
   useEffect(() => {
     loadTourData();
@@ -73,11 +87,15 @@ const Viewer = () => {
           for (const plan of plansData) {
             const { data: hotspotsData } = await supabase
               .from('hotspots')
-              .select('*')
+              .select('id, title, description, x_position, y_position, media_url, has_panorama, panorama_count')
               .eq('floor_plan_id', plan.id);
 
             if (hotspotsData) {
-              hotspotsMap[plan.id] = hotspotsData;
+              hotspotsMap[plan.id] = hotspotsData.map(h => ({
+                ...h,
+                has_panorama: h.has_panorama || false,
+                panorama_count: h.panorama_count || 0
+              })) as Hotspot[];
             }
           }
           setHotspotsByFloor(hotspotsMap);
@@ -99,6 +117,40 @@ const Viewer = () => {
       setIsFullscreen(false);
     }
   }, []);
+
+  const loadPanoramaPhotos = async (hotspotId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('panorama_photos')
+        .select('*')
+        .eq('hotspot_id', hotspotId)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading panorama photos:', error);
+      return [];
+    }
+  };
+
+  const handleHotspotClick = async (hotspot: Hotspot) => {
+    setSelectedHotspot(hotspot);
+    
+    if (hotspot.has_panorama && hotspot.panorama_count && hotspot.panorama_count > 0) {
+      const photos = await loadPanoramaPhotos(hotspot.id);
+      if (photos.length > 0) {
+        setPanoramaPhotos(photos);
+        setActivePanoramaPhoto(photos[0]);
+        setShowPanoramaViewer(true);
+      } else {
+        // If has_panorama is true but no photos found, show regular modal
+        setShowPanoramaViewer(false);
+      }
+    } else {
+      setShowPanoramaViewer(false);
+    }
+  };
 
   const currentFloorPlan = floorPlans[currentFloorIndex];
   const currentHotspots = currentFloorPlan ? hotspotsByFloor[currentFloorPlan.id] || [] : [];
@@ -192,7 +244,7 @@ const Viewer = () => {
         <ViewerCanvas
           imageUrl={currentFloorPlan.image_url}
           hotspots={currentHotspots}
-          onHotspotClick={setSelectedHotspot}
+          onHotspotClick={handleHotspotClick}
           renderHotspot={(hotspot, index) => (
             <HotspotPoint
               key={hotspot.id}
@@ -200,21 +252,41 @@ const Viewer = () => {
               title={hotspot.title}
               x={hotspot.x_position}
               y={hotspot.y_position}
-              onClick={() => setSelectedHotspot(hotspot)}
-              style={hotspot.style}
+              onClick={() => handleHotspotClick(hotspot)}
+              hasPanorama={hotspot.has_panorama}
             />
           )}
         />
       </div>
 
-      {/* Hotspot Modal */}
-      <HotspotModal
-        hotspot={selectedHotspot}
-        onClose={() => setSelectedHotspot(null)}
-        onNext={selectedHotspotIndex < currentHotspots.length - 1 ? handleNextHotspot : undefined}
-        onPrevious={selectedHotspotIndex > 0 ? handlePreviousHotspot : undefined}
-        currentIndex={selectedHotspotIndex}
-        totalCount={currentHotspots.length}
+      {/* Hotspot Modal (for regular hotspots) */}
+      {!showPanoramaViewer && (
+        <HotspotModal
+          hotspot={selectedHotspot}
+          onClose={() => setSelectedHotspot(null)}
+          onNext={selectedHotspotIndex < currentHotspots.length - 1 ? handleNextHotspot : undefined}
+          onPrevious={selectedHotspotIndex > 0 ? handlePreviousHotspot : undefined}
+          currentIndex={selectedHotspotIndex}
+          totalCount={currentHotspots.length}
+        />
+      )}
+
+      {/* Panorama Viewer (for 360° photos) */}
+      <PanoramaViewer
+        isVisible={showPanoramaViewer}
+        onClose={() => {
+          setShowPanoramaViewer(false);
+          setSelectedHotspot(null);
+        }}
+        photos={panoramaPhotos}
+        activePhoto={activePanoramaPhoto}
+        setActivePhoto={setActivePanoramaPhoto}
+        hotspotName={selectedHotspot?.title || ''}
+        allHotspotsOnFloor={currentHotspots}
+        onNavigate={(hotspot) => {
+          setShowPanoramaViewer(false);
+          handleHotspotClick(hotspot);
+        }}
       />
     </div>
   );

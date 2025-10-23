@@ -57,9 +57,11 @@ export type Database = {
           created_at: string
           description: string | null
           floor_plan_id: string
+          has_panorama: boolean | null
           id: string
           media_type: string | null
           media_url: string | null
+          panorama_count: number | null
           title: string
           x_position: number
           y_position: number
@@ -68,9 +70,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           floor_plan_id: string
+          has_panorama?: boolean | null
           id?: string
           media_type?: string | null
           media_url?: string | null
+          panorama_count?: number | null
           title: string
           x_position: number
           y_position: number
@@ -79,9 +83,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           floor_plan_id?: string
+          has_panorama?: boolean | null
           id?: string
           media_type?: string | null
           media_url?: string | null
+          panorama_count?: number | null
           title?: string
           x_position?: number
           y_position?: number
@@ -124,6 +130,41 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      panorama_photos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          hotspot_id: string
+          id: string
+          photo_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          hotspot_id: string
+          id?: string
+          photo_url: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          hotspot_id?: string
+          id?: string
+          photo_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panorama_photos_hotspot_id_fkey"
+            columns: ["hotspot_id"]
+            isOneToOne: false
+            referencedRelation: "hotspots"
             referencedColumns: ["id"]
           },
         ]
