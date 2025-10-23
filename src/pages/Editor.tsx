@@ -392,7 +392,7 @@ const Editor = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p className="text-muted-foreground">Cargando...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -408,7 +408,7 @@ const Editor = () => {
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate('/app/tours')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
+              {t('editor.back')}
             </Button>
             <h1 className="text-3xl font-bold">{tour?.title}</h1>
           </div>
@@ -418,19 +418,19 @@ const Editor = () => {
               {tour?.is_published ? (
                 <>
                   <Lock className="w-4 h-4 mr-2" />
-                  Despublicar
+                  {t('editor.unpublish')}
                 </>
               ) : (
                 <>
                   <Globe className="w-4 h-4 mr-2" />
-                  Publicar
+                  {t('editor.publish')}
                 </>
               )}
             </Button>
             {tour?.is_published && (
               <Button onClick={() => navigate(`/viewer/${id}`)}>
                 <Eye className="w-4 h-4 mr-2" />
-                Ver Tour
+                {t('editor.viewTour')}
               </Button>
             )}
           </div>
@@ -448,11 +448,11 @@ const Editor = () => {
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <MapPin className="w-5 h-5 text-[#4285F4]" />
-                        <h2 className="text-xl font-bold">Puntos Interactivos</h2>
+                        <h2 className="text-xl font-bold">{t('editor.interactivePoints')}</h2>
                         <Badge variant="secondary">{hotspots.length}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Editando para: <span className="font-medium">{selectedFloorPlan?.name}</span>
+                        {t('editor.editingFor')} <span className="font-medium">{selectedFloorPlan?.name}</span>
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -461,7 +461,7 @@ const Editor = () => {
                         onClick={() => setManageHotspotsOpen(true)}
                       >
                         <Settings className="w-4 h-4 mr-2" />
-                        Gestionar Puntos
+                        {t('editor.managePoints')}
                       </Button>
                       <Button 
                         onClick={() => setAddPointMode(!addPointMode)}
@@ -469,7 +469,7 @@ const Editor = () => {
                         className={addPointMode ? 'text-white hover:opacity-90' : ''}
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        {addPointMode ? 'Modo Activo' : 'Agregar Punto'}
+                        {addPointMode ? t('editor.activeMode') : t('editor.addPoint')}
                       </Button>
                     </div>
                   </div>
@@ -507,9 +507,9 @@ const Editor = () => {
               </>
             ) : (
               <Card className="p-12 text-center">
-                <h2 className="text-2xl font-bold mb-2">No hay planos de planta</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('floorPlan.noFloors')}</h2>
                 <p className="text-muted-foreground mb-4">
-                  Agrega un plano para comenzar a crear hotspots
+                  {t('floorPlan.addToStart')}
                 </p>
               </Card>
             )}

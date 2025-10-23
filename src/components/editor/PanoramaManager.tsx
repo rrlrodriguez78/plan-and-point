@@ -48,7 +48,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       setPhotos(data || []);
     } catch (error) {
       console.error('Error loading panorama photos:', error);
-      toast.error('Error al cargar fotos 360°');
+      toast.error(t('panorama.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -60,13 +60,13 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Por favor sube solo imágenes');
+      toast.error(t('panorama.onlyImages'));
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('La imagen debe ser menor a 10MB');
+      toast.error(t('panorama.imageTooLarge'));
       return;
     }
 
@@ -99,12 +99,12 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       if (dbError) throw dbError;
 
-      toast.success('Foto 360° subida exitosamente');
+      toast.success(t('panorama.uploadSuccess'));
       setUploadDate(new Date()); // Reset to today
       loadPhotos();
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Error al subir foto 360°');
+      toast.error(t('panorama.errorUploading'));
     } finally {
       setUploading(false);
       // Reset input
@@ -113,7 +113,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   };
 
   const handleDelete = async (photo: PanoramaPhoto) => {
-    if (!confirm('¿Eliminar esta foto 360°?')) return;
+    if (!confirm(t('panorama.deleteConfirm'))) return;
 
     try {
       // Delete from storage
@@ -132,11 +132,11 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       if (error) throw error;
 
-      toast.success('Foto 360° eliminada');
+      toast.success(t('panorama.deleted'));
       loadPhotos();
     } catch (error) {
       console.error('Error deleting photo:', error);
-      toast.error('Error al eliminar foto 360°');
+      toast.error(t('panorama.errorDeleting'));
     }
   };
 
@@ -149,11 +149,11 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       if (error) throw error;
       
-      toast.success('Fecha actualizada');
+      toast.success(t('panorama.dateUpdated'));
       loadPhotos();
     } catch (error) {
       console.error('Error updating capture date:', error);
-      toast.error('Error al actualizar fecha');
+      toast.error(t('panorama.errorUpdatingDate'));
     }
   };
 
@@ -187,17 +187,17 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   };
 
   if (loading) {
-    return <div className="p-4 text-center text-muted-foreground">Cargando...</div>;
+    return <div className="p-4 text-center text-muted-foreground">{t('common.loading')}</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Subir Foto 360°</Label>
+        <Label>{t('panorama.upload')}</Label>
         
         {/* Selector de fecha antes de subir */}
         <div className="flex items-center gap-2 mb-2">
-          <Label className="text-sm">Fecha de captura:</Label>
+          <Label className="text-sm">{t('panorama.captureDate')}</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -221,10 +221,10 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
           <label htmlFor="panorama-upload" className="cursor-pointer">
             <Upload className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground mb-1">
-              Click para subir foto 360°
+              {t('panorama.clickToUpload')}
             </p>
             <p className="text-xs text-muted-foreground">
-              JPG, PNG (Máx. 10MB)
+              {t('panorama.maxSize')}
             </p>
             <input
               id="panorama-upload"
@@ -240,7 +240,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       {photos.length > 0 && (
         <div className="space-y-2">
-          <Label>Fotos 360° ({photos.length})</Label>
+          <Label>{t('panorama.photos')} ({photos.length})</Label>
           <div className="space-y-2">
             {photos.map((photo, index) => (
               <div
@@ -267,7 +267,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">Foto {index + 1}</p>
+                    <p className="text-sm font-medium">{t('panorama.photo')} {index + 1}</p>
                     {photo.capture_date && (
                       <Badge variant="secondary" className="text-xs">
                         <CalendarIcon className="w-3 h-3 mr-1" />
@@ -284,7 +284,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 p-1">
                         <CalendarIcon className="w-3 h-3" />
-                        Cambiar fecha
+                        {t('panorama.changeDate')}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -323,8 +323,8 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       {photos.length === 0 && !uploading && (
         <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No hay fotos 360° en este hotspot</p>
-          <p className="text-xs">Sube la primera foto arriba</p>
+          <p className="text-sm">{t('panorama.noPhotos')}</p>
+          <p className="text-xs">{t('panorama.uploadFirst')}</p>
         </div>
       )}
     </div>
