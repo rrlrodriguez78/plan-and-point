@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 import { ViewerHeader } from '@/components/viewer/ViewerHeader';
 import { FloorNavigator } from '@/components/viewer/FloorNavigator';
 import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
@@ -46,6 +47,7 @@ interface PanoramaPhoto {
 
 const Viewer = () => {
   const { id } = useParams();
+  const { t } = useTranslation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorIndex, setCurrentFloorIndex] = useState(0);
@@ -221,7 +223,7 @@ const Viewer = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Cargando tour...</p>
+        <p className="text-muted-foreground">{t('viewer.loadingTour')}</p>
       </div>
     );
   }
@@ -230,9 +232,9 @@ const Viewer = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-12 text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-2">Tour no encontrado</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('viewer.tourNotFound')}</h1>
           <p className="text-muted-foreground">
-            Este tour no existe o no está publicado
+            {t('viewer.tourNotFoundDesc')}
           </p>
         </Card>
       </div>

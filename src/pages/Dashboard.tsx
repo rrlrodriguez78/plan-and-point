@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Eye, Edit, Trash2, Globe, Lock } from 'lucide-react';
 import TourSetupModal from '@/components/editor/TourSetupModal';
+import { useTranslation } from 'react-i18next';
 
 interface Organization {
   id: string;
@@ -25,6 +26,7 @@ interface Tour {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [tours, setTours] = useState<Tour[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Error al cargar datos');
+      toast.error(t('dashboard.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,7 @@ const Dashboard = () => {
 
   const handleCreateTour = async (tourData: { title: string; description: string; coverImageUrl?: string }) => {
     if (!organization) {
-      toast.error('No se encontró organización');
+      toast.error(t('dashboard.organizationNotFound'));
       return;
     }
 
@@ -100,13 +102,13 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      toast.success('Tour creado exitosamente');
+      toast.success(t('dashboard.tourCreated'));
       setTours([data, ...tours]);
       setModalOpen(false);
       navigate(`/app/editor/${data.id}`);
     } catch (error) {
       console.error('Error creating tour:', error);
-      toast.error('Error al crear tour');
+      toast.error(t('dashboard.errorCreating'));
     } finally {
       setSavingTour(false);
     }
@@ -121,11 +123,11 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      toast.success('Tour eliminado');
+      toast.success(t('dashboard.tourDeleted'));
       setTours(tours.filter(t => t.id !== id));
     } catch (error) {
       console.error('Error deleting tour:', error);
-      toast.error('Error al eliminar tour');
+      toast.error(t('dashboard.errorDeleting'));
     }
   };
 
@@ -134,7 +136,7 @@ const Dashboard = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p className="text-muted-foreground">Cargando...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -147,15 +149,15 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 pt-24 pb-12">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Mis Tours Virtuales</h1>
+            <h1 className="text-4xl font-bold mb-2">{t('dashboard.title')}</h1>
             <p className="text-muted-foreground">
-              Gestiona y edita tus tours interactivos
+              {t('dashboard.subtitle')}
             </p>
           </div>
 
           <Button size="lg" onClick={() => setModalOpen(true)}>
             <Plus className="w-5 h-5 mr-2" />
-            Nuevo Tour
+            {t('dashboard.createNew')}
           </Button>
           
           <TourSetupModal
@@ -169,15 +171,15 @@ const Dashboard = () => {
         {tours.length === 0 ? (
           <Card className="p-12 text-center">
             <CardHeader>
-              <CardTitle className="text-2xl">No tienes tours todavía</CardTitle>
+              <CardTitle className="text-2xl">{t('dashboard.noTours')}</CardTitle>
               <CardDescription>
-                Crea tu primer tour virtual para comenzar
+                {t('dashboard.noToursDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={() => setModalOpen(true)} size="lg">
                 <Plus className="w-5 h-5 mr-2" />
-                Crear Primer Tour
+                {t('dashboard.createFirstTour')}
               </Button>
             </CardContent>
           </Card>
@@ -195,7 +197,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <CardDescription>
-                    {tour.description || 'Sin descripción'}
+                    {tour.description || t('dashboard.noDescription')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -207,7 +209,7 @@ const Dashboard = () => {
                       className="flex-1"
                     >
                       <Edit className="w-4 h-4 mr-2" />
-                      Editar
+                      {t('dashboard.edit')}
                     </Button>
                     {tour.is_published && (
                       <Button
@@ -217,7 +219,7 @@ const Dashboard = () => {
                         className="flex-1"
                       >
                         <Eye className="w-4 h-4 mr-2" />
-                        Ver
+                        {t('dashboard.view')}
                       </Button>
                     )}
                     <Button

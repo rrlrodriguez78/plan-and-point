@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { 
   ArrowLeft, 
   Save, 
@@ -64,6 +65,7 @@ const Editor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   
   // Tour and floor plans
   const [tour, setTour] = useState<Tour | null>(null);

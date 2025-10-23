@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
 import { MapPin, Layout, Eye, Zap } from 'lucide-react';
 import heroImage from '@/assets/hero-bg.jpg';
+import { useTranslation } from 'react-i18next';
 
 const Landing = () => {
+  const { t } = useTranslation();
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -24,21 +27,20 @@ const Landing = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-              Crea Tours Virtuales Interactivos
+              {t('landing.title')}
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Transforma planos de planta en experiencias inmersivas con hotspots 360°. 
-              Perfecto para bienes raíces, eventos y espacios comerciales.
+              {t('landing.subtitle')}
             </p>
             <div className="flex gap-4 justify-center">
               <Link to="/signup">
                 <Button size="lg" className="text-lg px-8">
-                  Comenzar Gratis
+                  {t('landing.getStarted')}
                 </Button>
               </Link>
               <Link to="/login">
                 <Button size="lg" variant="outline" className="text-lg px-8">
-                  Ver Demo
+                  {t('landing.viewDemo')}
                 </Button>
               </Link>
             </div>
@@ -50,29 +52,29 @@ const Landing = () => {
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-16">
-            Funcionalidades Destacadas
+            {t('landing.featuresTitle')}
           </h2>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <FeatureCard
               icon={<Layout className="w-8 h-8" />}
-              title="Editor Visual"
-              description="Interfaz drag & drop intuitiva para crear tours sin esfuerzo"
+              title={t('landing.visualEditor')}
+              description={t('landing.visualEditorDesc')}
             />
             <FeatureCard
               icon={<MapPin className="w-8 h-8" />}
-              title="Hotspots 360°"
-              description="Agrega puntos interactivos con imágenes panorámicas"
+              title={t('landing.hotspots360')}
+              description={t('landing.hotspots360Desc')}
             />
             <FeatureCard
               icon={<Eye className="w-8 h-8" />}
-              title="Vista Pública"
-              description="Comparte tours con un simple enlace, sin registro"
+              title={t('landing.publicView')}
+              description={t('landing.publicViewDesc')}
             />
             <FeatureCard
               icon={<Zap className="w-8 h-8" />}
-              title="Auto-Save"
-              description="Guarda automáticamente mientras trabajas"
+              title={t('landing.autoSave')}
+              description={t('landing.autoSaveDesc')}
             />
           </div>
         </div>
@@ -84,14 +86,14 @@ const Landing = () => {
           <div className="max-w-3xl mx-auto text-center p-12 rounded-2xl" 
                style={{ background: 'var(--gradient-card)', boxShadow: 'var(--shadow-elevated)' }}>
             <h2 className="text-4xl font-bold mb-4">
-              ¿Listo para crear tu primer tour virtual?
+              {t('landing.ctaTitle')}
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
-              Únete a profesionales que confían en VirtualTour para mostrar sus espacios
+              {t('landing.ctaSubtitle')}
             </p>
             <Link to="/signup">
               <Button size="lg" className="text-lg px-12">
-                Crear Cuenta Ahora
+                {t('landing.createAccount')}
               </Button>
             </Link>
           </div>
@@ -101,7 +103,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="py-8 border-t border-border">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>© 2025 VirtualTour. Todos los derechos reservados.</p>
+          <p>{t('landing.footer')}</p>
         </div>
       </footer>
     </div>

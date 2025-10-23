@@ -8,21 +8,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { MapPin, Loader2 } from 'lucide-react';
 import { z } from 'zod';
-
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Email inválido' }),
-  password: z.string().min(6, { message: 'La contraseña debe tener al menos 6 caracteres' }),
-});
-
-const signupSchema = loginSchema.extend({
-  fullName: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres' }).max(100),
-});
+import { useTranslation } from 'react-i18next';
 
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp } = useAuth();
+  const { t } = useTranslation();
   const isLogin = location.pathname === '/login';
+
+  const loginSchema = z.object({
+    email: z.string().email({ message: t('auth.invalidEmail') }),
+    password: z.string().min(6, { message: t('auth.passwordMinLength') }),
+  });
+
+  const signupSchema = loginSchema.extend({
+    fullName: z.string().min(2, { message: t('auth.nameMinLength') }).max(100),
+  });
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -41,9 +43,9 @@ const Auth = () => {
         const { error } = await signIn(validated.email, validated.password);
         
         if (error) {
-          toast.error(error.message || 'Error al iniciar sesión');
+          toast.error(error.message || t('auth.errorLogin'));
         } else {
-          toast.success('¡Bienvenido de vuelta!');
+          toast.success(t('auth.welcomeBack'));
           navigate('/app/tours');
         }
       } else {
@@ -52,12 +54,12 @@ const Auth = () => {
         
         if (error) {
           if (error.message.includes('already registered')) {
-            toast.error('Este email ya está registrado');
+            toast.error(t('auth.emailAlreadyRegistered'));
           } else {
-            toast.error(error.message || 'Error al crear cuenta');
+            toast.error(error.message || t('auth.errorSignup'));
           }
         } else {
-          toast.success('¡Cuenta creada exitosamente!');
+          toast.success(t('auth.accountCreated'));
           navigate('/app/tours');
         }
       }
@@ -65,7 +67,7 @@ const Auth = () => {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else {
-        toast.error('Ocurrió un error inesperado');
+        toast.error(t('auth.unexpectedError'));
       }
     } finally {
       setLoading(false);
@@ -82,23 +84,21 @@ const Auth = () => {
             </div>
           </div>
           <CardTitle className="text-2xl text-center">
-            {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
+            {isLogin ? t('auth.login') : t('auth.signup')}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin 
-              ? 'Ingresa a tu cuenta para continuar' 
-              : 'Crea una cuenta para comenzar a crear tours'}
+            {isLogin ? t('auth.loginSubtitle') : t('auth.signupSubtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nombre Completo</Label>
+                <Label htmlFor="fullName">{t('auth.fullName')}</Label>
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="Juan Pérez"
+                  placeholder="John Doe"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   required={!isLogin}
@@ -108,11 +108,11 @@ const Auth = () => {
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="tu@email.com"
+                placeholder="your@email.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
@@ -121,7 +121,7 @@ const Auth = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -137,10 +137,10 @@ const Auth = () => {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isLogin ? 'Iniciando...' : 'Creando...'}
+                  {isLogin ? t('auth.loggingIn') : t('auth.creating')}
                 </>
               ) : (
-                isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'
+                isLogin ? t('auth.login') : t('auth.signup')
               )}
             </Button>
           </form>
@@ -148,16 +148,16 @@ const Auth = () => {
           <div className="mt-4 text-center text-sm">
             {isLogin ? (
               <p>
-                ¿No tienes cuenta?{' '}
+                {t('auth.noAccount')}{' '}
                 <Link to="/signup" className="text-primary hover:underline">
-                  Crear una
+                  {t('auth.createOne')}
                 </Link>
               </p>
             ) : (
               <p>
-                ¿Ya tienes cuenta?{' '}
+                {t('auth.haveAccount')}{' '}
                 <Link to="/login" className="text-primary hover:underline">
-                  Iniciar sesión
+                  {t('auth.loginLink')}
                 </Link>
               </p>
             )}
@@ -165,7 +165,7 @@ const Auth = () => {
 
           <div className="mt-4 text-center">
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Volver al inicio
+              {t('auth.backToHome')}
             </Link>
           </div>
         </CardContent>
