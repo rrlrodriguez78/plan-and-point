@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { ViewerHeader } from '@/components/viewer/ViewerHeader';
-import { FloorNavigator } from '@/components/viewer/FloorNavigator';
+import ViewerControls from '@/components/viewer/ViewerControls';
 import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
 import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
@@ -50,7 +50,7 @@ const Viewer = () => {
   const { t } = useTranslation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
-  const [currentFloorIndex, setCurrentFloorIndex] = useState(0);
+  const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
   const [hotspotsByFloor, setHotspotsByFloor] = useState<Record<string, Hotspot[]>>({});
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,6 +100,7 @@ const Viewer = () => {
 
       if (plansData && plansData.length > 0) {
         setFloorPlans(plansData);
+        setCurrentFloorPlanId(plansData[0].id);
 
         // Load hotspots for all floor plans
         const hotspotsMap: Record<string, Hotspot[]> = {};
@@ -175,7 +176,7 @@ const Viewer = () => {
     }
   };
 
-  const currentFloorPlan = floorPlans[currentFloorIndex];
+  const currentFloorPlan = floorPlans.find(fp => fp.id === currentFloorPlanId);
   const currentHotspots = currentFloorPlan ? hotspotsByFloor[currentFloorPlan.id] || [] : [];
 
   const handleNextHotspot = useCallback(() => {
@@ -254,14 +255,6 @@ const Viewer = () => {
         isFullscreen={isFullscreen}
       />
 
-      {/* Floor Navigator */}
-      <FloorNavigator
-        floorPlans={floorPlans}
-        currentFloorIndex={currentFloorIndex}
-        onFloorChange={setCurrentFloorIndex}
-        hotspotCounts={hotspotCounts}
-      />
-
       {/* Canvas */}
       <div className="flex-1 relative">
         <ViewerCanvas
@@ -315,6 +308,13 @@ const Viewer = () => {
             setActivePanoramaPhoto(photos[0]);
           }
         }}
+      />
+
+      {/* Floor Controls */}
+      <ViewerControls
+        floorPlans={floorPlans}
+        activeFloorPlanId={currentFloorPlanId}
+        onFloorPlanChange={setCurrentFloorPlanId}
       />
     </div>
   );
