@@ -25,6 +25,14 @@ interface PanoramaManagerProps {
   hotspotId: string;
 }
 
+const heavyImageConfig = {
+  maxWidth: 4000,     // Resolución manteniendo calidad 360
+  quality: 0.7,       // Compresión más agresiva
+  format: 'jpeg',     // Estable para grandes archivos
+  chunkSize: 1024 * 1024, // 1MB chunks
+  previewSize: 1000   // Preview rápido
+};
+
 export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   const { t } = useTranslation();
   const [photos, setPhotos] = useState<PanoramaPhoto[]>([]);
@@ -54,7 +62,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     }
   };
 
-  const createThumbnail = async (file: File, maxSize: number): Promise<string> => {
+  const createThumbnail = async (file: File): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -64,8 +72,8 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         let width = img.width;
         let height = img.height;
         
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height);
+        if (width > heavyImageConfig.previewSize || height > heavyImageConfig.previewSize) {
+          const ratio = Math.min(heavyImageConfig.previewSize / width, heavyImageConfig.previewSize / height);
           width = Math.floor(width * ratio);
           height = Math.floor(height * ratio);
         }
@@ -80,7 +88,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
           } else {
             resolve('');
           }
-        }, 'image/jpeg', 0.8);
+        }, `image/${heavyImageConfig.format}`, 0.8);
       };
       
       img.src = URL.createObjectURL(file);
@@ -94,14 +102,12 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       const img = new Image();
       
       img.onload = () => {
-        // Para 8MB+, reducir a 4000px máximo
-        const maxSize = 4000; // Mantener detalle 360
         let width = img.width;
         let height = img.height;
         
         // Calcular nuevo tamaño manteniendo ratio
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height);
+        if (width > heavyImageConfig.maxWidth || height > heavyImageConfig.maxWidth) {
+          const ratio = Math.min(heavyImageConfig.maxWidth / width, heavyImageConfig.maxWidth / height);
           width = Math.floor(width * ratio);
           height = Math.floor(height * ratio);
         }
@@ -112,18 +118,17 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         // Alta calidad pero comprimido
         ctx?.drawImage(img, 0, 0, width, height);
         
-        // Compresión más agresiva (70% para 8MB+)
         canvas.toBlob((blob) => {
           if (blob) {
             const optimizedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
+              type: `image/${heavyImageConfig.format}`,
               lastModified: Date.now(),
             });
             resolve(optimizedFile);
           } else {
             resolve(file);
           }
-        }, 'image/jpeg', 0.7);
+        }, `image/${heavyImageConfig.format}`, heavyImageConfig.quality);
       };
       
       img.src = URL.createObjectURL(file);
@@ -143,7 +148,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     setUploading(true);
     
     // Quick preview for immediate feedback
-    const previewUrl = await createThumbnail(file, 1000);
+    const previewUrl = await createThumbnail(file);
     const tempId = `temp-${Date.now()}`;
     
     // Add temporary preview to show immediately
@@ -171,7 +176,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       }
 
       // Upload to Supabase Storage
-      const fileExt = 'jpg';
+      const fileExt = heavyImageConfig.format === 'jpeg' ? 'jpg' : heavyImageConfig.format;
       const fileName = `${hotspotId}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError, data } = await supabase.storage
