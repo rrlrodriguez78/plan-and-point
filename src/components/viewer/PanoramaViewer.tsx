@@ -124,6 +124,18 @@ export default function PanoramaViewer({
     return allHotspotsOnFloor.filter(h => hotspotIds.has(h.id));
   }, [selectedDate, photos, allHotspotsOnFloor]);
 
+  // Resetear filtro de fecha si el hotspot actual no tiene fotos en la fecha seleccionada
+  useEffect(() => {
+    if (selectedDate && activePhoto) {
+      const hasPhotosInDate = photos.some(
+        p => p.hotspot_id === activePhoto.hotspot_id && p.capture_date === selectedDate
+      );
+      if (!hasPhotosInDate) {
+        setSelectedDate(null);
+      }
+    }
+  }, [activePhoto, selectedDate, photos]);
+
   // Determinar modo de navegación: siempre hotspots (puntos)
   const navigationMode = 'hotspots';
 

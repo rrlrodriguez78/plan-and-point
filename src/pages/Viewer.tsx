@@ -306,9 +306,14 @@ const Viewer = () => {
         setActivePhoto={setActivePanoramaPhoto}
         hotspotName={selectedHotspot?.title || ''}
         allHotspotsOnFloor={currentHotspots}
-        onNavigate={(hotspot) => {
-          setShowPanoramaViewer(false);
-          handleHotspotClick(hotspot);
+        onNavigate={async (hotspot) => {
+          // Navegar a otro hotspot sin salir del visor de panoramas
+          setSelectedHotspot(hotspot);
+          const photos = await loadPanoramaPhotos(hotspot.id);
+          if (photos.length > 0) {
+            setPanoramaPhotos(photos);
+            setActivePanoramaPhoto(photos[0]);
+          }
         }}
       />
     </div>
