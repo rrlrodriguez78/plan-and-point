@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import PanoramaManager from './PanoramaManager';
+import { useTranslation } from 'react-i18next';
 
 interface HotspotData {
   id?: string;
@@ -40,6 +41,7 @@ export default function HotspotModal({
   initialData,
   mode,
 }: HotspotModalProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('info');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);

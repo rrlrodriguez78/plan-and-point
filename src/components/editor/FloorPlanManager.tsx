@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 
 const FLOOR_OPTIONS = [
   { value: 'Sótano', label: 'Sótano' },
@@ -76,6 +77,7 @@ export default function FloorPlanManager({
   onFloorPlansUpdate, 
   isMobile 
 }: FloorPlanManagerProps) {
+  const { t } = useTranslation();
   const [editingFloorPlan, setEditingFloorPlan] = useState<Partial<FloorPlan> | null>(null);
   const [isNewFloorPlan, setIsNewFloorPlan] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

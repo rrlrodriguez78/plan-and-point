@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { useTranslation } from 'react-i18next';
 
 interface PanoramaPhoto {
   id: string;
@@ -25,6 +26,7 @@ interface PanoramaManagerProps {
 }
 
 export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
+  const { t } = useTranslation();
   const [photos, setPhotos] = useState<PanoramaPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);

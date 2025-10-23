@@ -16,6 +16,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ImageEditor from "./ImageEditor";
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 
 const ProgressBar = ({ current, total }: { current: number; total: number }) => {
   const percentage = (current / total) * 100;
@@ -41,6 +42,7 @@ interface TourSetupModalProps {
 }
 
 export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }: TourSetupModalProps) {
+  const { t } = useTranslation();
   const [tourData, setTourData] = useState({
     title: '',
     description: '',
