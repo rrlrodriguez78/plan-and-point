@@ -340,17 +340,19 @@ export default function PanoramaViewer({
     return () => clearTimeout(timer);
   }, [showControls, currentZoom]);
 
-  // Navegación por HOTSPOTS (con o sin fecha seleccionada)
+  // Navegación circular por HOTSPOTS (con o sin fecha seleccionada)
   const handleNextHotspot = useCallback(() => {
     if (!activePhoto) return;
     const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
       ? hotspotsWithPhotosInSelectedDate 
       : allHotspotsOnFloor;
     const currentHotspotIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentHotspotIndex < hotspotList.length - 1) {
-      const nextHotspot = hotspotList[currentHotspotIndex + 1];
-      onNavigate(nextHotspot);
-    }
+    if (currentHotspotIndex === -1) return;
+    
+    // Navegación circular: si estamos en el último, ir al primero
+    const nextIndex = currentHotspotIndex === hotspotList.length - 1 ? 0 : currentHotspotIndex + 1;
+    const nextHotspot = hotspotList[nextIndex];
+    onNavigate(nextHotspot);
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
 
   const handlePrevHotspot = useCallback(() => {
@@ -359,10 +361,12 @@ export default function PanoramaViewer({
       ? hotspotsWithPhotosInSelectedDate 
       : allHotspotsOnFloor;
     const currentHotspotIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentHotspotIndex > 0) {
-      const prevHotspot = hotspotList[currentHotspotIndex - 1];
-      onNavigate(prevHotspot);
-    }
+    if (currentHotspotIndex === -1) return;
+    
+    // Navegación circular: si estamos en el primero, ir al último
+    const prevIndex = currentHotspotIndex === 0 ? hotspotList.length - 1 : currentHotspotIndex - 1;
+    const prevHotspot = hotspotList[prevIndex];
+    onNavigate(prevHotspot);
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
 
   // Función principal de navegación (siempre por hotspots)
@@ -386,25 +390,18 @@ export default function PanoramaViewer({
     }
   };
 
-  // Calcular etiquetas para flechas de navegación
+  // Calcular etiquetas para flechas de navegación (circular)
   const prevLabel = useMemo(() => {
     if (!activePhoto) return null;
     const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
       ? hotspotsWithPhotosInSelectedDate 
       : allHotspotsOnFloor;
     const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentIndex === -1 || hotspotList.length === 0) return null;
     
-    console.log('🔍 PrevLabel Debug:', {
-      activePhotoId: activePhoto.hotspot_id,
-      hotspotListLength: hotspotList.length,
-      hotspotListIds: hotspotList.map(h => h.id),
-      currentIndex,
-      hasPrev: currentIndex > 0
-    });
-    
-    // Si no encontramos el hotspot o estamos en el primero, no hay anterior
-    if (currentIndex <= 0) return null;
-    return hotspotList[currentIndex - 1].title;
+    // Navegación circular: si estamos en el primero, mostrar el último
+    const prevIndex = currentIndex === 0 ? hotspotList.length - 1 : currentIndex - 1;
+    return hotspotList[prevIndex].title;
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const nextLabel = useMemo(() => {
@@ -413,18 +410,11 @@ export default function PanoramaViewer({
       ? hotspotsWithPhotosInSelectedDate 
       : allHotspotsOnFloor;
     const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentIndex === -1 || hotspotList.length === 0) return null;
     
-    console.log('🔍 NextLabel Debug:', {
-      activePhotoId: activePhoto.hotspot_id,
-      hotspotListLength: hotspotList.length,
-      hotspotListIds: hotspotList.map(h => h.id),
-      currentIndex,
-      hasNext: currentIndex >= 0 && currentIndex < hotspotList.length - 1
-    });
-    
-    // Si no encontramos el hotspot o estamos en el último, no hay siguiente
-    if (currentIndex === -1 || currentIndex >= hotspotList.length - 1) return null;
-    return hotspotList[currentIndex + 1].title;
+    // Navegación circular: si estamos en el último, mostrar el primero
+    const nextIndex = currentIndex === hotspotList.length - 1 ? 0 : currentIndex + 1;
+    return hotspotList[nextIndex].title;
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const resetView = () => {
