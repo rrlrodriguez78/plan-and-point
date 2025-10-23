@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from 'react-i18next';
 
 const iconComponents: Record<string, any> = {
   MapPin, Building, Home, Camera, Video, BedDouble, Bath, Car, TreePine, Star, Heart,
@@ -35,6 +36,7 @@ interface PointStyleSelectorProps {
 }
 
 export default function PointStyleSelector({ isOpen, onClose, onConfirm, initialStyle = {} }: PointStyleSelectorProps) {
+  const { t } = useTranslation();
   const [displayType, setDisplayType] = useState(initialStyle?.display_type || 'icon');
   const [iconName, setIconName] = useState(initialStyle?.icon_name || 'MapPin');
   const [customText, setCustomText] = useState(initialStyle?.custom_text || 'A');
@@ -73,9 +75,9 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-3xl p-0 max-h-[90vh] flex flex-col">
         <DialogHeader className="p-6 pb-4 border-b flex-shrink-0">
-          <DialogTitle className="text-2xl font-bold">Personalizar Punto Interactivo</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">{t('pointStyle.title')}</DialogTitle>
           <DialogDescription>
-            Elige el estilo que tendrá el punto en el plano.
+            {t('pointStyle.subtitle')}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-1">
@@ -87,17 +89,17 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="icon" className="flex items-center gap-2">
                       <Palette className="w-4 h-4" />
-                      Icono
+                      {t('pointStyle.icon')}
                     </TabsTrigger>
                     <TabsTrigger value="text" className="flex items-center gap-2">
                       <Type className="w-4 h-4" />
-                      Texto
+                      {t('pointStyle.text')}
                     </TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="icon" className="space-y-4 pt-4">
                     <div>
-                      <Label className="text-base font-semibold">Seleccionar Icono</Label>
+                      <Label className="text-base font-semibold">{t('pointStyle.selectIcon')}</Label>
                       <div className="grid grid-cols-6 gap-2 mt-3">
                         {iconList.map(name => {
                           const Icon = iconComponents[name];
@@ -119,23 +121,23 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
                   
                   <TabsContent value="text" className="pt-4">
                     <div>
-                      <Label htmlFor="custom-text" className="text-base font-semibold">Texto personalizado</Label>
+                      <Label htmlFor="custom-text" className="text-base font-semibold">{t('pointStyle.customText')}</Label>
                       <Input
                         id="custom-text"
                         value={customText}
                         onChange={e => setCustomText(e.target.value)}
-                        placeholder="Ej: A1, Sala, 🏠..."
+                        placeholder={t('pointStyle.customTextPlaceholder')}
                         className="mt-2"
                         maxLength={10}
                       />
-                      <p className="text-xs text-slate-500 mt-1">Máximo 10 caracteres</p>
+                      <p className="text-xs text-slate-500 mt-1">{t('pointStyle.maxCharacters')}</p>
                     </div>
                   </TabsContent>
                 </Tabs>
 
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-base font-semibold">Tamaño: {iconSize}px</Label>
+                    <Label className="text-base font-semibold">{t('pointStyle.sizeLabel')} {iconSize}px</Label>
                     <Slider 
                       value={[iconSize]} 
                       onValueChange={([val]) => setIconSize(val)} 
@@ -147,7 +149,7 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
                   </div>
 
                   <div>
-                    <Label className="text-base font-semibold">Rotación: {iconRotation}°</Label>
+                    <Label className="text-base font-semibold">{t('pointStyle.rotationLabel')} {iconRotation}°</Label>
                     <Slider 
                       value={[iconRotation]} 
                       onValueChange={([val]) => setIconRotation(val)} 
@@ -160,7 +162,7 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="icon-color" className="text-base font-semibold">Color Principal</Label>
+                      <Label htmlFor="icon-color" className="text-base font-semibold">{t('pointStyle.mainColor')}</Label>
                       <div className="flex items-center gap-2 mt-2">
                         <Input 
                           id="icon-color" 
@@ -179,7 +181,7 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="bg-color" className="text-base font-semibold">Color de Fondo</Label>
+                      <Label htmlFor="bg-color" className="text-base font-semibold">{t('pointStyle.backgroundColor')}</Label>
                       <div className="flex items-center gap-2 mt-2">
                         <Input 
                           id="bg-color" 
@@ -205,7 +207,7 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
               <div className="flex flex-col">
                 <div className="bg-slate-100 rounded-lg p-8 flex-1 flex items-center justify-center">
                   <div className="text-center space-y-4">
-                    <Label className="text-lg font-semibold">Vista Previa</Label>
+                    <Label className="text-lg font-semibold">{t('pointStyle.preview')}</Label>
                     <div className="bg-white p-8 rounded-lg shadow-inner">
                       <div
                         className="mx-auto flex items-center justify-center shadow-lg border-2 transition-all duration-300"
@@ -236,15 +238,15 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {customText || 'Texto'}
+                            {customText || t('pointStyle.text')}
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="text-sm text-slate-600 space-y-1">
-                      <p><strong>Tipo:</strong> {displayType === 'icon' ? 'Icono' : 'Texto'}</p>
-                      <p><strong>Tamaño:</strong> {iconSize}px</p>
-                      <p><strong>Rotación:</strong> {iconRotation}°</p>
+                      <p><strong>{t('pointStyle.type')}</strong> {displayType === 'icon' ? t('pointStyle.icon') : t('pointStyle.text')}</p>
+                      <p><strong>{t('pointStyle.sizeLabel')}</strong> {iconSize}px</p>
+                      <p><strong>{t('pointStyle.rotationLabel')}</strong> {iconRotation}°</p>
                     </div>
                   </div>
                 </div>
@@ -255,11 +257,11 @@ export default function PointStyleSelector({ isOpen, onClose, onConfirm, initial
         <DialogFooter className="p-6 border-t bg-slate-50/50 rounded-b-lg flex-shrink-0">
           <Button variant="outline" onClick={onClose}>
             <X className="w-4 h-4 mr-2"/>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-700">
             <Check className="w-4 h-4 mr-2"/>
-            Confirmar Estilo
+            {t('pointStyle.confirmStyle')}
           </Button>
         </DialogFooter>
       </DialogContent>

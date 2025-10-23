@@ -320,6 +320,7 @@
   },
   "editorMode": {
     "addMode": "Add Mode:",
-    "clickToAdd": "Click on the floor plan where you want to add a point"
+    "clickToAdd": "Click on the floor plan where you want to add a point",
+    "clickToEdit": "Click on points to edit them • Drag to move them • Shift+Click for multiple selection"
   }
 }

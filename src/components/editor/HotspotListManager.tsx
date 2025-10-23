@@ -18,6 +18,7 @@ import {
   MapPin,
   Eye,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Hotspot {
   id: string;
@@ -54,6 +55,7 @@ export default function HotspotListManager({
   onDuplicate,
   onFocus,
 }: HotspotListManagerProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredHotspots = hotspots.filter((h) =>
@@ -65,9 +67,9 @@ export default function HotspotListManager({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Gestionar Puntos</DialogTitle>
+          <DialogTitle className="text-2xl">{t('hotspotList.manage')}</DialogTitle>
           <DialogDescription>
-            Gestiona todos los hotspots del plano actual
+            {t('hotspotList.manageAll')}
           </DialogDescription>
         </DialogHeader>
 
@@ -76,7 +78,7 @@ export default function HotspotListManager({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar hotspot..."
+              placeholder={t('hotspotList.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -87,11 +89,11 @@ export default function HotspotListManager({
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
               <Badge variant="secondary">
-                Total: {hotspots.length}
+                {t('hotspotList.total')} {hotspots.length}
               </Badge>
               {searchQuery && (
                 <Badge variant="outline">
-                  Filtrados: {filteredHotspots.length}
+                  {t('hotspotList.filtered')} {filteredHotspots.length}
                 </Badge>
               )}
             </div>
@@ -103,8 +105,8 @@ export default function HotspotListManager({
               <Card className="p-8 text-center">
                 <p className="text-muted-foreground">
                   {searchQuery
-                    ? 'No se encontraron hotspots con ese criterio'
-                    : 'No hay hotspots en este plano'}
+                    ? t('hotspotList.notFound')
+                    : t('hotspotList.none')}
                 </p>
               </Card>
             ) : (
@@ -145,7 +147,7 @@ export default function HotspotListManager({
                         size="sm"
                         variant="ghost"
                         onClick={() => onFocus(hotspot)}
-                        title="Centrar en mapa"
+                        title={t('hotspotList.center')}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -153,7 +155,7 @@ export default function HotspotListManager({
                         size="sm"
                         variant="ghost"
                         onClick={() => onEdit(hotspot)}
-                        title="Editar"
+                        title={t('common.edit')}
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
@@ -161,7 +163,7 @@ export default function HotspotListManager({
                         size="sm"
                         variant="ghost"
                         onClick={() => onDuplicate(hotspot)}
-                        title="Duplicar"
+                        title={t('hotspotList.duplicate')}
                       >
                         <Copy className="w-4 h-4" />
                       </Button>
@@ -170,7 +172,7 @@ export default function HotspotListManager({
                         variant="ghost"
                         onClick={() => onDelete(hotspot.id)}
                         className="text-destructive hover:text-destructive"
-                        title="Eliminar"
+                        title={t('common.delete')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

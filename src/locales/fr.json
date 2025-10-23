@@ -320,6 +320,7 @@
   },
   "editorMode": {
     "addMode": "Mode Ajout:",
-    "clickToAdd": "Cliquez sur le plan d'étage où vous souhaitez ajouter un point"
+    "clickToAdd": "Cliquez sur le plan d'étage où vous souhaitez ajouter un point",
+    "clickToEdit": "Cliquez sur les points pour les modifier • Glissez pour les déplacer • Shift+Clic pour sélection multiple"
   }
 }

@@ -320,6 +320,7 @@
   },
   "editorMode": {
     "addMode": "Modo Agregar:",
-    "clickToAdd": "Haz click en el plano donde quieres agregar un punto"
+    "clickToAdd": "Haz click en el plano donde quieres agregar un punto",
+    "clickToEdit": "Haz clic en los puntos para editarlos • Arrastra para moverlos • Shift+Click para selección múltiple"
   }
 }

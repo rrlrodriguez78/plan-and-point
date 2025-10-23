@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Check, RotateCw, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ImageEditorProps {
   imageFile: File;
@@ -11,6 +12,7 @@ interface ImageEditorProps {
 }
 
 export default function ImageEditor({ imageFile, onSave, onCancel }: ImageEditorProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
@@ -102,7 +104,7 @@ export default function ImageEditor({ imageFile, onSave, onCancel }: ImageEditor
 
       <div className="space-y-4 p-4 bg-white rounded-lg border">
         <div>
-          <Label>Brillo: {brightness}%</Label>
+          <Label>{t('imageEditor.brightness')} {brightness}%</Label>
           <Slider
             value={[brightness]}
             onValueChange={([val]) => setBrightness(val)}
@@ -113,7 +115,7 @@ export default function ImageEditor({ imageFile, onSave, onCancel }: ImageEditor
         </div>
 
         <div>
-          <Label>Contraste: {contrast}%</Label>
+          <Label>{t('imageEditor.contrast')} {contrast}%</Label>
           <Slider
             value={[contrast]}
             onValueChange={([val]) => setContrast(val)}
@@ -124,7 +126,7 @@ export default function ImageEditor({ imageFile, onSave, onCancel }: ImageEditor
         </div>
 
         <div>
-          <Label>Saturación: {saturation}%</Label>
+          <Label>{t('imageEditor.saturation')} {saturation}%</Label>
           <Slider
             value={[saturation]}
             onValueChange={([val]) => setSaturation(val)}
@@ -135,7 +137,7 @@ export default function ImageEditor({ imageFile, onSave, onCancel }: ImageEditor
         </div>
 
         <div>
-          <Label>Rotación: {rotation}°</Label>
+          <Label>{t('imageEditor.rotation')} {rotation}°</Label>
           <Slider
             value={[rotation]}
             onValueChange={([val]) => setRotation(val)}
@@ -148,18 +150,18 @@ export default function ImageEditor({ imageFile, onSave, onCancel }: ImageEditor
         <div className="flex gap-2 pt-4">
           <Button variant="outline" onClick={onCancel} className="flex-1">
             <X className="w-4 h-4 mr-2" />
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={isProcessing} className="flex-1">
             {isProcessing ? (
               <>
                 <RotateCw className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
+                {t('common.saving')}
               </>
             ) : (
               <>
                 <Check className="w-4 h-4 mr-2" />
-                Guardar
+                {t('common.save')}
               </>
             )}
           </Button>

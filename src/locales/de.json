@@ -320,6 +320,7 @@
   },
   "editorMode": {
     "addMode": "Hinzufügen-Modus:",
-    "clickToAdd": "Klicken Sie auf den Grundriss, wo Sie einen Punkt hinzufügen möchten"
+    "clickToAdd": "Klicken Sie auf den Grundriss, wo Sie einen Punkt hinzufügen möchten",
+    "clickToEdit": "Klicken Sie auf Punkte, um sie zu bearbeiten • Ziehen, um sie zu verschieben • Shift+Klick für Mehrfachauswahl"
   }
 }

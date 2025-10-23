@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { convertContainerToImageCoordinates, convertImageToContainerPosition } from '@/components/shared/ImageCoordinateCalculator';
 import * as LucideIcons from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Hotspot {
   id: string;
@@ -35,6 +36,7 @@ export default function HotspotEditor({
   onCanvasClick,
   readOnly = false,
 }: HotspotEditorProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -234,11 +236,11 @@ export default function HotspotEditor({
       <p className="text-xs text-muted-foreground mt-3 text-center">
         {readOnly ? (
           <>
-            <span className="font-semibold">Modo Vista:</span> Haz clic en los puntos para editarlos • Arrastra para moverlos • Shift+Click para selección múltiple
+            <span className="font-semibold">{t('editor.activeMode')}:</span> {t('editorMode.clickToEdit')}
           </>
         ) : (
           <>
-            <span className="font-semibold text-primary">Modo Agregar:</span> Haz click en el plano donde quieres agregar un punto
+            <span className="font-semibold text-primary">{t('editorMode.addMode')}</span> {t('editorMode.clickToAdd')}
           </>
         )}
       </p>
