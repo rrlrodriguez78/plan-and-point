@@ -623,7 +623,7 @@ export default function PanoramaViewer({
                 )}
 
                 {/* Dropdown de Fechas */}
-                {availableDates.length > 1 && (
+                {availableDates.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
