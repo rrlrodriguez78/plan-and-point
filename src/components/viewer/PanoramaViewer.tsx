@@ -393,10 +393,18 @@ export default function PanoramaViewer({
       ? hotspotsWithPhotosInSelectedDate 
       : allHotspotsOnFloor;
     const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentIndex > 0) {
-      return hotspotList[currentIndex - 1].title;
-    }
-    return null;
+    
+    console.log('🔍 PrevLabel Debug:', {
+      activePhotoId: activePhoto.hotspot_id,
+      hotspotListLength: hotspotList.length,
+      hotspotListIds: hotspotList.map(h => h.id),
+      currentIndex,
+      hasPrev: currentIndex > 0
+    });
+    
+    // Si no encontramos el hotspot o estamos en el primero, no hay anterior
+    if (currentIndex <= 0) return null;
+    return hotspotList[currentIndex - 1].title;
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const nextLabel = useMemo(() => {
@@ -405,10 +413,18 @@ export default function PanoramaViewer({
       ? hotspotsWithPhotosInSelectedDate 
       : allHotspotsOnFloor;
     const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentIndex < hotspotList.length - 1) {
-      return hotspotList[currentIndex + 1].title;
-    }
-    return null;
+    
+    console.log('🔍 NextLabel Debug:', {
+      activePhotoId: activePhoto.hotspot_id,
+      hotspotListLength: hotspotList.length,
+      hotspotListIds: hotspotList.map(h => h.id),
+      currentIndex,
+      hasNext: currentIndex >= 0 && currentIndex < hotspotList.length - 1
+    });
+    
+    // Si no encontramos el hotspot o estamos en el último, no hay siguiente
+    if (currentIndex === -1 || currentIndex >= hotspotList.length - 1) return null;
+    return hotspotList[currentIndex + 1].title;
   }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const resetView = () => {
