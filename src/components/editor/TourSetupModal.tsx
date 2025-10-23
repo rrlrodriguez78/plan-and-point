@@ -1,0 +1,528 @@
+import React, { useState, useRef } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, RotateCw, ImageIcon, Home, Camera, X, Sparkles, ArrowRight, Check, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import ImageEditor from "./ImageEditor";
+import { supabase } from '@/integrations/supabase/client';
+
+const ProgressBar = ({ current, total }: { current: number; total: number }) => {
+  const percentage = (current / total) * 100;
+  return (
+    <div className="w-full bg-slate-200 rounded-full h-3 mb-6">
+      <div
+        className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500 shadow-sm"
+        style={{ width: `${percentage}%` }}
+      ></div>
+      <div className="flex justify-between mt-2 text-xs text-slate-500">
+        <span>Paso {current} de {total}</span>
+        <span>{Math.round(percentage)}% completado</span>
+      </div>
+    </div>
+  );
+};
+
+interface TourSetupModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (tourData: any) => void;
+  isSaving: boolean;
+}
+
+export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }: TourSetupModalProps) {
+  const [tourData, setTourData] = useState({
+    title: '',
+    description: '',
+    thumbnail_url: '',
+  });
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<any>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3;
+  const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
+  const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
+  const [showCoverSizeDialog, setShowCoverSizeDialog] = useState(false);
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const validateCurrentStep = () => {
+    let isValid = true;
+    const newErrors: Record<string, string> = {};
+
+    switch(currentStep) {
+      case 1:
+        if (!tourData.title.trim()) {
+          isValid = false;
+          newErrors.title = "El título del tour es requerido";
+        }
+        break;
+      case 2:
+        if (!tourData.description.trim()) {
+          isValid = false;
+          newErrors.description = "La descripción del tour es requerida";
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setTourData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined as any }));
+    }
+  };
+
+  const handleNextStep = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep(prev => prev - 1);
+    setErrors({});
+    setServerError(null);
+  };
+
+  const uploadFileWithRetry = async (file: File, maxRetries = 3) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('tour-images')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('tour-images')
+          .getPublicUrl(fileName);
+
+        return publicUrl;
+      } catch (error) {
+        console.error(`Intento ${attempt} falló:`, error);
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  };
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setErrors(prev => ({ ...prev, thumbnail_url: undefined as any }));
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({ ...prev, thumbnail_url: 'Por favor selecciona un archivo de imagen válido.' }));
+      e.target.value = '';
+      return;
+    }
+
+    const maxSizeInMB = 5;
+    const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
+    
+    if (file.size > maxSizeInBytes) {
+      setPendingCoverFile(file);
+      setShowCoverSizeDialog(true);
+      e.target.value = '';
+      return;
+    }
+
+    setErrors(prev => ({ ...prev, thumbnail_url: undefined as any }));
+    setServerError(null);
+    setSelectedThumbnailFile(file);
+    setIsEditingThumbnail(true);
+    e.target.value = '';
+  };
+
+  const handleThumbnailEditorSave = async (editedFile: File) => {
+    setIsUploadingCover(true);
+    setIsEditingThumbnail(false);
+    setSelectedThumbnailFile(null);
+    try {
+      let fileToUpload = editedFile;
+      if (editedFile.size > 2 * 1024 * 1024) {
+        fileToUpload = await compressImageForUpload(editedFile);
+      }
+
+      const file_url = await uploadFileWithRetry(fileToUpload);
+      setTourData(prev => ({ ...prev, thumbnail_url: file_url || '' }));
+    } catch (err) {
+      console.error("Error uploading edited thumbnail:", err);
+      setErrors(prev => ({ ...prev, thumbnail_url: 'Error al subir la imagen' }));
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
+  const compressImageForUpload = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        const maxDimension = 1200;
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleFinalConfirm = () => {
+    if (tourData.title.trim() && tourData.description.trim()) {
+      onConfirm(tourData);
+    }
+  };
+
+  const resetModal = () => {
+    setTourData({ title: '', description: '', thumbnail_url: '' });
+    setCurrentStep(1);
+    setErrors({});
+    setServerError(null);
+    setIsEditingThumbnail(false);
+    setSelectedThumbnailFile(null);
+    setShowCoverSizeDialog(false);
+    setPendingCoverFile(null);
+  };
+
+  const handleCloseModal = () => {
+    resetModal();
+    onClose();
+  };
+
+  const handleCoverSizeReductionConfirm = async () => {
+    setShowCoverSizeDialog(false);
+    if (pendingCoverFile) {
+      const compressedFile = await compressImageForUpload(pendingCoverFile);
+      setSelectedThumbnailFile(compressedFile);
+      setIsEditingThumbnail(true);
+      setPendingCoverFile(null);
+    }
+  };
+
+  const handleCoverSizeReductionCancel = () => {
+    setShowCoverSizeDialog(false);
+    setPendingCoverFile(null);
+    setErrors(prev => ({ ...prev, thumbnail_url: 'La imagen seleccionada es demasiado grande.' }));
+  };
+
+  if (!isOpen && !isEditingThumbnail && !showCoverSizeDialog) return null;
+
+  return (
+    <>
+      <input
+        type="file"
+        ref={coverInputRef}
+        onChange={handleCoverFileChange}
+        className="hidden"
+        accept="image/png, image/jpeg, image/webp"
+      />
+
+      {isEditingThumbnail && selectedThumbnailFile && (
+        <Dialog open={true} onOpenChange={() => {
+          setIsEditingThumbnail(false);
+          setSelectedThumbnailFile(null);
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-y-auto">
+            <DialogHeader className="flex-shrink-0">
+              <DialogTitle>Editar Imagen de Portada</DialogTitle>
+              <DialogDescription>Ajusta tu imagen antes de subirla</DialogDescription>
+            </DialogHeader>
+            <div className="h-[600px] w-full flex-shrink-0">
+              <ImageEditor
+                imageFile={selectedThumbnailFile}
+                onSave={handleThumbnailEditorSave}
+                onCancel={() => {
+                  setIsEditingThumbnail(false);
+                  setSelectedThumbnailFile(null);
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <Dialog open={isOpen && !isEditingThumbnail && !showCoverSizeDialog} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-2xl sm:max-w-4xl h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                <Home className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Crear Nuevo Tour Virtual
+                </DialogTitle>
+                <DialogDescription className="text-sm sm:text-base mt-1">
+                  Te guiaré paso a paso para configurar tu tour
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1">
+            <div className="p-6 pt-0">
+              <ProgressBar current={currentStep} total={totalSteps} />
+
+              {serverError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                    <h4 className="font-semibold text-amber-800">Problema de Conexión</h4>
+                  </div>
+                  <p className="text-amber-700 mb-3">{serverError.message}</p>
+                </motion.div>
+              )}
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStep}
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4 sm:space-y-6 min-h-[250px] sm:min-h-[300px]"
+                >
+                  {currentStep === 1 && (
+                    <div className="space-y-4 text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                        <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Empecemos!</h3>
+                        <p className="text-base sm:text-lg font-semibold text-blue-600 mb-4">1. ¿Cuál es el título de tu tour? *</p>
+                        <p className="text-sm text-slate-500 mb-6">Dale un nombre atractivo que describa el espacio</p>
+                      </div>
+                      <div className="max-w-md mx-auto">
+                        <Input
+                          value={tourData.title}
+                          onChange={(e) => handleInputChange('title', e.target.value)}
+                          placeholder="Ej: Casa Moderna en la Playa, Apartamento Céntrico..."
+                          className={`text-base sm:text-lg h-10 sm:h-12 text-center ${errors.title ? 'border-red-500' : 'border-blue-300 focus:border-blue-500'}`}
+                        />
+                        {errors.title && <p className="text-red-500 text-sm mt-2">{errors.title}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 2 && (
+                    <div className="space-y-4 text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                        <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Perfecto!</h3>
+                        <p className="text-base sm:text-lg font-semibold text-green-600 mb-4">2. Describe tu tour *</p>
+                        <p className="text-sm text-slate-500 mb-6">Cuéntanos qué hace especial este espacio</p>
+                      </div>
+                      <div className="max-w-md mx-auto">
+                        <Textarea
+                          value={tourData.description}
+                          onChange={(e) => handleInputChange('description', e.target.value)}
+                          placeholder="Ej: Un hermoso espacio de 120m² con vistas espectaculares..."
+                          rows={4}
+                          className={`text-center ${errors.description ? 'border-red-500' : 'border-green-300 focus:border-green-500'}`}
+                        />
+                        {errors.description && <p className="text-red-500 text-sm mt-2">{errors.description}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 3 && (
+                    <div className="space-y-4 text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                        <Camera className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Casi terminamos!</h3>
+                        <p className="text-base sm:text-lg font-semibold text-purple-600 mb-4">3. Imagen de portada (Opcional)</p>
+                        <p className="text-sm text-slate-500 mb-6">Una imagen atractiva que represente tu tour</p>
+                      </div>
+
+                      {tourData.thumbnail_url ? (
+                        <div className="max-w-sm mx-auto">
+                          <img
+                            src={tourData.thumbnail_url}
+                            alt="Portada"
+                            className="w-full h-32 sm:h-40 object-cover rounded-lg border-2 border-purple-300 shadow-lg"
+                          />
+                          <p className="text-sm text-green-600 font-semibold mt-2">¡Imagen subida correctamente! ✓</p>
+                          <Button
+                            variant="outline"
+                            onClick={() => coverInputRef.current?.click()}
+                            disabled={isUploadingCover}
+                            className="mt-3"
+                          >
+                            Cambiar imagen
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => coverInputRef.current?.click()}
+                          disabled={isUploadingCover}
+                          variant="outline"
+                          className="w-48 sm:w-64 h-16 sm:h-20 mx-auto border-dashed border-2 border-purple-300"
+                        >
+                          {isUploadingCover ? (
+                            <>
+                              <RotateCw className="w-5 h-5 sm:w-6 sm:h-6 mr-2 animate-spin" />
+                              Subiendo...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                              Haz clic para subir imagen
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      {errors.thumbnail_url && <p className="text-red-500 text-sm mt-2">{errors.thumbnail_url}</p>}
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="p-6 pt-4 border-t bg-gradient-to-r from-slate-50 to-blue-50 flex-shrink-0">
+            <div className="flex justify-between w-full gap-2">
+              <Button
+                variant="outline"
+                onClick={currentStep === 1 ? handleCloseModal : handlePrevStep}
+                disabled={isSaving}
+                className="px-3 sm:px-4 text-sm sm:text-base"
+              >
+                {currentStep === 1 ? 'Cancelar' : 'Anterior'}
+              </Button>
+
+              <div className="flex gap-2 sm:gap-3">
+                {currentStep < totalSteps && (
+                  <Button
+                    onClick={handleNextStep}
+                    disabled={
+                      (currentStep === 1 && !tourData.title.trim()) ||
+                      (currentStep === 2 && !tourData.description.trim()) ||
+                      isUploadingCover ||
+                      !!serverError
+                    }
+                    className="bg-gradient-to-r from-blue-500 to-purple-600"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-1 sm:mr-2" />
+                    Siguiente
+                  </Button>
+                )}
+
+                {currentStep === totalSteps && (
+                  <Button
+                    onClick={handleFinalConfirm}
+                    disabled={isSaving || !tourData.title.trim() || !tourData.description.trim()}
+                    className="bg-gradient-to-r from-green-500 to-blue-500"
+                  >
+                    {isSaving ? (
+                      <>
+                        <RotateCw className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
+                        Creando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-1 sm:mr-2" />
+                        ¡Crear Mi Tour!
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCoverSizeDialog} onOpenChange={handleCoverSizeReductionCancel}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Imagen muy pesada
+            </DialogTitle>
+            <DialogDescription>
+              {pendingCoverFile && (
+                <>
+                  La imagen pesa <strong>{(pendingCoverFile.size / 1024 / 1024).toFixed(1)}MB</strong>.
+                  ¿Quieres optimizarla?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={handleCoverSizeReductionCancel}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCoverSizeReductionConfirm} className="bg-green-600">
+              <Check className="w-4 h-4 mr-2" />
+              Sí, optimizar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
