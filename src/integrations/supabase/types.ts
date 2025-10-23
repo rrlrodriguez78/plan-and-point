@@ -139,6 +139,7 @@ export type Database = {
       }
       panorama_photos: {
         Row: {
+          capture_date: string | null
           created_at: string | null
           description: string | null
           display_order: number | null
@@ -147,6 +148,7 @@ export type Database = {
           photo_url: string
         }
         Insert: {
+          capture_date?: string | null
           created_at?: string | null
           description?: string | null
           display_order?: number | null
@@ -155,6 +157,7 @@ export type Database = {
           photo_url: string
         }
         Update: {
+          capture_date?: string | null
           created_at?: string | null
           description?: string | null
           display_order?: number | null
