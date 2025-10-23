@@ -242,8 +242,7 @@ export default function FloorPlanManager({
             name: '', 
             image_url: '', 
             width: 1920,
-            height: 1080,
-            capture_date: new Date().toISOString().split('T')[0]
+            height: 1080
           }); 
         }}
         disabled={!tour.id}
@@ -401,43 +400,6 @@ export default function FloorPlanManager({
                   </Select>
                 )}
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="capture-date">{t('floorPlan.captureDate')}</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editingFloorPlan.capture_date ? (
-                        format(new Date(editingFloorPlan.capture_date), 'PPP', { locale: es })
-                      ) : (
-                        <span>{t('floorPlan.selectDate')}</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editingFloorPlan.capture_date ? new Date(editingFloorPlan.capture_date) : undefined}
-                      onSelect={(date) => {
-                        setEditingFloorPlan({
-                          ...editingFloorPlan,
-                          capture_date: date ? format(date, 'yyyy-MM-dd') : undefined
-                        });
-                      }}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                      disabled={(date) => date > new Date()}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <p className="text-xs text-slate-500 mt-1">
-                  {t('floorPlan.captureDateDesc')}
-                </p>
               </div>
 
               <div>
