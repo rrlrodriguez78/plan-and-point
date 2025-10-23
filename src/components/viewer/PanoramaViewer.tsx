@@ -113,6 +113,17 @@ export default function PanoramaViewer({
     return photos.filter(p => p.capture_date === selectedDate);
   }, [photos, selectedDate]);
 
+  // Hotspots con fotos en la fecha seleccionada (ordenados por creación)
+  const hotspotsWithPhotosInSelectedDate = useMemo(() => {
+    if (!selectedDate) return [];
+    const hotspotIds = new Set(
+      photos
+        .filter(p => p.capture_date === selectedDate)
+        .map(p => p.hotspot_id)
+    );
+    return allHotspotsOnFloor.filter(h => hotspotIds.has(h.id));
+  }, [selectedDate, photos, allHotspotsOnFloor]);
+
   // Determinar modo de navegación
   const navigationMode = selectedDate ? 'hotspots' : 'dates';
 
@@ -359,21 +370,27 @@ export default function PanoramaViewer({
   // Navegación por HOTSPOTS (con fecha seleccionada)
   const handleNextHotspot = useCallback(() => {
     if (!activePhoto) return;
-    const currentHotspotIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
-    if (currentHotspotIndex < allHotspotsOnFloor.length - 1) {
-      const nextHotspot = allHotspotsOnFloor[currentHotspotIndex + 1];
+    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
+      ? hotspotsWithPhotosInSelectedDate 
+      : allHotspotsOnFloor;
+    const currentHotspotIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentHotspotIndex < hotspotList.length - 1) {
+      const nextHotspot = hotspotList[currentHotspotIndex + 1];
       onNavigate(nextHotspot);
     }
-  }, [activePhoto, allHotspotsOnFloor, onNavigate]);
+  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
 
   const handlePrevHotspot = useCallback(() => {
     if (!activePhoto) return;
-    const currentHotspotIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
+    const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
+      ? hotspotsWithPhotosInSelectedDate 
+      : allHotspotsOnFloor;
+    const currentHotspotIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
     if (currentHotspotIndex > 0) {
-      const prevHotspot = allHotspotsOnFloor[currentHotspotIndex - 1];
+      const prevHotspot = hotspotList[currentHotspotIndex - 1];
       onNavigate(prevHotspot);
     }
-  }, [activePhoto, allHotspotsOnFloor, onNavigate]);
+  }, [activePhoto, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor, onNavigate]);
 
   // Función principal de navegación (usa modo dual)
   const handleNext = useCallback(() => {
@@ -414,13 +431,16 @@ export default function PanoramaViewer({
       }
     } else {
       if (!activePhoto) return null;
-      const currentIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
+      const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
+        ? hotspotsWithPhotosInSelectedDate 
+        : allHotspotsOnFloor;
+      const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
       if (currentIndex > 0) {
-        return allHotspotsOnFloor[currentIndex - 1].title;
+        return hotspotList[currentIndex - 1].title;
       }
     }
     return null;
-  }, [navigationMode, activePhoto, uniqueDates, allHotspotsOnFloor]);
+  }, [navigationMode, activePhoto, uniqueDates, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const nextLabel = useMemo(() => {
     if (navigationMode === 'dates') {
@@ -431,13 +451,16 @@ export default function PanoramaViewer({
       }
     } else {
       if (!activePhoto) return null;
-      const currentIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
-      if (currentIndex < allHotspotsOnFloor.length - 1) {
-        return allHotspotsOnFloor[currentIndex + 1].title;
+      const hotspotList = hotspotsWithPhotosInSelectedDate.length > 0 
+        ? hotspotsWithPhotosInSelectedDate 
+        : allHotspotsOnFloor;
+      const currentIndex = hotspotList.findIndex(h => h.id === activePhoto.hotspot_id);
+      if (currentIndex < hotspotList.length - 1) {
+        return hotspotList[currentIndex + 1].title;
       }
     }
     return null;
-  }, [navigationMode, activePhoto, uniqueDates, allHotspotsOnFloor]);
+  }, [navigationMode, activePhoto, uniqueDates, hotspotsWithPhotosInSelectedDate, allHotspotsOnFloor]);
 
   const resetView = () => {
     lon.current = 0;
