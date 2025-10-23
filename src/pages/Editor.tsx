@@ -199,9 +199,22 @@ const Editor = () => {
     
     console.log('🎯 Creando hotspot en:', { x, y });
     
+    // Get suggested title based on last hotspot
+    const lastTitle = localStorage.getItem('lastHotspotTitle');
+    const suggestedTitle = lastTitle ? (() => {
+      const pattern = /^(.*?)(\d+)$/;
+      const match = lastTitle.match(pattern);
+      if (match) {
+        const prefix = match[1];
+        const lastNumber = parseInt(match[2], 10);
+        return `${prefix}${lastNumber + 1}`;
+      }
+      return lastTitle;
+    })() : '';
+    
     setEditingHotspot({
       id: '',
-      title: '',
+      title: suggestedTitle,
       description: '',
       x_position: x,
       y_position: y,
@@ -279,6 +292,12 @@ const Editor = () => {
         if (error) throw error;
 
         setHotspots((prev) => [...prev, newHotspot]);
+        
+        // Save the title for next suggestion
+        if (data.title && data.title.trim()) {
+          localStorage.setItem('lastHotspotTitle', data.title.trim());
+        }
+        
         toast.success('Hotspot creado');
       }
     } catch (error) {
