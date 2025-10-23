@@ -247,7 +247,15 @@
     "errorDeleting": "Erreur lors de la suppression de la photo 360°",
     "errorUpdatingDate": "Erreur lors de la mise à jour de la date",
     "onlyImages": "Veuillez télécharger uniquement des images",
-    "imageTooLarge": "L'image doit être inférieure à 10 Mo"
+    "imageTooLarge": "L'image doit être inférieure à 10 Mo",
+    "creatingPreview": "Création de l'aperçu...",
+    "previewReady": "Aperçu prêt",
+    "optimizing": "Optimisation de l'image...",
+    "optimized": "Image optimisée",
+    "uploadingFullQuality": "Téléchargement en qualité complète...",
+    "uploading": "Téléchargement vers le stockage...",
+    "finalizing": "Finalisation...",
+    "complete": "Téléchargement terminé!"
   },
   "floorPlan": {
     "addNew": "Ajouter Nouvel Étage",

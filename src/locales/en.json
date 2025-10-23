@@ -250,7 +250,15 @@
     "errorDeleting": "Error deleting 360° photo",
     "errorUpdatingDate": "Error updating date",
     "onlyImages": "Please upload images only",
-    "imageTooLarge": "Image must be less than 10MB"
+    "imageTooLarge": "Image must be less than 10MB",
+    "creatingPreview": "Creating preview...",
+    "previewReady": "Preview ready",
+    "optimizing": "Optimizing image...",
+    "optimized": "Image optimized",
+    "uploadingFullQuality": "Uploading full quality...",
+    "uploading": "Uploading to storage...",
+    "finalizing": "Finalizing...",
+    "complete": "Upload complete!"
   },
   "floorPlan": {
     "addNew": "Add New Floor",

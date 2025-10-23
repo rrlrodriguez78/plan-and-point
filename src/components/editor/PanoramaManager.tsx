@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress';
 import { Upload, Trash2, GripVertical, Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -43,6 +44,10 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     originalSize: number;
     finalSize: number;
     reduction: number;
+  } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    progress: number;
+    status: string;
   } | null>(null);
 
   useEffect(() => {
@@ -152,6 +157,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
     const originalSize = file.size;
     setUploading(true);
+    setUploadProgress({ progress: 10, status: t('panorama.creatingPreview') });
     
     // Quick preview for immediate feedback
     const previewUrl = await createThumbnail(file);
@@ -166,10 +172,12 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       capture_date: format(uploadDate, 'yyyy-MM-dd'),
     }]);
     
+    setUploadProgress({ progress: 30, status: t('panorama.previewReady') });
+    
     try {
       // Optimize if file is larger than 8MB
       if (file.size > 8 * 1024 * 1024) {
-        toast.info(t('panorama.optimizing'));
+        setUploadProgress({ progress: 40, status: t('panorama.optimizing') });
         file = await optimizeHeavy360(file);
         
         // Calculate and display compression stats
@@ -180,11 +188,14 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
           reduction
         };
         setCompressionStats(stats);
+        setUploadProgress({ progress: 65, status: t('panorama.optimized') });
         
         toast.success(
           `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(file.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
           { duration: 5000 }
         );
+      } else {
+        setUploadProgress({ progress: 50, status: t('panorama.uploadingFullQuality') });
       }
 
       // Validate file size after optimization (max 10MB)
@@ -196,6 +207,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       }
 
       // Upload to Supabase Storage
+      setUploadProgress({ progress: 70, status: t('panorama.uploading') });
       const fileExt = heavyImageConfig.format === 'jpeg' ? 'jpg' : heavyImageConfig.format;
       const fileName = `${hotspotId}/${Date.now()}.${fileExt}`;
       
@@ -204,6 +216,8 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
+      
+      setUploadProgress({ progress: 90, status: t('panorama.finalizing') });
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
@@ -222,6 +236,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
       if (dbError) throw dbError;
 
+      setUploadProgress({ progress: 100, status: t('panorama.complete') });
       toast.success(t('panorama.uploadSuccess'));
       setUploadDate(new Date()); // Reset to today
       
@@ -237,6 +252,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       setPhotos((prev) => prev.filter(p => p.id !== tempId));
     } finally {
       setUploading(false);
+      setUploadProgress(null);
       // Reset input
       e.target.value = '';
     }
@@ -366,6 +382,17 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
             />
           </label>
         </div>
+
+        {/* Upload Progress */}
+        {uploadProgress && (
+          <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{uploadProgress.status}</span>
+              <span className="text-muted-foreground">{Math.round(uploadProgress.progress)}%</span>
+            </div>
+            <Progress value={uploadProgress.progress} className="h-2" />
+          </div>
+        )}
       </div>
 
       {photos.length > 0 && (

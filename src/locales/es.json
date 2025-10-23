@@ -250,7 +250,15 @@
     "errorDeleting": "Error al eliminar foto 360°",
     "errorUpdatingDate": "Error al actualizar fecha",
     "onlyImages": "Por favor sube solo imágenes",
-    "imageTooLarge": "La imagen debe ser menor a 10MB"
+    "imageTooLarge": "La imagen debe ser menor a 10MB",
+    "creatingPreview": "Creando vista previa...",
+    "previewReady": "Vista previa lista",
+    "optimizing": "Optimizando imagen...",
+    "optimized": "Imagen optimizada",
+    "uploadingFullQuality": "Subiendo calidad completa...",
+    "uploading": "Subiendo al almacenamiento...",
+    "finalizing": "Finalizando...",
+    "complete": "¡Subida completa!"
   },
   "floorPlan": {
     "addNew": "Añadir Nuevo Piso",

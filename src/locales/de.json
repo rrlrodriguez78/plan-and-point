@@ -247,7 +247,15 @@
     "errorDeleting": "Fehler beim Löschen des 360°-Fotos",
     "errorUpdatingDate": "Fehler beim Aktualisieren des Datums",
     "onlyImages": "Bitte nur Bilder hochladen",
-    "imageTooLarge": "Bild muss kleiner als 10 MB sein"
+    "imageTooLarge": "Bild muss kleiner als 10 MB sein",
+    "creatingPreview": "Vorschau wird erstellt...",
+    "previewReady": "Vorschau bereit",
+    "optimizing": "Bild wird optimiert...",
+    "optimized": "Bild optimiert",
+    "uploadingFullQuality": "Hochladen in voller Qualität...",
+    "uploading": "Hochladen zum Speicher...",
+    "finalizing": "Abschließen...",
+    "complete": "Upload abgeschlossen!"
   },
   "floorPlan": {
     "addNew": "Neue Etage Hinzufügen",
