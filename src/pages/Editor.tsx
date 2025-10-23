@@ -1,15 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, Save, Eye, Plus, Globe, Lock } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  ArrowLeft, 
+  Save, 
+  Eye, 
+  Plus, 
+  Globe, 
+  Lock, 
+  Copy, 
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import FloorPlanManager from '@/components/editor/FloorPlanManager';
+import HotspotEditor from '@/components/editor/HotspotEditor';
+import HotspotModal from '@/components/editor/HotspotModal';
 
 interface Tour {
   id: string;
@@ -23,27 +36,50 @@ interface FloorPlan {
   image_url: string;
   width: number;
   height: number;
+  tour_id: string;
+  created_at: string;
 }
 
 interface Hotspot {
   id: string;
   title: string;
+  description?: string;
   x_position: number;
   y_position: number;
   media_url?: string;
+  media_type?: string;
+  floor_plan_id: string;
+  style?: {
+    icon: string;
+    color: string;
+    size: number;
+  };
 }
 
 const Editor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  
+  // Tour and floor plans
   const [tour, setTour] = useState<Tour | null>(null);
-  const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
+  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
+  const [selectedFloorPlan, setSelectedFloorPlan] = useState<FloorPlan | null>(null);
+  
+  // Hotspots
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
+  const [selectedHotspotIds, setSelectedHotspotIds] = useState<string[]>([]);
+  const [clipboard, setClipboard] = useState<Hotspot[]>([]);
+  
+  // UI state
   const [loading, setLoading] = useState(true);
-  const [uploadingPlan, setUploadingPlan] = useState(false);
-  const [newHotspot, setNewHotspot] = useState({ title: '', x: 50, y: 50 });
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [hotspotModalOpen, setHotspotModalOpen] = useState(false);
+  const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
+  const [floorPlansOpen, setFloorPlansOpen] = useState(true);
+  const [hotspotsOpen, setHotspotsOpen] = useState(true);
+  
+  // Auto-save
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -56,6 +92,12 @@ const Editor = () => {
       loadTourData();
     }
   }, [user, id]);
+
+  useEffect(() => {
+    if (selectedFloorPlan) {
+      loadHotspots(selectedFloorPlan.id);
+    }
+  }, [selectedFloorPlan]);
 
   const loadTourData = async () => {
     try {
@@ -72,102 +114,34 @@ const Editor = () => {
           .from('floor_plans')
           .select('*')
           .eq('tour_id', id)
-          .single();
+          .order('created_at', { ascending: true });
 
-        if (planData) {
-          setFloorPlan(planData);
-
-          const { data: hotspotsData } = await supabase
-            .from('hotspots')
-            .select('*')
-            .eq('floor_plan_id', planData.id);
-
-          if (hotspotsData) {
-            setHotspots(hotspotsData);
-          }
+        if (planData && planData.length > 0) {
+          setFloorPlans(planData);
+          setSelectedFloorPlan(planData[0]);
         }
       }
     } catch (error) {
       console.error('Error loading tour:', error);
+      toast.error('Error al cargar tour');
     } finally {
       setLoading(false);
     }
   };
 
-  const uploadFloorPlan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0] || !tour) return;
-
-    setUploadingPlan(true);
-    const file = e.target.files[0];
-
+  const loadHotspots = async (floorPlanId: string) => {
     try {
-      const fileName = `${tour.id}/${Date.now()}_${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tour-images')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('tour-images')
-        .getPublicUrl(fileName);
-
-      // Get image dimensions
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      await new Promise((resolve) => { img.onload = resolve; });
-
-      const { data: planData, error: planError } = await supabase
-        .from('floor_plans')
-        .insert({
-          tour_id: tour.id,
-          name: 'Plano Principal',
-          image_url: publicUrl,
-          width: img.width,
-          height: img.height,
-        })
-        .select()
-        .single();
-
-      if (planError) throw planError;
-
-      setFloorPlan(planData);
-      toast.success('Plano subido exitosamente');
-    } catch (error) {
-      console.error('Error uploading floor plan:', error);
-      toast.error('Error al subir plano');
-    } finally {
-      setUploadingPlan(false);
-    }
-  };
-
-  const addHotspot = async () => {
-    if (!floorPlan || !newHotspot.title.trim()) {
-      toast.error('El título es requerido');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('hotspots')
-        .insert({
-          floor_plan_id: floorPlan.id,
-          title: newHotspot.title,
-          x_position: newHotspot.x,
-          y_position: newHotspot.y,
-        })
-        .select()
-        .single();
+        .select('*')
+        .eq('floor_plan_id', floorPlanId)
+        .order('created_at', { ascending: true });
 
-      if (error) throw error;
-
-      setHotspots([...hotspots, data]);
-      setDialogOpen(false);
-      setNewHotspot({ title: '', x: 50, y: 50 });
-      toast.success('Hotspot agregado');
+      if (data) {
+        setHotspots(data);
+      }
     } catch (error) {
-      console.error('Error adding hotspot:', error);
-      toast.error('Error al agregar hotspot');
+      console.error('Error loading hotspots:', error);
     }
   };
 
@@ -190,6 +164,158 @@ const Editor = () => {
     }
   };
 
+  const handleHotspotClick = (hotspotId: string, event: React.MouseEvent) => {
+    if (event.shiftKey) {
+      // Multi-select
+      setSelectedHotspotIds((prev) =>
+        prev.includes(hotspotId)
+          ? prev.filter((id) => id !== hotspotId)
+          : [...prev, hotspotId]
+      );
+    } else {
+      // Single select and open modal
+      const hotspot = hotspots.find((h) => h.id === hotspotId);
+      if (hotspot) {
+        setEditingHotspot(hotspot);
+        setHotspotModalOpen(true);
+      }
+    }
+  };
+
+  const handleCanvasClick = (x: number, y: number) => {
+    setEditingHotspot({
+      id: '',
+      title: '',
+      x_position: x,
+      y_position: y,
+      floor_plan_id: selectedFloorPlan?.id || '',
+    });
+    setHotspotModalOpen(true);
+  };
+
+  const handleHotspotDrag = async (hotspotId: string, x: number, y: number) => {
+    // Update locally
+    setHotspots((prev) =>
+      prev.map((h) => (h.id === hotspotId ? { ...h, x_position: x, y_position: y } : h))
+    );
+    
+    // Update in database
+    try {
+      await supabase
+        .from('hotspots')
+        .update({ x_position: x, y_position: y })
+        .eq('id', hotspotId);
+    } catch (error) {
+      console.error('Error updating hotspot position:', error);
+    }
+  };
+
+  const handleSaveHotspot = async (data: Omit<Hotspot, 'floor_plan_id'>) => {
+    if (!selectedFloorPlan) return;
+
+    try {
+      if (data.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('hotspots')
+          .update({
+            title: data.title,
+            description: data.description,
+            x_position: data.x_position,
+            y_position: data.y_position,
+            media_url: data.media_url,
+            media_type: data.media_type,
+          })
+          .eq('id', data.id);
+
+        if (error) throw error;
+
+        setHotspots((prev) =>
+          prev.map((h) => (h.id === data.id ? { ...h, ...data } : h))
+        );
+        toast.success('Hotspot actualizado');
+      } else {
+        // Create new
+        const { data: newHotspot, error } = await supabase
+          .from('hotspots')
+          .insert({
+            floor_plan_id: selectedFloorPlan.id,
+            title: data.title,
+            description: data.description,
+            x_position: data.x_position,
+            y_position: data.y_position,
+            media_url: data.media_url,
+            media_type: data.media_type,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setHotspots((prev) => [...prev, newHotspot]);
+        toast.success('Hotspot creado');
+      }
+    } catch (error) {
+      console.error('Error saving hotspot:', error);
+      throw error;
+    }
+  };
+
+  const handleCopyHotspots = () => {
+    const selected = hotspots.filter((h) => selectedHotspotIds.includes(h.id));
+    setClipboard(selected);
+    toast.success(`${selected.length} hotspot(s) copiado(s)`);
+  };
+
+  const handlePasteHotspots = async () => {
+    if (!selectedFloorPlan || clipboard.length === 0) return;
+
+    try {
+      const newHotspots = clipboard.map((h) => ({
+        floor_plan_id: selectedFloorPlan.id,
+        title: `${h.title} (copia)`,
+        description: h.description,
+        x_position: h.x_position,
+        y_position: h.y_position,
+        media_url: h.media_url,
+        media_type: h.media_type,
+      }));
+
+      const { data, error } = await supabase
+        .from('hotspots')
+        .insert(newHotspots)
+        .select();
+
+      if (error) throw error;
+
+      setHotspots((prev) => [...prev, ...data]);
+      toast.success(`${data.length} hotspot(s) pegado(s)`);
+    } catch (error) {
+      console.error('Error pasting hotspots:', error);
+      toast.error('Error al pegar hotspots');
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedHotspotIds.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('hotspots')
+        .delete()
+        .in('id', selectedHotspotIds);
+
+      if (error) throw error;
+
+      setHotspots((prev) => prev.filter((h) => !selectedHotspotIds.includes(h.id)));
+      setSelectedHotspotIds([]);
+      toast.success(`${selectedHotspotIds.length} hotspot(s) eliminado(s)`);
+    } catch (error) {
+      console.error('Error deleting hotspots:', error);
+      toast.error('Error al eliminar hotspots');
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -206,6 +332,7 @@ const Editor = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 pt-24 pb-12">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate('/app/tours')}>
@@ -238,133 +365,153 @@ const Editor = () => {
           </div>
         </div>
 
-        {!floorPlan ? (
-          <Card className="p-12 text-center">
-            <div className="max-w-md mx-auto space-y-4">
-              <h2 className="text-2xl font-bold">Sube un plano de planta</h2>
-              <p className="text-muted-foreground">
-                Comienza subiendo la imagen del plano donde colocarás los hotspots
-              </p>
-              <Label htmlFor="floor-plan-upload" className="cursor-pointer">
-                <div className="border-2 border-dashed border-border rounded-lg p-8 hover:border-primary transition-colors">
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Click para seleccionar imagen
-                  </p>
-                </div>
-                <Input
-                  id="floor-plan-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={uploadFloorPlan}
-                  disabled={uploadingPlan}
-                />
-              </Label>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <Card className="p-4">
-                <div className="relative bg-muted rounded-lg overflow-hidden">
-                  <img
-                    src={floorPlan.image_url}
-                    alt="Floor plan"
-                    className="w-full h-auto"
-                  />
-                  {hotspots.map((hotspot) => (
-                    <div
-                      key={hotspot.id}
-                      className="absolute w-8 h-8 -ml-4 -mt-4 bg-primary rounded-full border-4 border-primary-foreground cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
-                      style={{
-                        left: `${hotspot.x_position}%`,
-                        top: `${hotspot.y_position}%`,
-                      }}
-                      title={hotspot.title}
-                    >
-                      <span className="text-xs font-bold text-primary-foreground">
-                        {hotspots.indexOf(hotspot) + 1}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
+        {/* Main Editor */}
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Main Canvas */}
+          <div className="lg:col-span-3 space-y-4">
+            {floorPlans.length > 0 ? (
+              <>
+                <Tabs
+                  value={selectedFloorPlan?.id}
+                  onValueChange={(value) => {
+                    const plan = floorPlans.find((p) => p.id === value);
+                    if (plan) setSelectedFloorPlan(plan);
+                  }}
+                >
+                  <TabsList className="w-full justify-start overflow-x-auto">
+                    {floorPlans.map((plan) => (
+                      <TabsTrigger key={plan.id} value={plan.id}>
+                        {plan.name}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
 
-            <div className="space-y-4">
-              <Card className="p-4">
-                <h3 className="font-bold mb-4">Hotspots ({hotspots.length})</h3>
-                
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="w-full mb-4">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar Hotspot
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Nuevo Hotspot</DialogTitle>
-                      <DialogDescription>
-                        Agrega un punto interactivo al plano
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 mt-4">
-                      <div className="space-y-2">
-                        <Label>Título</Label>
-                        <Input
-                          placeholder="Ej: Sala principal"
-                          value={newHotspot.title}
-                          onChange={(e) => setNewHotspot({ ...newHotspot, title: e.target.value })}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Posición X (%)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={newHotspot.x}
-                            onChange={(e) => setNewHotspot({ ...newHotspot, x: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Posición Y (%)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={newHotspot.y}
-                            onChange={(e) => setNewHotspot({ ...newHotspot, y: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-                      <Button onClick={addHotspot} className="w-full">
-                        Crear Hotspot
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
-                <div className="space-y-2">
-                  {hotspots.map((hotspot, index) => (
-                    <div key={hotspot.id} className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground">
-                          {index + 1}
-                        </div>
-                        <span className="text-sm font-medium">{hotspot.title}</span>
-                      </div>
-                    </div>
+                  {floorPlans.map((plan) => (
+                    <TabsContent key={plan.id} value={plan.id}>
+                      <HotspotEditor
+                        imageUrl={plan.image_url}
+                        hotspots={hotspots}
+                        selectedIds={selectedHotspotIds}
+                        onHotspotClick={handleHotspotClick}
+                        onHotspotDrag={handleHotspotDrag}
+                        onCanvasClick={handleCanvasClick}
+                      />
+                    </TabsContent>
                   ))}
-                </div>
+                </Tabs>
+              </>
+            ) : (
+              <Card className="p-12 text-center">
+                <h2 className="text-2xl font-bold mb-2">No hay planos de planta</h2>
+                <p className="text-muted-foreground mb-4">
+                  Agrega un plano para comenzar a crear hotspots
+                </p>
               </Card>
-            </div>
+            )}
           </div>
-        )}
+
+          {/* Sidebar */}
+          <div className="space-y-4">
+            {/* Floor Plans Section */}
+            <Collapsible open={floorPlansOpen} onOpenChange={setFloorPlansOpen}>
+              <Card className="p-4">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto mb-2">
+                    <h3 className="font-bold">Planos ({floorPlans.length})</h3>
+                    {floorPlansOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <FloorPlanManager
+                    tour={tour!}
+                    floorPlans={floorPlans}
+                    onFloorPlanSelect={(plan) => setSelectedFloorPlan(plan)}
+                    onFloorPlansUpdate={setFloorPlans}
+                    isMobile={false}
+                  />
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+
+            {/* Hotspots Section */}
+            <Collapsible open={hotspotsOpen} onOpenChange={setHotspotsOpen}>
+              <Card className="p-4">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto mb-2">
+                    <h3 className="font-bold">Hotspots ({hotspots.length})</h3>
+                    {hotspotsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2">
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCopyHotspots}
+                      disabled={selectedHotspotIds.length === 0}
+                      className="flex-1"
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copiar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handlePasteHotspots}
+                      disabled={clipboard.length === 0}
+                      className="flex-1"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Pegar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleDeleteSelected}
+                      disabled={selectedHotspotIds.length === 0}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {hotspots.map((hotspot, index) => (
+                      <div
+                        key={hotspot.id}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedHotspotIds.includes(hotspot.id)
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                        onClick={() => setSelectedHotspotIds([hotspot.id])}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground">
+                            {index + 1}
+                          </div>
+                          <span className="text-sm font-medium truncate">{hotspot.title}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
+        </div>
       </div>
+
+      {/* Hotspot Modal */}
+      <HotspotModal
+        isOpen={hotspotModalOpen}
+        onClose={() => {
+          setHotspotModalOpen(false);
+          setEditingHotspot(null);
+        }}
+        onSave={handleSaveHotspot}
+        initialData={editingHotspot || undefined}
+        mode={editingHotspot?.id ? 'edit' : 'create'}
+      />
     </div>
   );
 };

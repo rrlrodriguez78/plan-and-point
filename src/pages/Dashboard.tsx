@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Eye, Edit, Trash2, Globe, Lock } from 'lucide-react';
+import TourSetupModal from '@/components/editor/TourSetupModal';
 
 interface Organization {
   id: string;
@@ -30,8 +28,8 @@ const Dashboard = () => {
   const [tours, setTours] = useState<Tour[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newTour, setNewTour] = useState({ title: '', description: '' });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [savingTour, setSavingTour] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -82,18 +80,19 @@ const Dashboard = () => {
     }
   };
 
-  const createTour = async () => {
-    if (!organization || !newTour.title.trim()) {
-      toast.error('El título es requerido');
+  const handleCreateTour = async (tourData: { title: string; description: string; coverImageUrl?: string }) => {
+    if (!organization) {
+      toast.error('No se encontró organización');
       return;
     }
 
+    setSavingTour(true);
     try {
       const { data, error } = await supabase
         .from('virtual_tours')
         .insert({
-          title: newTour.title,
-          description: newTour.description,
+          title: tourData.title,
+          description: tourData.description,
           organization_id: organization.id,
         })
         .select()
@@ -103,12 +102,13 @@ const Dashboard = () => {
 
       toast.success('Tour creado exitosamente');
       setTours([data, ...tours]);
-      setDialogOpen(false);
-      setNewTour({ title: '', description: '' });
+      setModalOpen(false);
       navigate(`/app/editor/${data.id}`);
     } catch (error) {
       console.error('Error creating tour:', error);
       toast.error('Error al crear tour');
+    } finally {
+      setSavingTour(false);
     }
   };
 
@@ -153,45 +153,17 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg">
-                <Plus className="w-5 h-5 mr-2" />
-                Nuevo Tour
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Crear Nuevo Tour</DialogTitle>
-                <DialogDescription>
-                  Comienza creando un tour virtual interactivo
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Título</Label>
-                  <Input
-                    id="title"
-                    placeholder="Casa en venta, Showroom, etc."
-                    value={newTour.title}
-                    onChange={(e) => setNewTour({ ...newTour, title: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descripción</Label>
-                  <Input
-                    id="description"
-                    placeholder="Breve descripción del tour..."
-                    value={newTour.description}
-                    onChange={(e) => setNewTour({ ...newTour, description: e.target.value })}
-                  />
-                </div>
-                <Button onClick={createTour} className="w-full">
-                  Crear Tour
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button size="lg" onClick={() => setModalOpen(true)}>
+            <Plus className="w-5 h-5 mr-2" />
+            Nuevo Tour
+          </Button>
+          
+          <TourSetupModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onConfirm={handleCreateTour}
+            isSaving={savingTour}
+          />
         </div>
 
         {tours.length === 0 ? (
@@ -203,7 +175,7 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => setDialogOpen(true)} size="lg">
+              <Button onClick={() => setModalOpen(true)} size="lg">
                 <Plus className="w-5 h-5 mr-2" />
                 Crear Primer Tour
               </Button>
