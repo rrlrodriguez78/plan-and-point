@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Info } from 'lucide-react';
+import { ViewerHeader } from '@/components/viewer/ViewerHeader';
+import { FloorNavigator } from '@/components/viewer/FloorNavigator';
+import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
+import { HotspotPoint } from '@/components/viewer/HotspotPoint';
+import { HotspotModal } from '@/components/viewer/HotspotModal';
 
 interface Tour {
   title: string;
@@ -12,25 +15,33 @@ interface Tour {
 
 interface FloorPlan {
   id: string;
+  name: string;
   image_url: string;
 }
 
 interface Hotspot {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   x_position: number;
   y_position: number;
   media_url?: string;
+  style?: {
+    icon?: string;
+    color?: string;
+    size?: number;
+  };
 }
 
 const Viewer = () => {
   const { id } = useParams();
   const [tour, setTour] = useState<Tour | null>(null);
-  const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
-  const [hotspots, setHotspots] = useState<Hotspot[]>([]);
+  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
+  const [currentFloorIndex, setCurrentFloorIndex] = useState(0);
+  const [hotspotsByFloor, setHotspotsByFloor] = useState<Record<string, Hotspot[]>>({});
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     loadTourData();
@@ -48,23 +59,28 @@ const Viewer = () => {
       if (tourData) {
         setTour(tourData);
 
-        const { data: planData } = await supabase
+        const { data: plansData } = await supabase
           .from('floor_plans')
-          .select('id, image_url')
+          .select('id, name, image_url')
           .eq('tour_id', id)
-          .single();
+          .order('created_at', { ascending: true });
 
-        if (planData) {
-          setFloorPlan(planData);
+        if (plansData && plansData.length > 0) {
+          setFloorPlans(plansData);
 
-          const { data: hotspotsData } = await supabase
-            .from('hotspots')
-            .select('*')
-            .eq('floor_plan_id', planData.id);
+          // Load hotspots for all floor plans
+          const hotspotsMap: Record<string, Hotspot[]> = {};
+          for (const plan of plansData) {
+            const { data: hotspotsData } = await supabase
+              .from('hotspots')
+              .select('*')
+              .eq('floor_plan_id', plan.id);
 
-          if (hotspotsData) {
-            setHotspots(hotspotsData);
+            if (hotspotsData) {
+              hotspotsMap[plan.id] = hotspotsData;
+            }
           }
+          setHotspotsByFloor(hotspotsMap);
         }
       }
     } catch (error) {
@@ -74,6 +90,61 @@ const Viewer = () => {
     }
   };
 
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  const currentFloorPlan = floorPlans[currentFloorIndex];
+  const currentHotspots = currentFloorPlan ? hotspotsByFloor[currentFloorPlan.id] || [] : [];
+
+  const handleNextHotspot = useCallback(() => {
+    if (!selectedHotspot) return;
+    const currentIdx = currentHotspots.findIndex(h => h.id === selectedHotspot.id);
+    if (currentIdx < currentHotspots.length - 1) {
+      setSelectedHotspot(currentHotspots[currentIdx + 1]);
+    }
+  }, [selectedHotspot, currentHotspots]);
+
+  const handlePreviousHotspot = useCallback(() => {
+    if (!selectedHotspot) return;
+    const currentIdx = currentHotspots.findIndex(h => h.id === selectedHotspot.id);
+    if (currentIdx > 0) {
+      setSelectedHotspot(currentHotspots[currentIdx - 1]);
+    }
+  }, [selectedHotspot, currentHotspots]);
+
+  const hotspotCounts = Object.keys(hotspotsByFloor).reduce((acc, floorId) => {
+    acc[floorId] = hotspotsByFloor[floorId].length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedHotspot) {
+        setSelectedHotspot(null);
+      }
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+      if (e.key === 'ArrowRight' && selectedHotspot) {
+        handleNextHotspot();
+      }
+      if (e.key === 'ArrowLeft' && selectedHotspot) {
+        handlePreviousHotspot();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedHotspot, toggleFullscreen, handleNextHotspot, handlePreviousHotspot]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -82,7 +153,7 @@ const Viewer = () => {
     );
   }
 
-  if (!tour || !floorPlan) {
+  if (!tour || floorPlans.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-12 text-center max-w-md">
@@ -95,102 +166,56 @@ const Viewer = () => {
     );
   }
 
+  const selectedHotspotIndex = selectedHotspot 
+    ? currentHotspots.findIndex(h => h.id === selectedHotspot.id)
+    : -1;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{tour.title}</h1>
-              {tour.description && (
-                <p className="text-sm text-muted-foreground">{tour.description}</p>
-              )}
-            </div>
-            <Button variant="ghost" size="sm">
-              <Info className="w-4 h-4 mr-2" />
-              Ayuda
-            </Button>
-          </div>
-        </div>
-      </div>
+      <ViewerHeader 
+        tourTitle={tour.title}
+        onToggleFullscreen={toggleFullscreen}
+        isFullscreen={isFullscreen}
+      />
 
-      {/* Viewer */}
-      <div className="relative w-full h-[calc(100vh-5rem)]">
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="relative max-w-full max-h-full">
-            <img
-              src={floorPlan.image_url}
-              alt="Floor plan"
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+      {/* Floor Navigator */}
+      <FloorNavigator
+        floorPlans={floorPlans}
+        currentFloorIndex={currentFloorIndex}
+        onFloorChange={setCurrentFloorIndex}
+        hotspotCounts={hotspotCounts}
+      />
+
+      {/* Canvas */}
+      <div className="flex-1 relative">
+        <ViewerCanvas
+          imageUrl={currentFloorPlan.image_url}
+          hotspots={currentHotspots}
+          onHotspotClick={setSelectedHotspot}
+          renderHotspot={(hotspot, index) => (
+            <HotspotPoint
+              key={hotspot.id}
+              index={index}
+              title={hotspot.title}
+              x={hotspot.x_position}
+              y={hotspot.y_position}
+              onClick={() => setSelectedHotspot(hotspot)}
+              style={hotspot.style}
             />
-            {hotspots.map((hotspot, index) => (
-              <button
-                key={hotspot.id}
-                className="absolute w-10 h-10 -ml-5 -mt-5 bg-primary rounded-full border-4 border-background cursor-pointer hover:scale-125 transition-all duration-300 flex items-center justify-center group"
-                style={{
-                  left: `${hotspot.x_position}%`,
-                  top: `${hotspot.y_position}%`,
-                }}
-                onClick={() => setSelectedHotspot(hotspot)}
-              >
-                <span className="text-sm font-bold text-primary-foreground">
-                  {index + 1}
-                </span>
-                <div className="absolute bottom-full mb-2 hidden group-hover:block">
-                  <div className="bg-card border border-border px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
-                    <p className="text-sm font-medium">{hotspot.title}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Hotspot Detail Modal */}
-        {selectedHotspot && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-2xl font-bold">{selectedHotspot.title}</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedHotspot(null)}
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-                
-                {selectedHotspot.description && (
-                  <p className="text-muted-foreground mb-4">
-                    {selectedHotspot.description}
-                  </p>
-                )}
-
-                {selectedHotspot.media_url && (
-                  <div className="rounded-lg overflow-hidden">
-                    <img
-                      src={selectedHotspot.media_url}
-                      alt={selectedHotspot.title}
-                      className="w-full h-auto"
-                    />
-                  </div>
-                )}
-
-                {!selectedHotspot.media_url && (
-                  <div className="bg-muted rounded-lg p-12 text-center">
-                    <p className="text-muted-foreground">
-                      No hay contenido multimedia para este hotspot
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-        )}
+          )}
+        />
       </div>
+
+      {/* Hotspot Modal */}
+      <HotspotModal
+        hotspot={selectedHotspot}
+        onClose={() => setSelectedHotspot(null)}
+        onNext={selectedHotspotIndex < currentHotspots.length - 1 ? handleNextHotspot : undefined}
+        onPrevious={selectedHotspotIndex > 0 ? handlePreviousHotspot : undefined}
+        currentIndex={selectedHotspotIndex}
+        totalCount={currentHotspots.length}
+      />
     </div>
   );
 };
