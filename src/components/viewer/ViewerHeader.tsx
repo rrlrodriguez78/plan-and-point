@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { Maximize2, Info, Share2 } from 'lucide-react';
+import { Maximize2, Info, Share2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 interface ViewerHeaderProps {
   tourTitle: string;
@@ -11,6 +12,7 @@ interface ViewerHeaderProps {
 
 export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: ViewerHeaderProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   
   const handleShare = () => {
     const url = window.location.href;
@@ -22,11 +24,18 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
     toast.info(t('viewer.helpMessage'));
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   return (
     <div className="border-b border-border bg-card">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={handleBack}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
             <h1 className="text-xl font-bold text-foreground">{tourTitle}</h1>
           </div>
           <div className="flex items-center gap-2">
