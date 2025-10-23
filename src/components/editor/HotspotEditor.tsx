@@ -5,6 +5,7 @@ import { convertContainerToImageCoordinates, convertImageToContainerPosition } f
 import * as LucideIcons from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Hotspot } from '@/types/tour';
+import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 
 interface HotspotEditorProps {
   imageUrl: string;
@@ -26,6 +27,7 @@ export default function HotspotEditor({
   readOnly = false,
 }: HotspotEditorProps) {
   const { t } = useTranslation();
+  const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -34,7 +36,8 @@ export default function HotspotEditor({
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [showCoordinates, setShowCoordinates] = useState(false);
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Gestión unificada de clics/taps en el canvas
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (readOnly || draggingId) return;
 
     const target = e.target as HTMLElement;
@@ -44,67 +47,67 @@ export default function HotspotEditor({
     const image = imageRef.current;
     if (!container || !image) return;
 
-    // Prevenir el comportamiento por defecto y asegurar coordenadas precisas
-    e.preventDefault();
-    e.stopPropagation();
+    preventDefault(e);
 
-    const coords = convertContainerToImageCoordinates(
-      e.clientX,
-      e.clientY,
+    const coords = getEventCoordinates(e);
+    const imageCoords = convertContainerToImageCoordinates(
+      coords.clientX,
+      coords.clientY,
       container,
       image
     );
 
-    if (coords) {
-      // Logs de debug mejorados
+    if (imageCoords) {
       console.group('🎯 Debug de Coordenadas');
-      console.log('Click en:', { clientX: e.clientX, clientY: e.clientY });
+      console.log('Click/Tap en:', coords);
       console.log('Imagen rect:', image.getBoundingClientRect());
-      console.log('Coordenadas %:', coords);
+      console.log('Coordenadas %:', imageCoords);
       console.groupEnd();
       
-      // Mostrar punto de debug temporal
-      setDebugClickPoint({ x: e.clientX, y: e.clientY });
+      setDebugClickPoint({ x: coords.clientX, y: coords.clientY });
       setTimeout(() => setDebugClickPoint(null), 2000);
       
-      onCanvasClick(coords.x, coords.y);
+      onCanvasClick(imageCoords.x, imageCoords.y);
     }
   };
 
-  const handleHotspotMouseDown = (hotspot: Hotspot, e: React.MouseEvent) => {
+  // Gestión unificada de inicio de arrastre (mouse/touch)
+  const handleHotspotPointerDown = (hotspot: Hotspot, e: React.MouseEvent | React.TouchEvent) => {
     if (readOnly) return;
     
+    preventDefault(e);
     e.stopPropagation();
-    e.preventDefault();
+    
+    const coords = getEventCoordinates(e);
     setDraggingId(hotspot.id);
-    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragStart({ x: coords.clientX, y: coords.clientY });
     setShowCoordinates(true);
     
-    // Agregar clase al body para prevenir selección de texto
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'grabbing';
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  // Gestión unificada de movimiento durante arrastre
+  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!draggingId || readOnly) return;
 
-    e.preventDefault();
+    preventDefault(e);
     
     const container = containerRef.current;
     const image = imageRef.current;
     if (!container || !image) return;
 
-    const coords = convertContainerToImageCoordinates(
-      e.clientX,
-      e.clientY,
+    const coords = getEventCoordinates(e);
+    const imageCoords = convertContainerToImageCoordinates(
+      coords.clientX,
+      coords.clientY,
       container,
       image
     );
 
-    if (coords) {
-      // Actualización en tiempo real (-60% tiempo de configuración)
-      setDragPosition(coords);
-      onHotspotDrag(draggingId, coords.x, coords.y);
+    if (imageCoords) {
+      setDragPosition({ x: imageCoords.x, y: imageCoords.y });
+      onHotspotDrag(draggingId, imageCoords.x, imageCoords.y);
     }
   };
 
@@ -163,8 +166,10 @@ export default function HotspotEditor({
         className={`relative bg-background rounded-lg overflow-hidden border-2 border-dashed border-border shadow-inner ${
           readOnly ? 'cursor-default' : 'cursor-crosshair'
         }`}
-        onClick={handleCanvasClick}
-        onMouseMove={handleMouseMove}
+        onClick={handleCanvasClick as any}
+        onTouchStart={handleCanvasClick as any}
+        onMouseMove={handleMouseMove as any}
+        onTouchMove={handleMouseMove as any}
         style={{ minHeight: '500px' }}
       >
         <img
@@ -241,7 +246,11 @@ export default function HotspotEditor({
               }}
               onMouseDown={(e) => {
                 e.stopPropagation();
-                handleHotspotMouseDown(hotspot, e);
+                handleHotspotPointerDown(hotspot, e);
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                handleHotspotPointerDown(hotspot, e);
               }}
               title={hotspot.title}
             >

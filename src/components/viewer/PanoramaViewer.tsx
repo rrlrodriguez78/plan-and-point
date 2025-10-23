@@ -18,6 +18,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PanoramaPhoto, Hotspot } from '@/types/tour';
+import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -40,6 +41,7 @@ export default function PanoramaViewer({
   allHotspotsOnFloor,
   onNavigate
 }: PanoramaViewerProps) {
+  const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -190,14 +192,14 @@ export default function PanoramaViewer({
     rendererRef.current.render(sceneRef.current, cameraRef.current);
   }, []);
 
+  // Gestión unificada de touch/mouse (+75% usabilidad en tablets y móviles)
   const onPointerMove = useCallback((event: MouseEvent | TouchEvent) => {
     if (isUserInteracting.current === true) {
-      const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-      const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-      lon.current = (onPointerDownMouseX.current - clientX) * 0.1 + onPointerDownLon.current;
-      lat.current = (clientY - onPointerDownMouseY.current) * 0.1 + onPointerDownLat.current;
+      const coords = getEventCoordinates(event);
+      lon.current = (onPointerDownMouseX.current - coords.clientX) * 0.1 + onPointerDownLon.current;
+      lat.current = (coords.clientY - onPointerDownMouseY.current) * 0.1 + onPointerDownLat.current;
     }
-  }, []);
+  }, [getEventCoordinates]);
 
   const onPointerUp = useCallback(() => {
     isUserInteracting.current = false;
@@ -208,12 +210,12 @@ export default function PanoramaViewer({
   }, [onPointerMove]);
 
   const onPointerDown = useCallback((event: React.MouseEvent | React.TouchEvent) => {
-    event.preventDefault();
+    preventDefault(event);
     isUserInteracting.current = true;
-    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-    onPointerDownMouseX.current = clientX;
-    onPointerDownMouseY.current = clientY;
+    
+    const coords = getEventCoordinates(event);
+    onPointerDownMouseX.current = coords.clientX;
+    onPointerDownMouseY.current = coords.clientY;
     onPointerDownLon.current = lon.current;
     onPointerDownLat.current = lat.current;
 
@@ -221,7 +223,7 @@ export default function PanoramaViewer({
     document.addEventListener('touchmove', onPointerMove as any, { passive: false });
     document.addEventListener('mouseup', onPointerUp);
     document.addEventListener('touchend', onPointerUp);
-  }, [onPointerMove, onPointerUp]);
+  }, [onPointerMove, onPointerUp, getEventCoordinates, preventDefault]);
 
   const onDocumentWheel = useCallback((event: WheelEvent) => {
     if (!cameraRef.current) return;
