@@ -143,7 +143,7 @@ const Viewer = () => {
     try {
       const { data, error } = await supabase
         .from('panorama_photos')
-        .select('*')
+        .select('id, hotspot_id, photo_url, description, display_order, capture_date')
         .eq('hotspot_id', hotspotId)
         .order('display_order', { ascending: true });
 

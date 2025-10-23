@@ -113,6 +113,9 @@ export default function PanoramaViewer({
     return photos.filter(p => p.capture_date === selectedDate);
   }, [photos, selectedDate]);
 
+  // Determinar modo de navegación
+  const navigationMode = selectedDate ? 'hotspots' : 'dates';
+
   // Ajustar activePhoto si no está en las fotos filtradas
   useEffect(() => {
     if (selectedDate && activePhoto && !filteredPhotos.find(p => p.id === activePhoto.id)) {
@@ -326,19 +329,68 @@ export default function PanoramaViewer({
     return () => clearTimeout(timer);
   }, [showControls, currentZoom]);
 
-  const handleNext = () => {
-    const photoList = selectedDate ? filteredPhotos : photos;
-    const currentIndex = photoList.findIndex(p => p.id === activePhoto?.id);
-    const nextIndex = (currentIndex + 1) % photoList.length;
-    setActivePhoto(photoList[nextIndex]);
-  };
+  // Navegación por FECHAS (sin fecha seleccionada)
+  const handleNextDate = useCallback(() => {
+    if (!activePhoto?.capture_date) return;
+    
+    const currentDateIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
+    if (currentDateIndex < uniqueDates.length - 1) {
+      const nextDate = uniqueDates[currentDateIndex + 1];
+      const nextDatePhotos = photos.filter(p => p.capture_date === nextDate);
+      if (nextDatePhotos.length > 0) {
+        setActivePhoto(nextDatePhotos[0]);
+      }
+    }
+  }, [activePhoto, uniqueDates, photos, setActivePhoto]);
 
-  const handlePrev = () => {
-    const photoList = selectedDate ? filteredPhotos : photos;
-    const currentIndex = photoList.findIndex(p => p.id === activePhoto?.id);
-    const prevIndex = (currentIndex - 1 + photoList.length) % photoList.length;
-    setActivePhoto(photoList[prevIndex]);
-  };
+  const handlePrevDate = useCallback(() => {
+    if (!activePhoto?.capture_date) return;
+    
+    const currentDateIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
+    if (currentDateIndex > 0) {
+      const prevDate = uniqueDates[currentDateIndex - 1];
+      const prevDatePhotos = photos.filter(p => p.capture_date === prevDate);
+      if (prevDatePhotos.length > 0) {
+        setActivePhoto(prevDatePhotos[0]);
+      }
+    }
+  }, [activePhoto, uniqueDates, photos, setActivePhoto]);
+
+  // Navegación por HOTSPOTS (con fecha seleccionada)
+  const handleNextHotspot = useCallback(() => {
+    if (!activePhoto) return;
+    const currentHotspotIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentHotspotIndex < allHotspotsOnFloor.length - 1) {
+      const nextHotspot = allHotspotsOnFloor[currentHotspotIndex + 1];
+      onNavigate(nextHotspot);
+    }
+  }, [activePhoto, allHotspotsOnFloor, onNavigate]);
+
+  const handlePrevHotspot = useCallback(() => {
+    if (!activePhoto) return;
+    const currentHotspotIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
+    if (currentHotspotIndex > 0) {
+      const prevHotspot = allHotspotsOnFloor[currentHotspotIndex - 1];
+      onNavigate(prevHotspot);
+    }
+  }, [activePhoto, allHotspotsOnFloor, onNavigate]);
+
+  // Función principal de navegación (usa modo dual)
+  const handleNext = useCallback(() => {
+    if (navigationMode === 'dates') {
+      handleNextDate();
+    } else {
+      handleNextHotspot();
+    }
+  }, [navigationMode, handleNextDate, handleNextHotspot]);
+
+  const handlePrev = useCallback(() => {
+    if (navigationMode === 'dates') {
+      handlePrevDate();
+    } else {
+      handlePrevHotspot();
+    }
+  }, [navigationMode, handlePrevDate, handlePrevHotspot]);
 
   const handleDateFilter = (date: string | null) => {
     setSelectedDate(date);
@@ -351,6 +403,41 @@ export default function PanoramaViewer({
       return dateString;
     }
   };
+
+  // Calcular etiquetas para flechas de navegación
+  const prevLabel = useMemo(() => {
+    if (navigationMode === 'dates') {
+      if (!activePhoto?.capture_date) return null;
+      const currentIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
+      if (currentIndex > 0) {
+        return formatDate(uniqueDates[currentIndex - 1]);
+      }
+    } else {
+      if (!activePhoto) return null;
+      const currentIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
+      if (currentIndex > 0) {
+        return allHotspotsOnFloor[currentIndex - 1].title;
+      }
+    }
+    return null;
+  }, [navigationMode, activePhoto, uniqueDates, allHotspotsOnFloor]);
+
+  const nextLabel = useMemo(() => {
+    if (navigationMode === 'dates') {
+      if (!activePhoto?.capture_date) return null;
+      const currentIndex = uniqueDates.findIndex(d => d === activePhoto.capture_date);
+      if (currentIndex < uniqueDates.length - 1) {
+        return formatDate(uniqueDates[currentIndex + 1]);
+      }
+    } else {
+      if (!activePhoto) return null;
+      const currentIndex = allHotspotsOnFloor.findIndex(h => h.id === activePhoto.hotspot_id);
+      if (currentIndex < allHotspotsOnFloor.length - 1) {
+        return allHotspotsOnFloor[currentIndex + 1].title;
+      }
+    }
+    return null;
+  }, [navigationMode, activePhoto, uniqueDates, allHotspotsOnFloor]);
 
   const resetView = () => {
     lon.current = 0;
@@ -458,15 +545,53 @@ export default function PanoramaViewer({
                   </div>
                 </motion.div>
 
-                {photos.length > 1 && (
-                  <>
-                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="absolute top-1/2 left-4 -translate-y-1/2">
-                       <Button variant="ghost" size="icon" onClick={handlePrev} className="text-white hover:bg-white/20 rounded-full w-12 h-12"><ChevronLeft className="w-8 h-8" /></Button>
-                    </motion.div>
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-1/2 right-4 -translate-y-1/2">
-                       <Button variant="ghost" size="icon" onClick={handleNext} className="text-white hover:bg-white/20 rounded-full w-12 h-12"><ChevronRight className="w-8 h-8" /></Button>
-                    </motion.div>
-                  </>
+                {/* Flechas de navegación con nombres */}
+                {prevLabel && (
+                  <motion.button
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    onClick={handlePrev}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 
+                               bg-black/60 backdrop-blur-sm hover:bg-black/80 
+                               text-white rounded-lg px-4 py-6 
+                               flex items-center gap-3 group
+                               transition-all duration-200 hover:px-5"
+                  >
+                    <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs text-slate-400 uppercase tracking-wider">
+                        {navigationMode === 'dates' ? 'Fecha anterior' : 'Punto anterior'}
+                      </span>
+                      <span className="text-sm font-medium max-w-[120px] truncate">
+                        {prevLabel}
+                      </span>
+                    </div>
+                  </motion.button>
+                )}
+
+                {nextLabel && (
+                  <motion.button
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    onClick={handleNext}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 
+                               bg-black/60 backdrop-blur-sm hover:bg-black/80 
+                               text-white rounded-lg px-4 py-6 
+                               flex items-center gap-3 group
+                               transition-all duration-200 hover:px-5"
+                  >
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs text-slate-400 uppercase tracking-wider">
+                        {navigationMode === 'dates' ? 'Fecha siguiente' : 'Punto siguiente'}
+                      </span>
+                      <span className="text-sm font-medium max-w-[120px] truncate">
+                        {nextLabel}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  </motion.button>
                 )}
 
                 <motion.div
@@ -475,8 +600,20 @@ export default function PanoramaViewer({
                   exit={{ opacity: 0, y: 20 }}
                   className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none"
                 >
-                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-2xl pointer-events-auto">
-                    <div className="flex items-center justify-center gap-4">
+                  <div className="bg-black/50 backdrop-blur-sm rounded-xl p-4 mx-auto max-w-3xl pointer-events-auto">
+                    <div className="flex items-center justify-center gap-4 flex-wrap">
+                       {/* Indicador de modo de navegación */}
+                       {(uniqueDates.length > 1 || allHotspotsOnFloor.length > 1) && (
+                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full">
+                           <Navigation className="w-4 h-4 text-white" />
+                           <span className="text-xs font-medium text-white">
+                             {navigationMode === 'dates' 
+                               ? `Navegando entre ${uniqueDates.length} fechas` 
+                               : `Navegando entre ${allHotspotsOnFloor.length} puntos`}
+                           </span>
+                         </div>
+                       )}
+                       <div className="w-px h-6 bg-white/30" />
                        <Button variant="ghost" size="icon" onClick={() => zoomInOut(5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom >= 120}><ZoomOut className="w-5 h-5" /></Button>
                        <span className="text-white text-sm font-medium min-w-16 text-center">{Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%</span>
                        <Button variant="ghost" size="icon" onClick={() => zoomInOut(-5)} className="text-white hover:bg-white/20 rounded-full" disabled={currentZoom <= 30}><ZoomIn className="w-5 h-5" /></Button>
