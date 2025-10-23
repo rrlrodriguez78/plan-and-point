@@ -63,48 +63,64 @@ const Viewer = () => {
 
   const loadTourData = async () => {
     try {
-      const { data: tourData } = await supabase
+      // Validar que id existe y es un UUID válido
+      if (!id || id === ':id' || !id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        console.error('❌ ID de tour inválido:', id);
+        setLoading(false);
+        return;
+      }
+
+      const { data: tourData, error: tourError } = await supabase
         .from('virtual_tours')
         .select('title, description')
         .eq('id', id)
         .eq('is_published', true)
-        .single();
+        .maybeSingle();
 
-      if (tourData) {
-        setTour(tourData);
+      if (tourError) {
+        console.error('Error al cargar tour:', tourError);
+        throw tourError;
+      }
 
-        const { data: plansData } = await supabase
-          .from('floor_plans')
-          .select('id, name, image_url')
-          .eq('tour_id', id)
-          .order('created_at', { ascending: true });
+      if (!tourData) {
+        console.warn('⚠️ No se encontró el tour con ID:', id);
+        setLoading(false);
+        return;
+      }
 
-        if (plansData && plansData.length > 0) {
-          setFloorPlans(plansData);
+      setTour(tourData);
 
-          // Load hotspots for all floor plans
-          const hotspotsMap: Record<string, Hotspot[]> = {};
-          for (const plan of plansData) {
-            const { data: hotspotsData } = await supabase
-              .from('hotspots')
-              .select('id, title, description, x_position, y_position, media_url, has_panorama, panorama_count')
-              .eq('floor_plan_id', plan.id);
+      const { data: plansData } = await supabase
+        .from('floor_plans')
+        .select('id, name, image_url')
+        .eq('tour_id', id)
+        .order('created_at', { ascending: true });
 
-            if (hotspotsData) {
-              hotspotsMap[plan.id] = hotspotsData.map(h => ({
-                id: h.id,
-                title: h.title,
-                description: h.description,
-                x_position: h.x_position,
-                y_position: h.y_position,
-                media_url: h.media_url,
-                has_panorama: h.has_panorama ?? false,
-                panorama_count: h.panorama_count ?? 0,
-              } as Hotspot));
-            }
+      if (plansData && plansData.length > 0) {
+        setFloorPlans(plansData);
+
+        // Load hotspots for all floor plans
+        const hotspotsMap: Record<string, Hotspot[]> = {};
+        for (const plan of plansData) {
+          const { data: hotspotsData } = await supabase
+            .from('hotspots')
+            .select('id, title, description, x_position, y_position, media_url, has_panorama, panorama_count')
+            .eq('floor_plan_id', plan.id);
+
+          if (hotspotsData) {
+            hotspotsMap[plan.id] = hotspotsData.map(h => ({
+              id: h.id,
+              title: h.title,
+              description: h.description,
+              x_position: h.x_position,
+              y_position: h.y_position,
+              media_url: h.media_url,
+              has_panorama: h.has_panorama ?? false,
+              panorama_count: h.panorama_count ?? 0,
+            } as Hotspot));
           }
-          setHotspotsByFloor(hotspotsMap);
         }
+        setHotspotsByFloor(hotspotsMap);
       }
     } catch (error) {
       console.error('Error loading tour:', error);

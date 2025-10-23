@@ -48,6 +48,27 @@ export default function PanoramaViewer({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+
+  // Silenciar advertencias de Three.js sobre características no soportadas
+  useEffect(() => {
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+      const message = args[0]?.toString?.() || '';
+      if (
+        message.includes('Unrecognized feature') ||
+        message.includes('vr') ||
+        message.includes('ambient-light-sensor') ||
+        message.includes('battery')
+      ) {
+        return;
+      }
+      originalWarn(...args);
+    };
+
+    return () => {
+      console.warn = originalWarn;
+    };
+  }, []);
   const meshRef = useRef<THREE.Mesh | null>(null);
   const isUserInteracting = useRef(false);
   const onPointerDownMouseX = useRef(0);
