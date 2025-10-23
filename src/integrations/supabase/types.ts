@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       floor_plans: {
         Row: {
+          capture_date: string | null
           created_at: string
           height: number
           id: string
@@ -25,6 +26,7 @@ export type Database = {
           width: number
         }
         Insert: {
+          capture_date?: string | null
           created_at?: string
           height: number
           id?: string
@@ -34,6 +36,7 @@ export type Database = {
           width: number
         }
         Update: {
+          capture_date?: string | null
           created_at?: string
           height?: number
           id?: string

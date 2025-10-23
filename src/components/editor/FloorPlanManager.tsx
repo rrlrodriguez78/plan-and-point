@@ -1,10 +1,14 @@
 import React, { useState, useRef } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Upload, Plus, Trash2, Edit, Check, X, RotateCw, MoreVertical, ImageIcon, FileText } from 'lucide-react';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Upload, Plus, Trash2, Edit, Check, X, RotateCw, MoreVertical, ImageIcon, FileText, CalendarIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -52,6 +56,7 @@ interface FloorPlan {
   height: number;
   tour_id: string;
   created_at: string;
+  capture_date?: string;
 }
 
 interface FloorPlanManagerProps {
@@ -107,7 +112,8 @@ export default function FloorPlanManager({
           tour_id: tour.id,
           image_url: editingFloorPlan.image_url!,
           width: editingFloorPlan.width || 1920,
-          height: editingFloorPlan.height || 1080
+          height: editingFloorPlan.height || 1080,
+          capture_date: editingFloorPlan.capture_date || new Date().toISOString().split('T')[0]
         };
         
         const { data, error } = await supabase
@@ -126,7 +132,8 @@ export default function FloorPlanManager({
             name: editingFloorPlan.name!,
             image_url: editingFloorPlan.image_url!,
             width: editingFloorPlan.width || 1920,
-            height: editingFloorPlan.height || 1080
+            height: editingFloorPlan.height || 1080,
+            capture_date: editingFloorPlan.capture_date || new Date().toISOString().split('T')[0]
           })
           .eq('id', editingFloorPlan.id!);
         
@@ -233,7 +240,8 @@ export default function FloorPlanManager({
             name: '', 
             image_url: '', 
             width: 1920,
-            height: 1080
+            height: 1080,
+            capture_date: new Date().toISOString().split('T')[0]
           }); 
         }}
         disabled={!tour.id}
@@ -280,6 +288,12 @@ export default function FloorPlanManager({
                     {activeFloorPlanId === fp.id && (
                       <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
                         Activo
+                      </Badge>
+                    )}
+                    {fp.capture_date && (
+                      <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-300">
+                        <CalendarIcon className="w-3 h-3 mr-1" />
+                        {format(new Date(fp.capture_date), 'dd MMM yyyy', { locale: es })}
                       </Badge>
                     )}
                     <span className="text-xs text-slate-500">{fp.width}x{fp.height}</span>
@@ -384,6 +398,43 @@ export default function FloorPlanManager({
                   </Select>
                 )}
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="capture-date">Fecha de Captura</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editingFloorPlan.capture_date ? (
+                        format(new Date(editingFloorPlan.capture_date), 'PPP', { locale: es })
+                      ) : (
+                        <span>Selecciona una fecha</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editingFloorPlan.capture_date ? new Date(editingFloorPlan.capture_date) : undefined}
+                      onSelect={(date) => {
+                        setEditingFloorPlan({
+                          ...editingFloorPlan,
+                          capture_date: date ? format(date, 'yyyy-MM-dd') : undefined
+                        });
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                      disabled={(date) => date > new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-slate-500 mt-1">
+                  Fecha en que se tomó o capturó el plano
+                </p>
               </div>
 
               <div>
