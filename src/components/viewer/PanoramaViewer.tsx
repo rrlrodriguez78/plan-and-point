@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { 
   X, RotateCw, ZoomIn, ZoomOut, 
   Maximize, Minimize, Info, MapPin,
-  ChevronLeft, ChevronRight, Building2
+  ChevronLeft, ChevronRight, Building2, Calendar
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -125,6 +125,21 @@ export default function PanoramaViewer({
     if (!activePhoto) return photos;
     return photos.filter(p => p.hotspot_id === activePhoto.hotspot_id);
   }, [photos, activePhoto]);
+
+  // Obtener fechas únicas de las fotos del punto actual
+  const availableDates = useMemo(() => {
+    const dates = filteredPhotos
+      .map(p => p.capture_date)
+      .filter((date): date is string => !!date);
+    const uniqueDates = Array.from(new Set(dates)).sort().reverse();
+    return uniqueDates;
+  }, [filteredPhotos]);
+
+  // Filtrar fotos por fecha seleccionada (si hay una fecha activa)
+  const photosByDate = useMemo(() => {
+    if (!activePhoto?.capture_date) return filteredPhotos;
+    return filteredPhotos.filter(p => p.capture_date === activePhoto.capture_date);
+  }, [filteredPhotos, activePhoto]);
 
   // Obtener TODOS los hotspots del floor (no solo los que tienen panoramas)
   const availableHotspots = useMemo(() => {
@@ -403,6 +418,14 @@ export default function PanoramaViewer({
     onNavigate(hotspot);
   };
 
+  const handleDateSelect = (date: string) => {
+    // Encontrar la primera foto de esa fecha
+    const photoForDate = filteredPhotos.find(p => p.capture_date === date);
+    if (photoForDate) {
+      setActivePhoto(photoForDate);
+    }
+  };
+
   // Navegación entre puntos (anterior/siguiente)
   const currentHotspotIndex = useMemo(() => {
     if (!activePhoto) return -1;
@@ -495,12 +518,12 @@ export default function PanoramaViewer({
           <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-50">
             <div className="flex justify-between items-center pointer-events-auto">
               <div className="text-white flex items-start gap-3">
-                <div className="flex-1">
+                  <div className="flex-1">
                   <h2 className="text-xl font-bold">{hotspotName}</h2>
                   <div className="flex items-center gap-2 text-sm text-slate-300">
-                    {filteredPhotos.length > 1 && activePhoto && (
+                    {photosByDate.length > 1 && activePhoto && (
                       <span>
-                        Foto {filteredPhotos.findIndex(p => p.id === activePhoto.id) + 1} de {filteredPhotos.length}
+                        Foto {photosByDate.findIndex(p => p.id === activePhoto.id) + 1} de {photosByDate.length}
                       </span>
                     )}
                     {activePhoto?.capture_date && (
@@ -594,6 +617,57 @@ export default function PanoramaViewer({
                             )}
                           </DropdownMenuItem>
                         ))}
+                      </ScrollArea>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {/* Dropdown de Fechas */}
+                {availableDates.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                      >
+                        <Calendar className="w-5 h-5" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs text-slate-400">Fecha</span>
+                          <span className="text-sm font-medium">
+                            {activePhoto?.capture_date ? formatDate(activePhoto.capture_date) : 'Sin fecha'}
+                          </span>
+                        </div>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-64 bg-black border-white/30 text-white z-[60]">
+                      <div className="px-2 py-1.5 text-sm font-semibold">
+                        Seleccionar fecha ({availableDates.length} disponibles)
+                      </div>
+                      <DropdownMenuSeparator className="bg-white/20" />
+                      <ScrollArea className="max-h-64">
+                        {availableDates.map((date) => {
+                          const photosForDate = filteredPhotos.filter(p => p.capture_date === date);
+                          return (
+                            <DropdownMenuItem
+                              key={date}
+                              onClick={() => handleDateSelect(date)}
+                              className={`cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white ${
+                                date === activePhoto?.capture_date ? 'bg-white/20 font-semibold' : ''
+                              }`}
+                            >
+                              <Calendar className="w-4 h-4 mr-2" />
+                              <div className="flex-1">
+                                {formatDate(date)}
+                                <span className="text-xs text-slate-400 ml-2">
+                                  ({photosForDate.length} {photosForDate.length === 1 ? 'foto' : 'fotos'})
+                                </span>
+                              </div>
+                              {date === activePhoto?.capture_date && (
+                                <span className="ml-auto text-xs text-slate-400">(actual)</span>
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })}
                       </ScrollArea>
                     </DropdownMenuContent>
                   </DropdownMenu>
