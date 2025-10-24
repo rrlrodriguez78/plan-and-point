@@ -32,6 +32,7 @@ interface PanoramaViewerProps {
   floorPlans?: FloorPlan[];
   currentFloorPlan?: FloorPlan;
   onFloorChange?: (floorPlanId: string) => void;
+  hotspotsByFloor?: Record<string, Hotspot[]>;
 }
 
 export default function PanoramaViewer({ 
@@ -45,9 +46,15 @@ export default function PanoramaViewer({
   onNavigate,
   floorPlans = [],
   currentFloorPlan,
-  onFloorChange
+  onFloorChange,
+  hotspotsByFloor = {}
 }: PanoramaViewerProps) {
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
+  
+  // Helper function para obtener el número de hotspots por piso
+  const getHotspotCount = useCallback((floorPlanId: string): number => {
+    return hotspotsByFloor[floorPlanId]?.length || 0;
+  }, [hotspotsByFloor]);
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -560,19 +567,25 @@ export default function PanoramaViewer({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="bg-black/90 backdrop-blur-sm border-white/20">
-                      {floorPlans.map((floor) => (
-                        <DropdownMenuItem
-                          key={floor.id}
-                          onClick={() => {
-                            onFloorChange(floor.id);
-                            onClose();
-                          }}
-                          className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
-                        >
-                          <Building2 className="w-4 h-4 mr-2" />
-                          {floor.name}
-                        </DropdownMenuItem>
-                      ))}
+                      {floorPlans.map((floor) => {
+                        const hotspotCount = getHotspotCount(floor.id);
+                        return (
+                          <DropdownMenuItem
+                            key={floor.id}
+                            onClick={() => {
+                              onFloorChange(floor.id);
+                              onClose();
+                            }}
+                            className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
+                          >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            <span className="flex-1">{floor.name}</span>
+                            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                              {hotspotCount}
+                            </span>
+                          </DropdownMenuItem>
+                        );
+                      })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}

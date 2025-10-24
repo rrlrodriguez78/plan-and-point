@@ -306,6 +306,7 @@ const Viewer = () => {
           setShowPanoramaViewer(false);
           setSelectedHotspot(null);
         }}
+        hotspotsByFloor={hotspotsByFloor}
       />
 
       {/* Floor Controls */}
