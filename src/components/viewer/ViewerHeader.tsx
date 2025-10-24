@@ -25,13 +25,7 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
   };
 
   const handleBack = () => {
-    // Si hay historial previo, regresar en el historial
-    // Si no, ir a tours (ej: si el usuario accedió directamente por URL)
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/app/tours');
-    }
+    navigate('/app/tours');
   };
 
   return (
