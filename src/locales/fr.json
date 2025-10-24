@@ -341,6 +341,7 @@
   "orientation": {
     "rotateDevice": "Veuillez tourner votre appareil",
     "landscapeRequired": "Cette application fonctionne mieux en mode paysage",
-    "instruction": "Tournez votre appareil pour continuer"
+    "instruction": "Tournez votre appareil pour continuer",
+    "continueAnyway": "Continuer en mode portrait"
   }
 }

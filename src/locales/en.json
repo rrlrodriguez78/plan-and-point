@@ -344,6 +344,7 @@
   "orientation": {
     "rotateDevice": "Please rotate your device",
     "landscapeRequired": "This app works best in landscape mode",
-    "instruction": "Rotate your device to continue"
+    "instruction": "Rotate your device to continue",
+    "continueAnyway": "Continue in portrait"
   }
 }

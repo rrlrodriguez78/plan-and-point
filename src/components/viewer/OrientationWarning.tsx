@@ -1,7 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Smartphone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-export const OrientationWarning = () => {
+interface OrientationWarningProps {
+  onDismiss: () => void;
+}
+
+export const OrientationWarning = ({ onDismiss }: OrientationWarningProps) => {
   const { t } = useTranslation();
   
   return (
@@ -21,9 +26,18 @@ export const OrientationWarning = () => {
         <p className="text-muted-foreground mb-4">
           {t('orientation.landscapeRequired')}
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mb-6">
           {t('orientation.instruction')}
         </p>
+        
+        {/* Botón para continuar de todos modos */}
+        <Button
+          variant="outline"
+          onClick={onDismiss}
+          className="mt-4"
+        >
+          {t('orientation.continueAnyway')}
+        </Button>
       </div>
     </div>
   );

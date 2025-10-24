@@ -344,6 +344,7 @@
   "orientation": {
     "rotateDevice": "Por favor, gira tu dispositivo",
     "landscapeRequired": "Esta aplicación funciona mejor en modo horizontal",
-    "instruction": "Rota tu dispositivo para continuar"
+    "instruction": "Rota tu dispositivo para continuar",
+    "continueAnyway": "Continuar en vertical"
   }
 }

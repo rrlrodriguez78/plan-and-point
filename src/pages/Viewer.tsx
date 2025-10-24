@@ -28,6 +28,7 @@ const Viewer = () => {
   const [panoramaPhotos, setPanoramaPhotos] = useState<PanoramaPhoto[]>([]);
   const [showPanoramaViewer, setShowPanoramaViewer] = useState(false);
   const [activePanoramaPhoto, setActivePanoramaPhoto] = useState<PanoramaPhoto | null>(null);
+  const [userDismissedWarning, setUserDismissedWarning] = useState(false);
 
   useEffect(() => {
     loadTourData();
@@ -223,7 +224,9 @@ const Viewer = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Orientation Warning */}
-      {shouldShowOrientationWarning && <OrientationWarning />}
+      {shouldShowOrientationWarning && !userDismissedWarning && (
+        <OrientationWarning onDismiss={() => setUserDismissedWarning(true)} />
+      )}
       
       {/* Header */}
       <ViewerHeader

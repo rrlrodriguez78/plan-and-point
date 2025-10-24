@@ -341,6 +341,7 @@
   "orientation": {
     "rotateDevice": "Bitte drehen Sie Ihr Gerät",
     "landscapeRequired": "Diese App funktioniert am besten im Querformat",
-    "instruction": "Drehen Sie Ihr Gerät, um fortzufahren"
+    "instruction": "Drehen Sie Ihr Gerät, um fortzufahren",
+    "continueAnyway": "Im Hochformat fortfahren"
   }
 }
