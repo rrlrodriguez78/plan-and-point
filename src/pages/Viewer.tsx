@@ -291,12 +291,26 @@ const Viewer = () => {
         hotspotName={selectedHotspot?.title || ''}
         allHotspotsOnFloor={currentHotspots}
         onNavigate={async (hotspot) => {
-          // Navegar a otro hotspot sin salir del visor de panoramas
+          // Guardar la fecha actual ANTES de cambiar de hotspot
+          const currentDate = activePanoramaPhoto?.capture_date;
+          
           setSelectedHotspot(hotspot);
           const photos = await loadPanoramaPhotos(hotspot.id);
           if (photos.length > 0) {
             setPanoramaPhotos(photos);
-            setActivePanoramaPhoto(photos[0]);
+            
+            // Intentar mantener la misma fecha
+            let photoToShow = photos[0]; // Fallback: primera foto
+            
+            if (currentDate) {
+              // Buscar una foto con la misma fecha
+              const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+              if (photoWithSameDate) {
+                photoToShow = photoWithSameDate;
+              }
+            }
+            
+            setActivePanoramaPhoto(photoToShow);
           }
         }}
         floorPlans={floorPlans}
