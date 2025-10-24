@@ -337,5 +337,10 @@
     "addMode": "Hinzufügen-Modus:",
     "clickToAdd": "Klicken Sie auf den Grundriss, wo Sie einen Punkt hinzufügen möchten",
     "clickToEdit": "Klicken Sie auf Punkte, um sie zu bearbeiten • Ziehen, um sie zu verschieben • Shift+Klick für Mehrfachauswahl"
+  },
+  "orientation": {
+    "rotateDevice": "Bitte drehen Sie Ihr Gerät",
+    "landscapeRequired": "Diese App funktioniert am besten im Querformat",
+    "instruction": "Drehen Sie Ihr Gerät, um fortzufahren"
   }
 }

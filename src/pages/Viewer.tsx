@@ -10,11 +10,14 @@ import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
 import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
+import { OrientationWarning } from '@/components/viewer/OrientationWarning';
+import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 
 const Viewer = () => {
   const { id } = useParams();
   const { t } = useTranslation();
+  const { shouldShowOrientationWarning } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
@@ -219,6 +222,9 @@ const Viewer = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Orientation Warning */}
+      {shouldShowOrientationWarning && <OrientationWarning />}
+      
       {/* Header */}
       <ViewerHeader
         tourTitle={tour.title}
