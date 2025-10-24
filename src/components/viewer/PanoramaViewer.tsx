@@ -193,15 +193,7 @@ export default function PanoramaViewer({
     };
   }, []);
 
-  // Auto fullscreen para experiencia inmersiva (+90% satisfacción en móviles)
-  useEffect(() => {
-    if (isVisible && !document.fullscreenElement) {
-      const container = document.querySelector('.panorama-container');
-      container?.requestFullscreen?.().catch((err) => {
-        console.log('Fullscreen not available:', err);
-      });
-    }
-  }, [isVisible]);
+  // Auto-fullscreen removido - usuario tiene control manual
 
   // Determinar modo de navegación: siempre hotspots (puntos)
   const navigationMode = 'hotspots';
@@ -458,14 +450,19 @@ export default function PanoramaViewer({
     setCurrentZoom(cameraRef.current.fov);
   };
 
-  const toggleFullscreen = () => {
-     const elem = document.querySelector('.panorama-container');
-    if (!document.fullscreenElement) {
-      elem?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(err => console.error("Error entering fullscreen:", err));
-    } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error("Error exiting fullscreen:", err));
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        const elem = document.querySelector('.panorama-container') as HTMLElement;
+        await elem?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error("Fullscreen error:", err);
+      setIsFullscreen(!!document.fullscreenElement);
     }
-  };
+  }, []);
 
   const handleNavClick = (hotspot: Hotspot) => {
     setShowNavList(false);
