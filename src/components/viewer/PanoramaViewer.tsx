@@ -20,6 +20,7 @@ import { es } from 'date-fns/locale';
 import { PanoramaPhoto, Hotspot, FloorPlan } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -50,6 +51,7 @@ export default function PanoramaViewer({
   onFloorChange,
   hotspotsByFloor = {}
 }: PanoramaViewerProps) {
+  const { t } = useTranslation();
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   
   // Helper function para obtener el número de hotspots por piso
@@ -596,8 +598,8 @@ export default function PanoramaViewer({
                             onClick={() => {
                               // Validar si el piso tiene hotspots
                               if (hotspotCount === 0) {
-                                toast.error('Este plano está vacío', {
-                                  description: 'No hay hotspots disponibles en este piso'
+                                toast.error(t('viewer.emptyFloorTitle'), {
+                                  description: t('viewer.emptyFloorDescription')
                                 });
                                 return; // No cambiar de piso
                               }

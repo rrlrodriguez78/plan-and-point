@@ -93,7 +93,9 @@
     "navigatingPoints": "Navegando entre {{count}} puntos",
     "loadingTour": "Cargando tour...",
     "tourNotFound": "Tour no encontrado",
-    "tourNotFoundDesc": "Este tour no existe o no está publicado"
+    "tourNotFoundDesc": "Este tour no existe o no está publicado",
+    "emptyFloorTitle": "Este plano está vacío",
+    "emptyFloorDescription": "No hay hotspots disponibles en este piso"
   },
   "auth": {
     "login": "Iniciar Sesión",

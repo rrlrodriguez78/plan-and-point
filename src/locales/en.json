@@ -93,7 +93,9 @@
     "navigatingPoints": "Navigating between {{count}} points",
     "loadingTour": "Loading tour...",
     "tourNotFound": "Tour not found",
-    "tourNotFoundDesc": "This tour does not exist or is not published"
+    "tourNotFoundDesc": "This tour does not exist or is not published",
+    "emptyFloorTitle": "This floor is empty",
+    "emptyFloorDescription": "No hotspots available on this floor"
   },
   "auth": {
     "login": "Login",
