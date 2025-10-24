@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PanoramaPhoto, Hotspot, FloorPlan } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
+import { toast } from 'sonner';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -593,6 +594,15 @@ export default function PanoramaViewer({
                           <DropdownMenuItem
                             key={floor.id}
                             onClick={() => {
+                              // Validar si el piso tiene hotspots
+                              if (hotspotCount === 0) {
+                                toast.error('Este plano está vacío', {
+                                  description: 'No hay hotspots disponibles en este piso'
+                                });
+                                return; // No cambiar de piso
+                              }
+                              
+                              // Si tiene hotspots, cambiar normalmente
                               onFloorChange(floor.id);
                             }}
                             className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
