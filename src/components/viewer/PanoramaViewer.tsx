@@ -589,14 +589,14 @@ export default function PanoramaViewer({
                 </div>
                 {/* Floor Selector */}
                 {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 rounded-full gap-2 backdrop-blur-sm bg-black/30">
                         <Building2 className="w-4 h-4" />
                         {currentFloorPlan.name}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="bg-black/90 backdrop-blur-sm border-white/20">
+                    <DropdownMenuContent align="start" className="bg-black/90 backdrop-blur-sm border-white/20 z-[9999]">
                       {floorPlans.map((floor) => {
                         const hotspotCount = getHotspotCount(floor.id);
                         return (
@@ -653,7 +653,7 @@ export default function PanoramaViewer({
               <div className="flex items-center justify-center gap-3 flex-wrap">
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -696,7 +696,7 @@ export default function PanoramaViewer({
 
                 {/* Dropdown de Fechas */}
                 {availableDates.length > 0 && (
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -711,7 +711,7 @@ export default function PanoramaViewer({
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-64 bg-black border-white/30 text-white z-[60]">
+                    <DropdownMenuContent className="w-64 bg-black/95 backdrop-blur-md border-white/30 text-white z-[9999]">
                       <div className="px-2 py-1.5 text-sm font-semibold">
                         {t('viewer.selectDate', { count: availableDates.length })}
                       </div>
