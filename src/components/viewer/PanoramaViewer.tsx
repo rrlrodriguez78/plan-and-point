@@ -605,19 +605,19 @@ export default function PanoramaViewer({
                       >
                         <MapPin className="w-5 h-5" />
                         <div className="flex flex-col items-start">
-                          <span className="text-xs text-slate-400">Punto</span>
+                          <span className="text-xs text-slate-400">Hotspots</span>
                           <span className="text-sm font-medium">
                             {currentHotspot?.title || hotspotName}
                           </span>
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-72 bg-black border-white/30 text-white z-[60]">
+                    <DropdownMenuContent className="w-72 bg-black border-white/30 text-white z-[60] max-h-96">
                       <div className="px-2 py-1.5 text-sm font-semibold">
-                        Navegar a otro punto ({availableHotspots.length} disponibles)
+                        Hotspots ({availableHotspots.length})
                       </div>
                       <DropdownMenuSeparator className="bg-white/20" />
-                      <ScrollArea className="max-h-64">
+                      <ScrollArea className="h-auto max-h-80">
                         {availableHotspots.map(hotspot => (
                           <DropdownMenuItem
                             key={hotspot.id}
