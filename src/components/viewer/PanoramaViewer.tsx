@@ -146,6 +146,20 @@ export default function PanoramaViewer({
     return allHotspotsOnFloor.sort((a, b) => a.title.localeCompare(b.title));
   }, [allHotspotsOnFloor]);
 
+  // Detect device type for serving appropriate image version
+  const isMobileDevice = useMemo(() => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           window.innerWidth < 768;
+  }, []);
+
+  // Get appropriate photo URL based on device
+  const getPhotoUrl = useCallback((photo: PanoramaPhoto) => {
+    if (isMobileDevice && photo.photo_url_mobile) {
+      return photo.photo_url_mobile;
+    }
+    return photo.photo_url;
+  }, [isMobileDevice]);
+
   // Auto fullscreen para experiencia inmersiva (+90% satisfacción en móviles)
   useEffect(() => {
     if (isVisible && !document.fullscreenElement) {
@@ -298,7 +312,9 @@ export default function PanoramaViewer({
       animate();
     }
 
-    if (!activePhoto.photo_url || typeof activePhoto.photo_url !== 'string') {
+    const photoUrl = getPhotoUrl(activePhoto);
+    
+    if (!photoUrl || typeof photoUrl !== 'string') {
       setLoadingError('URL de imagen inválida');
       return;
     }
@@ -309,7 +325,7 @@ export default function PanoramaViewer({
     const textureLoader = new THREE.TextureLoader();
     
     textureLoader.load(
-      activePhoto.photo_url,
+      photoUrl,
       (texture) => {
         if (!sceneRef.current) {
             texture.dispose();
@@ -367,7 +383,7 @@ export default function PanoramaViewer({
       }
     );
 
-  }, [isVisible, activePhoto, animate, onPointerDown, onDocumentWheel, handleResize]);
+  }, [isVisible, activePhoto, animate, onPointerDown, onDocumentWheel, handleResize, getPhotoUrl]);
 
   // Removed auto-hide controls effect - controls are now always visible
 

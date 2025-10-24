@@ -17,6 +17,8 @@ interface PanoramaPhoto {
   id: string;
   hotspot_id: string;
   photo_url: string;
+  photo_url_mobile?: string;
+  photo_url_thumbnail?: string;
   description?: string;
   display_order: number;
   capture_date?: string;
@@ -26,13 +28,25 @@ interface PanoramaManagerProps {
   hotspotId: string;
 }
 
-const heavyImageConfig = {
-  maxWidth: 4000,     // Resolución manteniendo calidad 360
-  quality: 0.7,       // Compresión más agresiva
-  format: 'jpeg',     // Estable para grandes archivos
-  chunkSize: 1024 * 1024, // 1MB chunks
-  previewSize: 1000   // Preview rápido
+const imageVersions = {
+  original: {
+    maxWidth: 4000,
+    quality: 0.80,
+    format: 'webp'
+  },
+  mobile: {
+    maxWidth: 2400,
+    quality: 0.75,
+    format: 'webp'
+  },
+  thumbnail: {
+    maxWidth: 400,
+    quality: 0.60,
+    format: 'webp'
+  }
 };
+
+const previewSize = 1000; // Preview rápido
 
 export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   const { t } = useTranslation();
@@ -87,8 +101,8 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         let width = img.width;
         let height = img.height;
         
-        if (width > heavyImageConfig.previewSize || height > heavyImageConfig.previewSize) {
-          const ratio = Math.min(heavyImageConfig.previewSize / width, heavyImageConfig.previewSize / height);
+        if (width > previewSize || height > previewSize) {
+          const ratio = Math.min(previewSize / width, previewSize / height);
           width = Math.floor(width * ratio);
           height = Math.floor(height * ratio);
         }
@@ -103,14 +117,19 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
           } else {
             resolve('');
           }
-        }, `image/${heavyImageConfig.format}`, 0.8);
+        }, 'image/webp', 0.8);
       };
       
       img.src = URL.createObjectURL(file);
     });
   };
 
-  const optimizeHeavy360 = async (file: File): Promise<File> => {
+  const optimizeImage = async (
+    file: File, 
+    maxWidth: number, 
+    quality: number, 
+    format: string
+  ): Promise<File> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -121,29 +140,27 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         let height = img.height;
         
         // Calcular nuevo tamaño manteniendo ratio
-        if (width > heavyImageConfig.maxWidth || height > heavyImageConfig.maxWidth) {
-          const ratio = Math.min(heavyImageConfig.maxWidth / width, heavyImageConfig.maxWidth / height);
+        if (width > maxWidth || height > maxWidth) {
+          const ratio = Math.min(maxWidth / width, maxWidth / height);
           width = Math.floor(width * ratio);
           height = Math.floor(height * ratio);
         }
         
         canvas.width = width;
         canvas.height = height;
-        
-        // Alta calidad pero comprimido
         ctx?.drawImage(img, 0, 0, width, height);
         
         canvas.toBlob((blob) => {
           if (blob) {
             const optimizedFile = new File([blob], file.name, {
-              type: `image/${heavyImageConfig.format}`,
+              type: `image/${format}`,
               lastModified: Date.now(),
             });
             resolve(optimizedFile);
           } else {
             resolve(file);
           }
-        }, `image/${heavyImageConfig.format}`, heavyImageConfig.quality);
+        }, `image/${format}`, quality);
       };
       
       img.src = URL.createObjectURL(file);
@@ -180,57 +197,77 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     setUploadProgress({ progress: 30, status: t('panorama.previewReady') });
     
     try {
-      // Optimize ALL photos for consistency (3-4MB target)
+      // Generate 3 versions: original, mobile, thumbnail
       setUploadProgress({ progress: 40, status: t('panorama.optimizing') });
-      file = await optimizeHeavy360(file);
       
-      // Calculate and display compression stats
-      const reduction = Math.round(((originalSize - file.size) / originalSize) * 100);
-      const stats = {
+      const timestamp = Date.now();
+      const baseFileName = `${hotspotId}/${timestamp}`;
+      
+      // Generate all 3 versions
+      const [originalFile, mobileFile, thumbnailFile] = await Promise.all([
+        optimizeImage(file, imageVersions.original.maxWidth, imageVersions.original.quality, imageVersions.original.format),
+        optimizeImage(file, imageVersions.mobile.maxWidth, imageVersions.mobile.quality, imageVersions.mobile.format),
+        optimizeImage(file, imageVersions.thumbnail.maxWidth, imageVersions.thumbnail.quality, imageVersions.thumbnail.format),
+      ]);
+      
+      // Calculate compression stats (based on original version)
+      const reduction = Math.round(((originalSize - originalFile.size) / originalSize) * 100);
+      setCompressionStats({
         originalSize,
-        finalSize: file.size,
+        finalSize: originalFile.size,
         reduction
-      };
-      setCompressionStats(stats);
-      setUploadProgress({ progress: 65, status: t('panorama.optimized') });
+      });
+      
+      setUploadProgress({ progress: 60, status: t('panorama.optimized') });
       
       toast.success(
-        `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(file.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
+        `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(originalFile.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
         { duration: 5000 }
       );
 
-      // Validate file size after optimization (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
+      // Validate file size after optimization (max 10MB for original)
+      if (originalFile.size > 10 * 1024 * 1024) {
         toast.error(t('panorama.imageTooLarge'));
-        // Remove temp preview
         setPhotos((prev) => prev.filter(p => p.id !== tempId));
         return;
       }
 
-      // Upload to Supabase Storage
+      // Upload all 3 versions to Supabase Storage
       setUploadProgress({ progress: 70, status: t('panorama.uploading') });
-      const fileExt = heavyImageConfig.format === 'jpeg' ? 'jpg' : heavyImageConfig.format;
-      const fileName = `${hotspotId}/${Date.now()}.${fileExt}`;
       
-      const { error: uploadError, data } = await supabase.storage
-        .from('tour-images')
-        .upload(fileName, file);
+      const [originalUpload, mobileUpload, thumbnailUpload] = await Promise.all([
+        supabase.storage.from('tour-images').upload(`${baseFileName}.webp`, originalFile),
+        supabase.storage.from('tour-images').upload(`${baseFileName}_mobile.webp`, mobileFile),
+        supabase.storage.from('tour-images').upload(`${baseFileName}_thumb.webp`, thumbnailFile),
+      ]);
 
-      if (uploadError) throw uploadError;
+      if (originalUpload.error) throw originalUpload.error;
+      if (mobileUpload.error) throw mobileUpload.error;
+      if (thumbnailUpload.error) throw thumbnailUpload.error;
       
       setUploadProgress({ progress: 90, status: t('panorama.finalizing') });
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get public URLs for all versions
+      const { data: { publicUrl: originalUrl } } = supabase.storage
         .from('tour-images')
-        .getPublicUrl(fileName);
+        .getPublicUrl(`${baseFileName}.webp`);
+      
+      const { data: { publicUrl: mobileUrl } } = supabase.storage
+        .from('tour-images')
+        .getPublicUrl(`${baseFileName}_mobile.webp`);
+      
+      const { data: { publicUrl: thumbnailUrl } } = supabase.storage
+        .from('tour-images')
+        .getPublicUrl(`${baseFileName}_thumb.webp`);
 
-      // Save to database
+      // Save to database with all 3 URLs
       const { error: dbError } = await supabase
         .from('panorama_photos')
         .insert({
           hotspot_id: hotspotId,
-          photo_url: publicUrl,
+          photo_url: originalUrl,
+          photo_url_mobile: mobileUrl,
+          photo_url_thumbnail: thumbnailUrl,
           display_order: photos.length,
           capture_date: format(uploadDate, 'yyyy-MM-dd'),
         });
@@ -426,9 +463,10 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                 </div>
                 
                 <img
-                  src={photo.photo_url}
+                  src={photo.photo_url_thumbnail || photo.photo_url}
                   alt={`Panorama ${index + 1}`}
                   className="w-16 h-16 object-cover rounded"
+                  loading="lazy"
                 />
                 
                 <div className="flex-1 space-y-1">

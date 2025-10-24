@@ -176,6 +176,8 @@ export type Database = {
           hotspot_id: string
           id: string
           photo_url: string
+          photo_url_mobile: string | null
+          photo_url_thumbnail: string | null
         }
         Insert: {
           capture_date?: string | null
@@ -185,6 +187,8 @@ export type Database = {
           hotspot_id: string
           id?: string
           photo_url: string
+          photo_url_mobile?: string | null
+          photo_url_thumbnail?: string | null
         }
         Update: {
           capture_date?: string | null
@@ -194,6 +198,8 @@ export type Database = {
           hotspot_id?: string
           id?: string
           photo_url?: string
+          photo_url_mobile?: string | null
+          photo_url_thumbnail?: string | null
         }
         Relationships: [
           {

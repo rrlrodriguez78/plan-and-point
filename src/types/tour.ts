@@ -44,6 +44,8 @@ export interface PanoramaPhoto {
   id: string;
   hotspot_id: string;
   photo_url: string;
+  photo_url_mobile?: string;
+  photo_url_thumbnail?: string;
   description?: string;
   display_order: number;
   capture_date?: string;
