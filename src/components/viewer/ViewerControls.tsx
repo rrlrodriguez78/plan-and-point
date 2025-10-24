@@ -84,7 +84,7 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
   if (floorPlans.length <= 1) return null;
 
   return (
-    <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-20">
+    <div className="fixed top-[180px] right-4 z-10">
       {/* Icono pequeño del selector de pisos - responsive */}
       <Button
         size="icon"
@@ -102,7 +102,7 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-12 sm:bottom-16 right-0 w-80 sm:w-96 max-w-[90vw]"
+            className="absolute top-12 right-0 w-80 sm:w-96 max-w-[90vw]"
           >
             <Card className="bg-black/80 backdrop-blur-lg border-white/20 text-white shadow-2xl max-h-[70vh]">
               <CardContent className="p-2 sm:p-3">
