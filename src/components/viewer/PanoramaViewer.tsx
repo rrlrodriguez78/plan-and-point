@@ -648,8 +648,8 @@ export default function PanoramaViewer({
           </div>
 
           {/* Controles inferiores - SIEMPRE VISIBLES */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none z-50">
-            <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}>
+            <div className="absolute bottom-0 left-0 right-0 p-4 z-50">
+              <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : ''}`}>
               <div className="flex items-center justify-center gap-3 flex-wrap">
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
