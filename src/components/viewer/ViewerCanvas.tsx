@@ -28,12 +28,12 @@ export const ViewerCanvas = ({
       className="relative w-full h-full bg-accent/30 overflow-hidden cursor-grab active:cursor-grabbing"
     >
       {/* Zoom controls */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+      <div className="absolute bottom-4 md:top-4 left-1/2 md:left-auto right-auto md:right-4 -translate-x-1/2 md:translate-x-0 z-10 flex flex-row md:flex-col gap-2">
         <Button
           variant="secondary"
           size="icon"
           onClick={zoomIn}
-          className="shadow-lg"
+          className="shadow-lg h-9 w-9 md:h-10 md:w-10"
         >
           <ZoomIn className="w-4 h-4" />
         </Button>
@@ -41,7 +41,7 @@ export const ViewerCanvas = ({
           variant="secondary"
           size="icon"
           onClick={zoomOut}
-          className="shadow-lg"
+          className="shadow-lg h-9 w-9 md:h-10 md:w-10"
         >
           <ZoomOut className="w-4 h-4" />
         </Button>
@@ -49,7 +49,7 @@ export const ViewerCanvas = ({
           variant="secondary"
           size="icon"
           onClick={resetTransform}
-          className="shadow-lg"
+          className="shadow-lg h-9 w-9 md:h-10 md:w-10"
         >
           <Maximize className="w-4 h-4" />
         </Button>

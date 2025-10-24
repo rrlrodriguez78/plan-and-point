@@ -84,13 +84,13 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
   if (floorPlans.length <= 1) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-10">
+    <div className="fixed bottom-4 left-1/2 md:left-auto md:right-4 -translate-x-1/2 md:translate-x-0 ml-[120px] md:ml-0 z-10">
       {/* Selector de pisos con mismo estilo que zoom controls */}
       <Button
         variant="secondary"
         size="icon"
         onClick={() => setShowFloorList(!showFloorList)}
-        className="shadow-lg"
+        className="shadow-lg h-9 w-9 md:h-10 md:w-10"
         title="Cambiar de Piso"
       >
         <Layers className="w-4 h-4" />
