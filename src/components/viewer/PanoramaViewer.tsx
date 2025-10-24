@@ -95,7 +95,7 @@ export default function PanoramaViewer({
   const theta = useRef(0);
   // Removed showControls state - controls are now always visible
   const [showInfo, setShowInfo] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [currentZoom, setCurrentZoom] = useState(120);
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
@@ -103,6 +103,7 @@ export default function PanoramaViewer({
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 9999 : 30;
+  console.log('PanoramaViewer render - isFullscreen:', isFullscreen, 'zIndex:', containerZIndex);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {
@@ -174,13 +175,29 @@ export default function PanoramaViewer({
     return photo.photo_url;
   }, [isMobileDevice]);
 
+  // Listener de fullscreen - DEBE estar ANTES del auto-fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      console.log('Fullscreen changed:', isCurrentlyFullscreen);
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    
+    // Detectar estado inicial al montar
+    handleFullscreenChange();
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   // Auto fullscreen para experiencia inmersiva (+90% satisfacción en móviles)
   useEffect(() => {
     if (isVisible && !document.fullscreenElement) {
       const container = document.querySelector('.panorama-container');
-      container?.requestFullscreen?.().then(() => {
-        setIsFullscreen(true);
-      }).catch((err) => {
+      container?.requestFullscreen?.().catch((err) => {
         console.log('Fullscreen not available:', err);
       });
     }
