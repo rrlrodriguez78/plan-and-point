@@ -612,12 +612,12 @@ export default function PanoramaViewer({
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-72 bg-black border-white/30 text-white z-[60] max-h-96">
+                    <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-md border-white/30 text-white z-[9999]">
                       <div className="px-2 py-1.5 text-sm font-semibold">
                         Hotspots ({availableHotspots.length})
                       </div>
                       <DropdownMenuSeparator className="bg-white/20" />
-                      <ScrollArea className="h-auto max-h-80">
+                      <ScrollArea className="h-[320px]">
                         {availableHotspots.map(hotspot => (
                           <DropdownMenuItem
                             key={hotspot.id}
