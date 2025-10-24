@@ -449,19 +449,6 @@ export default function PanoramaViewer({
 
   const handleNavClick = (hotspot: Hotspot) => {
     setShowNavList(false);
-    
-    // Verificar si el hotspot tiene fotos para la fecha actual
-    const hotspotPhotos = photos.filter(p => p.hotspot_id === hotspot.id);
-    
-    if (hotspotPhotos.length === 0) {
-      // Si no tiene fotos, mostrar notificación y quedarse en el hotspot actual
-      toast.error(t('viewer.noPhotosAvailable'), {
-        description: t('viewer.noPhotosDescription', { name: hotspot.title }),
-      });
-      return;
-    }
-    
-    // Si el hotspot tiene fotos, navegar normalmente
     onNavigate(hotspot);
   };
 
