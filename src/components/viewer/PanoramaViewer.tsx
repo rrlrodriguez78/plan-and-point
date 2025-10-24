@@ -96,6 +96,7 @@ export default function PanoramaViewer({
   const [currentZoom, setCurrentZoom] = useState(120);
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [isLoadingScene, setIsLoadingScene] = useState(false);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {
@@ -296,17 +297,20 @@ export default function PanoramaViewer({
     }
 
     const mountNode = mountRef.current;
+    setIsLoadingScene(true);
     setLoadingError(null);
 
     if (!rendererRef.current) {
       cameraRef.current = new THREE.PerspectiveCamera(120, mountNode.clientWidth / mountNode.clientHeight, 1, 1100);
       sceneRef.current = new THREE.Scene();
       rendererRef.current = new THREE.WebGLRenderer({ 
-        antialias: true,
-        powerPreference: 'high-performance', // Optimización para móviles
+        antialias: false,
+        powerPreference: 'high-performance',
+        alpha: false,
+        stencil: false,
       });
       // Limitar DPR para mejor performance
-      rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       rendererRef.current.setSize(mountNode.clientWidth, mountNode.clientHeight);
       mountNode.appendChild(rendererRef.current.domElement);
       
@@ -316,7 +320,10 @@ export default function PanoramaViewer({
       mountNode.addEventListener('wheel', onDocumentWheel);
       window.addEventListener('resize', handleResize);
       
-      animate();
+      requestAnimationFrame(() => {
+        animate();
+        setIsLoadingScene(false);
+      });
     }
 
     const photoUrl = getPhotoUrl(activePhoto);
@@ -326,7 +333,7 @@ export default function PanoramaViewer({
       return;
     }
 
-    const sphereGeometry = new THREE.SphereGeometry(500, 60, 40);
+    const sphereGeometry = new THREE.SphereGeometry(500, 32, 24);
     sphereGeometry.scale(-1, 1, 1);
     
     const textureLoader = new THREE.TextureLoader();
@@ -374,6 +381,7 @@ export default function PanoramaViewer({
         }
 
         setLoadingError(null);
+        setIsLoadingScene(false);
       },
       undefined,
       (error) => {
@@ -387,6 +395,7 @@ export default function PanoramaViewer({
             errorMessage = 'Error de red al cargar la imagen 360°. Por favor, verifica tu conexión.';
         }
         setLoadingError(errorMessage);
+        setIsLoadingScene(false);
       }
     );
 
@@ -483,6 +492,17 @@ export default function PanoramaViewer({
         >
           <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
           
+          {/* Loading overlay mientras se inicializa Three.js */}
+          {isLoadingScene && !loadingError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-[45]">
+              <div className="bg-black/90 backdrop-blur-md rounded-xl p-8 flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                <p className="text-white text-lg font-medium">Cargando vista 360°...</p>
+                <p className="text-white/60 text-sm">Preparando controles</p>
+              </div>
+            </div>
+          )}
+
           {loadingError && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
               <div className="bg-red-600/90 backdrop-blur-sm rounded-lg p-6 mx-4 max-w-md text-center">
@@ -511,7 +531,7 @@ export default function PanoramaViewer({
           )}
 
           {/* Botones de navegación entre puntos - SIEMPRE VISIBLES */}
-          {!loadingError && (
+          {!loadingError && !isLoadingScene && (
             <>
               <Button 
                 variant="ghost" 
@@ -539,7 +559,7 @@ export default function PanoramaViewer({
 
           {/* Header superior - SIEMPRE VISIBLE */}
           <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-50">
-            <div className="flex justify-between items-center pointer-events-auto">
+            <div className={`flex justify-between items-center ${isLoadingScene ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}>
               <div className="text-white flex items-start gap-3">
                   <div className="flex-1">
                   <h2 className="text-xl font-bold">{hotspotName}</h2>
@@ -606,7 +626,7 @@ export default function PanoramaViewer({
 
           {/* Controles inferiores - SIEMPRE VISIBLES */}
           <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none z-50">
-            <div className="bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl pointer-events-auto border border-white/10">
+            <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}>
               <div className="flex items-center justify-center gap-3 flex-wrap">
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
