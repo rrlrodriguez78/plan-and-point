@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Maximize2, Info, Share2, ArrowLeft, List } from 'lucide-react';
+import { Maximize2, Info, Share2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -8,10 +8,9 @@ interface ViewerHeaderProps {
   tourTitle: string;
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
-  onOpenGlobalList?: () => void;
 }
 
-export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen, onOpenGlobalList }: ViewerHeaderProps) => {
+export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: ViewerHeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   
@@ -40,12 +39,6 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen, onOp
             <h1 className="text-xl font-bold text-foreground">{tourTitle}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {onOpenGlobalList && (
-              <Button variant="ghost" size="sm" onClick={onOpenGlobalList}>
-                <List className="w-4 h-4 mr-2" />
-                Todos los Puntos
-              </Button>
-            )}
             <Button variant="ghost" size="sm" onClick={handleHelp}>
               <Info className="w-4 h-4 mr-2" />
               {t('viewer.help')}

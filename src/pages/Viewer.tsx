@@ -12,7 +12,6 @@ import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 import { ManagementToolbar } from '@/components/viewer/ManagementToolbar';
-import { GlobalHotspotList } from '@/components/viewer/GlobalHotspotList';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 
 const Viewer = () => {
@@ -34,7 +33,6 @@ const Viewer = () => {
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [selectedHotspots, setSelectedHotspots] = useState<string[]>([]);
   const [copiedHotspots, setCopiedHotspots] = useState<Hotspot[]>([]);
-  const [showGlobalList, setShowGlobalList] = useState(false);
 
   useEffect(() => {
     loadTourData();
@@ -223,16 +221,6 @@ const Viewer = () => {
     setSelectedHotspots([]);
   };
 
-  const handleGlobalHotspotSelect = async (hotspot: Hotspot, floorPlanId: string) => {
-    // Switch to the correct floor
-    setCurrentFloorPlanId(floorPlanId);
-    
-    // Wait a moment for floor to switch, then open hotspot
-    setTimeout(() => {
-      handleHotspotClick(hotspot);
-    }, 100);
-  };
-
   const currentFloorPlan = floorPlans.find(fp => fp.id === currentFloorPlanId);
   const currentHotspots = currentFloorPlan ? hotspotsByFloor[currentFloorPlan.id] || [] : [];
 
@@ -306,11 +294,10 @@ const Viewer = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <ViewerHeader 
+      <ViewerHeader
         tourTitle={tour.title}
         onToggleFullscreen={toggleFullscreen}
         isFullscreen={isFullscreen}
-        onOpenGlobalList={() => setShowGlobalList(true)}
       />
 
       {/* Management Toolbar */}
@@ -436,15 +423,6 @@ const Viewer = () => {
         floorPlans={floorPlans}
         activeFloorPlanId={currentFloorPlanId}
         onFloorPlanChange={setCurrentFloorPlanId}
-      />
-
-      {/* Global Hotspot List */}
-      <GlobalHotspotList
-        isOpen={showGlobalList}
-        onClose={() => setShowGlobalList(false)}
-        hotspotsByFloor={hotspotsByFloor}
-        floorPlans={floorPlans}
-        onHotspotSelect={handleGlobalHotspotSelect}
       />
     </div>
   );
