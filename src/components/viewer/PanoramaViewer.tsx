@@ -101,6 +101,9 @@ export default function PanoramaViewer({
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoadingScene, setIsLoadingScene] = useState(false);
 
+  // Z-index dinámico para fullscreen
+  const containerZIndex = isFullscreen ? 9999 : 30;
+
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {
     return () => {
@@ -495,7 +498,8 @@ export default function PanoramaViewer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="panorama-container fullscreen-container fixed inset-0 z-30 bg-black flex items-center justify-center overflow-hidden select-none"
+          className="panorama-container fullscreen-container fixed inset-0 bg-black flex items-center justify-center overflow-hidden select-none"
+          style={{ zIndex: containerZIndex }}
         >
           <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
           
@@ -596,7 +600,11 @@ export default function PanoramaViewer({
                         {currentFloorPlan.name}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="bg-black/90 backdrop-blur-sm border-white/20 z-[9999]">
+                    <DropdownMenuContent 
+                      align="start" 
+                      className="bg-black/90 backdrop-blur-sm border-white/20"
+                      style={{ zIndex: containerZIndex + 100 }}
+                    >
                       {floorPlans.map((floor) => {
                         const hotspotCount = getHotspotCount(floor.id);
                         return (
@@ -650,7 +658,7 @@ export default function PanoramaViewer({
           {/* Controles inferiores - SIEMPRE VISIBLES */}
             <div className="absolute bottom-0 left-0 right-0 p-4 z-50">
               <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : ''}`}>
-              <div className="flex items-center justify-center gap-3 flex-wrap">
+              <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
                   <DropdownMenu modal={false}>
@@ -668,7 +676,10 @@ export default function PanoramaViewer({
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-72 bg-black/95 backdrop-blur-md border-white/30 text-white z-[9999]">
+                    <DropdownMenuContent 
+                      className="w-72 bg-black/95 backdrop-blur-md border-white/30 text-white"
+                      style={{ zIndex: containerZIndex + 100 }}
+                    >
                       <div className="px-2 py-1.5 text-sm font-semibold">
                         Hotspots ({availableHotspots.length})
                       </div>
@@ -711,7 +722,10 @@ export default function PanoramaViewer({
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-64 bg-black/95 backdrop-blur-md border-white/30 text-white z-[9999]">
+                    <DropdownMenuContent 
+                      className="w-64 bg-black/95 backdrop-blur-md border-white/30 text-white"
+                      style={{ zIndex: containerZIndex + 100 }}
+                    >
                       <div className="px-2 py-1.5 text-sm font-semibold">
                         {t('viewer.selectDate', { count: availableDates.length })}
                       </div>
