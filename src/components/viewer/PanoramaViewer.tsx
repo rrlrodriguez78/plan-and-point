@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { enUS, es } from 'date-fns/locale';
 import { PanoramaPhoto, Hotspot, FloorPlan } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 import { toast } from 'sonner';
@@ -51,7 +51,7 @@ export default function PanoramaViewer({
   onFloorChange,
   hotspotsByFloor = {}
 }: PanoramaViewerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   
   // Helper function para obtener el número de hotspots por piso
@@ -332,7 +332,7 @@ export default function PanoramaViewer({
     const photoUrl = getPhotoUrl(activePhoto);
     
     if (!photoUrl || typeof photoUrl !== 'string') {
-      setLoadingError('URL de imagen inválida');
+      setLoadingError(t('viewer.invalidImageUrl'));
       return;
     }
 
@@ -391,11 +391,9 @@ export default function PanoramaViewer({
         console.error("Failed to load panorama texture:", error);
         sphereGeometry.dispose();
         
-        let errorMessage = 'Error desconocido al cargar la imagen.';
+        let errorMessage = t('viewer.networkError');
         if (error instanceof Error && error.message) {
-            errorMessage = `Error al cargar la imagen: ${error.message}`;
-        } else {
-            errorMessage = 'Error de red al cargar la imagen 360°. Por favor, verifica tu conexión.';
+            errorMessage = t('viewer.errorLoadingImageDescription', { error: error.message });
         }
         setLoadingError(errorMessage);
         setIsLoadingScene(false);
@@ -408,7 +406,8 @@ export default function PanoramaViewer({
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "d 'de' MMMM, yyyy", { locale: es });
+      const locale = i18n.language === 'es' ? es : enUS;
+      return format(new Date(dateString), "d 'de' MMMM, yyyy", { locale });
     } catch {
       return dateString;
     }
@@ -500,8 +499,8 @@ export default function PanoramaViewer({
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-[45]">
               <div className="bg-black/90 backdrop-blur-md rounded-xl p-8 flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-                <p className="text-white text-lg font-medium">Cargando vista 360°...</p>
-                <p className="text-white/60 text-sm">Preparando controles</p>
+                <p className="text-white text-lg font-medium">{t('viewer.loading360')}</p>
+                <p className="text-white/60 text-sm">{t('viewer.preparingControls')}</p>
               </div>
             </div>
           )}
@@ -510,7 +509,7 @@ export default function PanoramaViewer({
             <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
               <div className="bg-red-600/90 backdrop-blur-sm rounded-lg p-6 mx-4 max-w-md text-center">
                 <div className="text-white text-xl mb-2">❌</div>
-                <h3 className="text-white font-semibold mb-2">Error al Cargar Imagen</h3>
+                <h3 className="text-white font-semibold mb-2">{t('viewer.errorLoadingImage')}</h3>
                 <p className="text-white/90 text-sm mb-4">{loadingError}</p>
                 <div className="flex gap-2 justify-center">
                   <button
@@ -520,13 +519,13 @@ export default function PanoramaViewer({
                     }}
                     className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm"
                   >
-                    Reintentar
+                    {t('viewer.retry')}
                   </button>
                   <button
                     onClick={onClose}
                     className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm"
                   >
-                    Cerrar
+                    {t('viewer.close')}
                   </button>
                 </div>
               </div>
@@ -542,7 +541,7 @@ export default function PanoramaViewer({
                 onClick={handlePreviousHotspot}
                 disabled={!canGoPreviousHotspot}
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
-                title="Punto anterior"
+                title={t('viewer.previousPoint')}
               >
                 <ChevronLeft className="w-8 h-8" />
               </Button>
@@ -553,7 +552,7 @@ export default function PanoramaViewer({
                 onClick={handleNextHotspot}
                 disabled={!canGoNextHotspot}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
-                title="Punto siguiente"
+                title={t('viewer.nextPoint')}
               >
                 <ChevronRight className="w-8 h-8" />
               </Button>
@@ -569,7 +568,10 @@ export default function PanoramaViewer({
                   <div className="flex items-center gap-2 text-sm text-slate-300">
                     {photosByDate.length > 1 && activePhoto && (
                       <span>
-                        Foto {photosByDate.findIndex(p => p.id === activePhoto.id) + 1} de {photosByDate.length}
+                        {t('viewer.photoOfTotal', { 
+                          current: photosByDate.findIndex(p => p.id === activePhoto.id) + 1, 
+                          total: photosByDate.length 
+                        })}
                       </span>
                     )}
                     {activePhoto?.capture_date && (
@@ -673,7 +675,7 @@ export default function PanoramaViewer({
                             <MapPin className="w-4 h-4 mr-2" />
                             {hotspot.title}
                             {hotspot.id === activePhoto?.hotspot_id && (
-                              <span className="ml-auto text-xs text-slate-400">(actual)</span>
+                              <span className="ml-auto text-xs text-slate-400">{t('viewer.current')}</span>
                             )}
                           </DropdownMenuItem>
                         ))}
@@ -692,16 +694,16 @@ export default function PanoramaViewer({
                       >
                         <Calendar className="w-5 h-5" />
                         <div className="flex flex-col items-start">
-                          <span className="text-xs text-slate-400">Fecha</span>
+                          <span className="text-xs text-slate-400">{t('viewer.date')}</span>
                           <span className="text-sm font-medium">
-                            {activePhoto?.capture_date ? formatDate(activePhoto.capture_date) : 'Sin fecha'}
+                            {activePhoto?.capture_date ? formatDate(activePhoto.capture_date) : t('viewer.noDate')}
                           </span>
                         </div>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-64 bg-black border-white/30 text-white z-[60]">
                       <div className="px-2 py-1.5 text-sm font-semibold">
-                        Seleccionar fecha ({availableDates.length} disponibles)
+                        {t('viewer.selectDate', { count: availableDates.length })}
                       </div>
                       <DropdownMenuSeparator className="bg-white/20" />
                       <ScrollArea className="max-h-64">
@@ -719,11 +721,11 @@ export default function PanoramaViewer({
                               <div className="flex-1">
                                 {formatDate(date)}
                                 <span className="text-xs text-slate-400 ml-2">
-                                  ({photosForDate.length} {photosForDate.length === 1 ? 'foto' : 'fotos'})
+                                  ({photosForDate.length} {photosForDate.length === 1 ? t('viewer.photo') : t('viewer.photos')})
                                 </span>
                               </div>
                               {date === activePhoto?.capture_date && (
-                                <span className="ml-auto text-xs text-slate-400">(actual)</span>
+                                <span className="ml-auto text-xs text-slate-400">{t('viewer.current')}</span>
                               )}
                             </DropdownMenuItem>
                           );
@@ -743,7 +745,7 @@ export default function PanoramaViewer({
                     onClick={() => zoomInOut(5)} 
                     className="text-white hover:bg-white/20 rounded-full bg-black/40" 
                     disabled={currentZoom >= 120}
-                    title="Alejar"
+                    title={t('viewer.zoomOut')}
                   >
                     <ZoomOut className="w-5 h-5" />
                   </Button>
@@ -756,7 +758,7 @@ export default function PanoramaViewer({
                     onClick={() => zoomInOut(-5)} 
                     className="text-white hover:bg-white/20 rounded-full bg-black/40" 
                     disabled={currentZoom <= 30}
-                    title="Acercar"
+                    title={t('viewer.zoomIn')}
                   >
                     <ZoomIn className="w-5 h-5" />
                   </Button>
@@ -770,7 +772,7 @@ export default function PanoramaViewer({
                   size="icon" 
                   onClick={resetView} 
                   className="text-white hover:bg-white/20 rounded-full bg-black/40" 
-                  title="Resetear vista"
+                  title={t('viewer.resetView')}
                 >
                   <RotateCw className="w-5 h-5" />
                 </Button>
@@ -782,7 +784,7 @@ export default function PanoramaViewer({
           <AnimatePresence>
             {showInfo && activePhoto?.description && !loadingError && (
               <motion.div initial={{ opacity: 0, x: 300 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 300 }} className="absolute top-20 right-4 bg-black/80 backdrop-blur-sm rounded-lg p-4 text-white max-w-sm pointer-events-auto z-40">
-                <h3 className="font-semibold mb-2">Información</h3>
+                <h3 className="font-semibold mb-2">{t('viewer.information')}</h3>
                 <p className="text-sm text-slate-300">{activePhoto.description}</p>
               </motion.div>
             )}
