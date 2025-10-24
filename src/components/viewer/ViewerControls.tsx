@@ -85,14 +85,15 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
 
   return (
     <div className="fixed top-[180px] right-4 z-10">
-      {/* Icono pequeño del selector de pisos - responsive */}
+      {/* Selector de pisos con mismo estilo que zoom controls */}
       <Button
+        variant="secondary"
         size="icon"
         onClick={() => setShowFloorList(!showFloorList)}
-        className="bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white h-10 w-10 sm:h-11 sm:w-11 shadow-lg"
+        className="shadow-lg"
         title="Cambiar de Piso"
       >
-        <Layers className="w-4 h-4 sm:w-5 sm:h-5" />
+        <Layers className="w-4 h-4" />
       </Button>
 
       {/* Ventana emergente con la lista de pisos - AMPLIADA */}
