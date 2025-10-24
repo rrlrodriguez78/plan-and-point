@@ -598,6 +598,11 @@ export default function PanoramaViewer({
                           <DropdownMenuItem
                             key={floor.id}
                             onClick={() => {
+                              // Si es el mismo piso, no hacer nada
+                              if (floor.id === currentFloorPlan.id) {
+                                return;
+                              }
+                              
                               // Validar si el piso tiene hotspots
                               if (hotspotCount === 0) {
                                 toast.error(t('viewer.emptyFloorTitle'), {
