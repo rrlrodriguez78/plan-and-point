@@ -25,7 +25,7 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
   };
 
   const handleBack = () => {
-    navigate(-1);
+    navigate('/app/tours');
   };
 
   return (
