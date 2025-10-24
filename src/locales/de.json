@@ -116,7 +116,11 @@
     "information": "Information",
     "invalidImageUrl": "Ungültige Bild-URL",
     "errorLoadingImageDescription": "Fehler beim Laden des Bildes: {{error}}",
-    "networkError": "Netzwerkfehler beim Laden des 360°-Bildes. Bitte überprüfen Sie Ihre Verbindung."
+    "networkError": "Netzwerkfehler beim Laden des 360°-Bildes. Bitte überprüfen Sie Ihre Verbindung.",
+    "noPhotosAvailable": "Keine Fotos verfügbar",
+    "noPhotosDescription": "Der Hotspot '{{name}}' hat keine Fotos zum Anzeigen",
+    "noPhotoForDate": "Kein Foto für dieses Datum",
+    "noPhotoForDateDescription": "Kein Foto verfügbar für {{date}}"
   },
   "auth": {
     "login": "Anmelden",

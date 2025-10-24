@@ -449,6 +449,19 @@ export default function PanoramaViewer({
 
   const handleNavClick = (hotspot: Hotspot) => {
     setShowNavList(false);
+    
+    // Verificar si el hotspot tiene fotos para la fecha actual
+    const hotspotPhotos = photos.filter(p => p.hotspot_id === hotspot.id);
+    
+    if (hotspotPhotos.length === 0) {
+      // Si no tiene fotos, mostrar notificación y quedarse en el hotspot actual
+      toast.error(t('viewer.noPhotosAvailable'), {
+        description: t('viewer.noPhotosDescription', { name: hotspot.title }),
+      });
+      return;
+    }
+    
+    // Si el hotspot tiene fotos, navegar normalmente
     onNavigate(hotspot);
   };
 
@@ -457,6 +470,11 @@ export default function PanoramaViewer({
     const photoForDate = filteredPhotos.find(p => p.capture_date === date);
     if (photoForDate) {
       setActivePhoto(photoForDate);
+    } else {
+      // Si no hay foto para esa fecha, mostrar notificación y quedarse en la fecha actual
+      toast.error(t('viewer.noPhotoForDate'), {
+        description: t('viewer.noPhotoForDateDescription', { date: formatDate(date) }),
+      });
     }
   };
 
