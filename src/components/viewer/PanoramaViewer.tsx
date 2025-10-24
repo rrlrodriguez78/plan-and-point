@@ -620,7 +620,7 @@ export default function PanoramaViewer({
                     <DropdownMenuContent 
                       align="start" 
                       className="bg-black/90 backdrop-blur-sm border-white/20"
-                      style={{ zIndex: containerZIndex + 100 }}
+                      style={{ zIndex: 99999 }}
                     >
                       {floorPlans.map((floor) => {
                         const hotspotCount = getHotspotCount(floor.id);
@@ -695,7 +695,7 @@ export default function PanoramaViewer({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
                       className="w-72 bg-black/95 backdrop-blur-md border-white/30 text-white"
-                      style={{ zIndex: containerZIndex + 100 }}
+                      style={{ zIndex: 99999 }}
                     >
                       <div className="px-2 py-1.5 text-sm font-semibold">
                         Hotspots ({availableHotspots.length})
@@ -741,7 +741,7 @@ export default function PanoramaViewer({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
                       className="w-64 bg-black/95 backdrop-blur-md border-white/30 text-white"
-                      style={{ zIndex: containerZIndex + 100 }}
+                      style={{ zIndex: 99999 }}
                     >
                       <div className="px-2 py-1.5 text-sm font-semibold">
                         {t('viewer.selectDate', { count: availableDates.length })}
