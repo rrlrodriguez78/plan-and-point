@@ -594,7 +594,6 @@ export default function PanoramaViewer({
                             key={floor.id}
                             onClick={() => {
                               onFloorChange(floor.id);
-                              onClose();
                             }}
                             className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
                           >
