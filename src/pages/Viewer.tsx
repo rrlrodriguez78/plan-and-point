@@ -44,61 +44,52 @@ const Viewer = () => {
     }
   }, [isLandscape, userDismissedWarning, isMobile]);
 
-  // Handler mejorado para forzar landscape con mejor detección de errores
+  // Handler mejorado para forzar landscape
   const handleForceLandscape = async () => {
-    console.log('🔄 Forzando landscape con estrategia Fullscreen First...');
+    console.log('🔄 Forzando landscape...');
+    
+    // Ocultar el warning inmediatamente
+    setUserDismissedWarning(true);
     
     try {
       // PASO 1: Intentar entrar a fullscreen primero
       if (!document.fullscreenElement) {
         console.log('📱 Activando fullscreen...');
         await document.documentElement.requestFullscreen();
-        
-        // Esperar a que fullscreen se active completamente
         await new Promise(resolve => setTimeout(resolve, 300));
         console.log('✅ Fullscreen activado');
       }
       
       // PASO 2: Intentar lockear la orientación
+      console.log('🎯 Intentando bloquear orientación...');
       const success = await lockLandscape();
       
       if (success) {
         console.log('✅ Landscape bloqueado exitosamente');
-        setUserDismissedWarning(true);
-        toast.success(t('viewer.landscapeLocked', '¡Orientación horizontal activada!'));
+        toast.success(t('viewer.landscapeLocked'));
       } else {
         console.log('⚠️ No se pudo lockear la orientación');
-        
-        // Detectar si auto-rotate está deshabilitado
-        const initialAngle = screen.orientation?.angle || 0;
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const currentAngle = screen.orientation?.angle || 0;
-        
-        if (initialAngle === currentAngle && initialAngle === 0) {
-          // Auto-rotate probablemente deshabilitado
-          toast.error(
-            t('viewer.enableAutoRotate', 'Habilita la rotación automática en los ajustes de tu dispositivo'),
-            { duration: 5000 }
-          );
-        } else {
-          // Otro tipo de error
-          toast.error(
-            t('viewer.rotateManually', 'Por favor rota tu dispositivo manualmente a posición horizontal'),
-            { duration: 4000 }
-          );
-        }
+        toast.error(
+          t('viewer.enableAutoRotate'),
+          { 
+            duration: 6000,
+            description: t('viewer.rotateManually')
+          }
+        );
       }
     } catch (error) {
       console.error('❌ Error en handleForceLandscape:', error);
       
       if (error instanceof Error) {
         if (error.name === 'NotSupportedError') {
-          toast.error(t('viewer.rotationNotSupported', 'Tu navegador no soporta bloqueo de orientación'));
+          toast.error(t('viewer.rotationNotSupported'));
         } else if (error.name === 'SecurityError') {
-          toast.error(t('viewer.installPwaForRotation', 'Instala la app completa para usar esta función'));
+          toast.error(t('viewer.installPwaForRotation'));
         } else {
-          toast.error(t('viewer.rotationError', 'Error al intentar forzar la rotación'));
+          toast.error(t('viewer.rotationError'));
         }
+      } else {
+        toast.error(t('viewer.rotationError'));
       }
     }
   };
@@ -440,9 +431,15 @@ const Viewer = () => {
 
   // Handler para reintentar rotación
   const handleTryRotate = async () => {
+    // Ocultar el warning al intentar
+    setUserDismissedWarning(true);
+    
     const success = await lockLandscape();
-    if (success) {
-      setUserDismissedWarning(true);
+    if (!success) {
+      toast.error(
+        t('viewer.rotateManually'),
+        { duration: 5000 }
+      );
     }
   };
 
