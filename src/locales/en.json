@@ -78,6 +78,8 @@
     "tourPublished": "Tour published",
     "tourUnpublished": "Tour unpublished",
     "organizationNotFound": "Organization not found",
+    "deleteConfirm": "Delete this tour?",
+    "deleteWarning": "This action cannot be undone. The tour and all its data will be permanently deleted.",
     "clickCoverToView": "Click on the cover to view the tour",
     "publishToView": "Publish the tour to view it"
   },

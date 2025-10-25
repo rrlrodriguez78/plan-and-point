@@ -78,6 +78,8 @@
     "tourPublished": "Tour veröffentlicht",
     "tourUnpublished": "Tour nicht mehr veröffentlicht",
     "organizationNotFound": "Organisation nicht gefunden",
+    "deleteConfirm": "Diese Tour löschen?",
+    "deleteWarning": "Diese Aktion kann nicht rückgängig gemacht werden. Die Tour und alle ihre Daten werden dauerhaft gelöscht.",
     "clickCoverToView": "Klicken Sie auf das Cover, um die Tour anzusehen",
     "publishToView": "Veröffentlichen Sie die Tour, um sie anzusehen"
   },

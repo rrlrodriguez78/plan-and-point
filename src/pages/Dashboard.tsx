@@ -10,6 +10,7 @@ import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon } from
 import TourSetupModal from '@/components/editor/TourSetupModal';
 import { useTranslation } from 'react-i18next';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Organization {
   id: string;
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [savingTour, setSavingTour] = useState(false);
   const [uploadingCover, setUploadingCover] = useState<string | null>(null);
+  const [tourToDelete, setTourToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -175,6 +177,7 @@ const Dashboard = () => {
 
       toast.success(t('dashboard.tourDeleted'));
       setTours(tours.filter(t => t.id !== id));
+      setTourToDelete(null);
     } catch (error) {
       console.error('Error deleting tour:', error);
       toast.error(t('dashboard.errorDeleting'));
@@ -338,7 +341,7 @@ const Dashboard = () => {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => deleteTour(tour.id)}
+                            onClick={() => setTourToDelete(tour.id)}
                             className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-red-600/60 transition-all border border-white/20"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -396,6 +399,26 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={tourToDelete !== null} onOpenChange={(open) => !open && setTourToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('dashboard.deleteConfirm')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('dashboard.deleteWarning')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => tourToDelete && deleteTour(tourToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -78,6 +78,8 @@
     "tourPublished": "Visite publiée",
     "tourUnpublished": "Visite dépubliée",
     "organizationNotFound": "Organisation non trouvée",
+    "deleteConfirm": "Supprimer cette visite?",
+    "deleteWarning": "Cette action ne peut pas être annulée. La visite et toutes ses données seront définitivement supprimées.",
     "clickCoverToView": "Cliquez sur la couverture pour voir la visite",
     "publishToView": "Publiez la visite pour la voir"
   },
