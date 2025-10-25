@@ -1,1 +1,13 @@
 project_id = "swnhlzcodsnpsqpxaxov"
+
+[functions.set-tour-password]
+verify_jwt = true
+
+[functions.verify-tour-password]
+verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false
+
+[functions.send-weekly-reports]
+verify_jwt = false

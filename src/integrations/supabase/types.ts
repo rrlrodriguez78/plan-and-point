@@ -88,6 +88,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          created_at: string | null
+          email_address: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          resend_id: string | null
+          sent_at: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_address: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          resend_id?: string | null
+          sent_at?: string | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_address?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          resend_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       floor_plans: {
         Row: {
           capture_date: string | null
