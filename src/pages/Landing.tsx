@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { MapPin, Layout, Eye, Zap } from 'lucide-react';
 import heroImage from '@/assets/hero-bg.jpg';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +12,7 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <PWAInstallPrompt />
       
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Navbar } from '@/components/Navbar';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { StatsCard } from '@/components/analytics/StatsCard';
 import { ViewsChart } from '@/components/analytics/ViewsChart';
 import { TopToursChart } from '@/components/analytics/TopToursChart';
@@ -44,6 +45,7 @@ const Inicio = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Navbar />
+      <PWAInstallPrompt />
       
       <main className="container mx-auto px-4 pt-24 pb-12">
         {/* Header */}
