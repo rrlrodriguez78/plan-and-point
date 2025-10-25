@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, RotateCcw } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
 
 interface StatsCardProps {
   title: string;
@@ -11,6 +13,8 @@ interface StatsCardProps {
   trend?: string;
   badge?: number;
   color?: 'cyan' | 'blue' | 'purple' | 'pink' | 'orange' | 'green';
+  onReset?: () => void;
+  showReset?: boolean;
 }
 
 const colorMap = {
@@ -59,9 +63,22 @@ export const StatsCard = ({
   icon, 
   trend, 
   badge,
-  color = 'cyan' 
+  color = 'cyan',
+  onReset,
+  showReset = false
 }: StatsCardProps) => {
   const colors = colorMap[color];
+  const [shouldBlink, setShouldBlink] = useState(false);
+  const previousValueRef = useRef(value);
+
+  useEffect(() => {
+    if (previousValueRef.current !== value && previousValueRef.current !== undefined) {
+      setShouldBlink(true);
+      const timer = setTimeout(() => setShouldBlink(false), 2000);
+      return () => clearTimeout(timer);
+    }
+    previousValueRef.current = value;
+  }, [value]);
 
   return (
     <motion.div
@@ -70,18 +87,30 @@ export const StatsCard = ({
       transition={{ duration: 0.5 }}
       whileHover={{ scale: 1.02, y: -5 }}
     >
-      <Card className={`relative overflow-hidden border-2 ${colors.border} bg-gradient-to-br ${colors.gradient} backdrop-blur-sm hover:shadow-xl ${colors.glow} transition-all duration-300`}>
+      <Card className={`relative overflow-hidden border-2 ${colors.border} bg-gradient-to-br ${colors.gradient} backdrop-blur-sm hover:shadow-xl ${colors.glow} transition-all duration-300 ${shouldBlink ? 'animate-pulse' : ''}`}>
         <div className="p-6">
-          {/* Icon & Badge */}
+          {/* Icon, Badge & Reset */}
           <div className="flex items-start justify-between mb-4">
             <div className={`p-3 rounded-lg bg-background/50 ${colors.icon}`}>
               {icon}
             </div>
-            {badge !== undefined && badge > 0 && (
-              <Badge variant="destructive" className="font-bold">
-                {badge}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {badge !== undefined && badge > 0 && (
+                <Badge variant="destructive" className="font-bold">
+                  {badge}
+                </Badge>
+              )}
+              {showReset && onReset && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onReset}
+                  className="h-7 w-7 p-0"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Title */}

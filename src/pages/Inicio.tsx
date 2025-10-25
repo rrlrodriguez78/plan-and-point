@@ -16,6 +16,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, Eye, Heart, MessageSquare, TrendingUp, Bell, Mail } from 'lucide-react';
 import { useEnhancedAnalytics } from '@/hooks/useEnhancedAnalytics';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useComments } from '@/hooks/useComments';
 
 const Inicio = () => {
   const { user } = useAuth();
@@ -23,6 +25,8 @@ const Inicio = () => {
   const { t } = useTranslation();
   const { analytics, loading } = useEnhancedAnalytics();
   const { displayName } = useUserProfile();
+  const { deleteAllNotifications } = useNotifications();
+  const { deleteAllComments } = useComments();
 
   useEffect(() => {
     if (!user) {
@@ -90,6 +94,8 @@ const Inicio = () => {
               icon={<MessageSquare className="w-6 h-6" />}
               badge={analytics.unreadComments}
               color="pink"
+              showReset={analytics.totalComments > 0}
+              onReset={deleteAllComments}
             />
             <StatsCard
               title={t('inicio.notifications')}
@@ -98,6 +104,8 @@ const Inicio = () => {
               icon={<Bell className="w-6 h-6" />}
               badge={analytics.unreadNotifications}
               color="orange"
+              showReset={analytics.totalNotifications > 0}
+              onReset={deleteAllNotifications}
             />
             <StatsCard
               title={t('inicio.emailsSent')}

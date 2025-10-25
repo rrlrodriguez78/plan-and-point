@@ -10,20 +10,20 @@ import { useState, useEffect, useRef } from 'react';
 
 export const NotificationsWidget = () => {
   const { t } = useTranslation();
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteAllNotifications } = useNotifications();
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const previousCountRef = useRef(unreadCount);
 
   useEffect(() => {
     if (unreadCount > previousCountRef.current && previousCountRef.current !== 0) {
       setHasNewNotification(true);
-      setTimeout(() => setHasNewNotification(false), 4000);
+      setTimeout(() => setHasNewNotification(false), 2000);
     }
     previousCountRef.current = unreadCount;
   }, [unreadCount]);
 
   const handleReset = () => {
-    markAllAsRead();
+    deleteAllNotifications();
     setHasNewNotification(false);
   };
 
@@ -52,7 +52,7 @@ export const NotificationsWidget = () => {
   };
 
   return (
-    <Card className={`border-2 border-border bg-gradient-to-br from-card to-card/50 transition-all ${hasNewNotification ? 'widget-alert-notification' : ''}`}>
+    <Card className={`border-2 border-border bg-gradient-to-br from-card to-card/50 transition-all ${hasNewNotification ? 'animate-pulse' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-futuristic flex items-center gap-2">

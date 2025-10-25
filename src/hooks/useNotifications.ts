@@ -84,6 +84,24 @@ export const useNotifications = () => {
     }
   };
 
+  const deleteAllNotifications = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error deleting notifications:', error);
+    }
+  };
+
   useEffect(() => {
     loadNotifications();
 
@@ -118,6 +136,7 @@ export const useNotifications = () => {
     loading,
     markAsRead,
     markAllAsRead,
+    deleteAllNotifications,
     refresh: loadNotifications
   };
 };

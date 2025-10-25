@@ -79,6 +79,42 @@ export const useComments = () => {
     }
   };
 
+  const deleteAllComments = async () => {
+    if (!user) return;
+
+    try {
+      // Get user's organization
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (!orgData) return;
+
+      // Get tours
+      const { data: tours } = await supabase
+        .from('virtual_tours')
+        .select('id')
+        .eq('organization_id', orgData.id);
+
+      if (!tours || tours.length === 0) return;
+
+      // Delete all comments for user's tours
+      const { error } = await supabase
+        .from('tour_comments')
+        .delete()
+        .in('tour_id', tours.map(t => t.id));
+
+      if (error) throw error;
+
+      setComments([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error deleting comments:', error);
+    }
+  };
+
   useEffect(() => {
     loadComments();
 
@@ -110,6 +146,7 @@ export const useComments = () => {
     unreadCount,
     loading,
     markAsRead,
+    deleteAllComments,
     refresh: loadComments,
   };
 };

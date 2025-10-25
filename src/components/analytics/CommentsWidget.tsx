@@ -2,14 +2,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Check } from 'lucide-react';
+import { MessageSquare, Check, RotateCcw } from 'lucide-react';
 import { useComments } from '@/hooks/useComments';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
 
 export const CommentsWidget = () => {
   const { t } = useTranslation();
-  const { comments, unreadCount, loading, markAsRead } = useComments();
+  const { comments, unreadCount, loading, markAsRead, deleteAllComments } = useComments();
+  const [hasNewComment, setHasNewComment] = useState(false);
+  const previousCountRef = useRef(unreadCount);
+
+  useEffect(() => {
+    if (unreadCount > previousCountRef.current && previousCountRef.current !== 0) {
+      setHasNewComment(true);
+      setTimeout(() => setHasNewComment(false), 2000);
+    }
+    previousCountRef.current = unreadCount;
+  }, [unreadCount]);
+
+  const handleReset = () => {
+    deleteAllComments();
+    setHasNewComment(false);
+  };
 
   const getTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -23,7 +39,7 @@ export const CommentsWidget = () => {
   };
 
   return (
-    <Card className="border-2 border-border bg-gradient-to-br from-card to-card/50">
+    <Card className={`border-2 border-border bg-gradient-to-br from-card to-card/50 transition-all ${hasNewComment ? 'animate-pulse' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-futuristic flex items-center gap-2">
@@ -35,6 +51,17 @@ export const CommentsWidget = () => {
               </Badge>
             )}
           </CardTitle>
+          {comments.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="h-8 text-xs"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              {t('inicio.reset')}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
