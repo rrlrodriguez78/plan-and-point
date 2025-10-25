@@ -52,6 +52,7 @@ const Viewer = () => {
       // PASO 1: Intentar entrar a fullscreen primero
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
+        setIsFullscreen(true); // Sincronizar estado inmediatamente
         console.log('✅ Fullscreen activado');
         
         // Esperar a que fullscreen se active completamente
@@ -333,10 +334,11 @@ const Viewer = () => {
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
     } else {
       document.exitFullscreen();
+      setIsFullscreen(false);
     }
-    // El estado se actualizará automáticamente por el listener
   }, []);
 
   const loadPanoramaPhotos = async (hotspotId: string) => {
