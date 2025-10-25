@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import { ViewerHeader } from '@/components/viewer/ViewerHeader';
 import ViewerControls from '@/components/viewer/ViewerControls';
 import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
@@ -16,6 +17,7 @@ import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 
 const Viewer = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const { shouldShowOrientationWarning } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
@@ -43,11 +45,19 @@ const Viewer = () => {
         return;
       }
 
+      // Cargar tour con información de la organización para verificar ownership
       const { data: tourData, error: tourError } = await supabase
         .from('virtual_tours')
-        .select('title, description')
+        .select(`
+          title, 
+          description, 
+          is_published,
+          organization_id,
+          organizations!inner (
+            owner_id
+          )
+        `)
         .eq('id', id)
-        .eq('is_published', true)
         .maybeSingle();
 
       if (tourError) {
@@ -61,7 +71,17 @@ const Viewer = () => {
         return;
       }
 
-      setTour(tourData);
+      // Verificar si el usuario es el dueño del tour o si el tour está publicado
+      const isOwner = user && tourData.organizations?.owner_id === user.id;
+      const canView = tourData.is_published || isOwner;
+
+      if (!canView) {
+        console.warn('⚠️ Usuario no autorizado para ver este tour');
+        setLoading(false);
+        return;
+      }
+
+      setTour({ title: tourData.title, description: tourData.description });
 
       const { data: plansData } = await supabase
         .from('floor_plans')
