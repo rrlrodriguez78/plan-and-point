@@ -398,6 +398,7 @@ export type Database = {
           display_order: number | null
           hotspot_id: string
           id: string
+          original_filename: string | null
           photo_url: string
           photo_url_mobile: string | null
           photo_url_thumbnail: string | null
@@ -409,6 +410,7 @@ export type Database = {
           display_order?: number | null
           hotspot_id: string
           id?: string
+          original_filename?: string | null
           photo_url: string
           photo_url_mobile?: string | null
           photo_url_thumbnail?: string | null
@@ -420,6 +422,7 @@ export type Database = {
           display_order?: number | null
           hotspot_id?: string
           id?: string
+          original_filename?: string | null
           photo_url?: string
           photo_url_mobile?: string | null
           photo_url_thumbnail?: string | null

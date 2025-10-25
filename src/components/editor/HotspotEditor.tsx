@@ -58,7 +58,7 @@ export default function HotspotEditor({
       try {
         const { data, error } = await supabase
           .from('panorama_photos')
-          .select('hotspot_id, photo_url')
+          .select('hotspot_id, photo_url, original_filename')
           .in('hotspot_id', hotspotIds)
           .order('display_order', { ascending: true });
 
@@ -72,7 +72,9 @@ export default function HotspotEditor({
             grouped[photo.hotspot_id] = { count: 0, names: [] };
           }
           grouped[photo.hotspot_id].count++;
-          grouped[photo.hotspot_id].names.push(extractFilename(photo.photo_url));
+          // Use original filename if available, otherwise extract from URL
+          const filename = photo.original_filename || extractFilename(photo.photo_url);
+          grouped[photo.hotspot_id].names.push(filename);
         });
 
         setPhotosData(grouped);

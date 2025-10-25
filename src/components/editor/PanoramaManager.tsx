@@ -260,7 +260,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         .from('tour-images')
         .getPublicUrl(`${baseFileName}_thumb.webp`);
 
-      // Save to database with all 3 URLs
+      // Save to database with all 3 URLs and original filename
       const { error: dbError } = await supabase
         .from('panorama_photos')
         .insert({
@@ -270,6 +270,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
           photo_url_thumbnail: thumbnailUrl,
           display_order: photos.length,
           capture_date: format(uploadDate, 'yyyy-MM-dd'),
+          original_filename: file.name,
         });
 
       if (dbError) throw dbError;
