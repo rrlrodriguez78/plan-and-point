@@ -19,6 +19,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Terminal } from 'lucide-react';
 
 interface GoldenRule {
   id: string;
@@ -190,61 +192,131 @@ const Settings = () => {
           </div>
         </div>
 
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-2xl">{t('settings.goldenRules')}</CardTitle>
-                <CardDescription>
-                  {t('settings.goldenRulesDescription')}
-                </CardDescription>
-              </div>
-              <Button onClick={() => handleOpenModal()}>
-                <Plus className="w-4 h-4 mr-2" />
-                {t('settings.addRule')}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {rules.map((rule) => (
-                <Card key={rule.id} className="border-l-4 border-l-primary">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-semibold text-primary">
-                            Rule #{rule.rule_number}
-                          </span>
+        <Tabs defaultValue="rules" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="rules">
+              <Shield className="w-4 h-4 mr-2" />
+              {t('settings.goldenRules')}
+            </TabsTrigger>
+            <TabsTrigger value="commands">
+              <Terminal className="w-4 h-4 mr-2" />
+              Lista de Comandos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="rules">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-2xl">{t('settings.goldenRules')}</CardTitle>
+                    <CardDescription>
+                      {t('settings.goldenRulesDescription')}
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => handleOpenModal()}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t('settings.addRule')}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {rules.map((rule) => (
+                    <Card key={rule.id} className="border-l-4 border-l-primary">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-semibold text-primary">
+                                Rule #{rule.rule_number}
+                              </span>
+                            </div>
+                            <CardTitle className="text-lg">{rule.title}</CardTitle>
+                            <CardDescription className="mt-2">
+                              {rule.description}
+                            </CardDescription>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenModal(rule)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteRule(rule.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <CardTitle className="text-lg">{rule.title}</CardTitle>
-                        <CardDescription className="mt-2">
-                          {rule.description}
-                        </CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenModal(rule)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteRule(rule.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="commands">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Lista de Comandos</CardTitle>
+                <CardDescription>
+                  Comandos útiles para solucionar problemas comunes en la aplicación
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Fix de Componentes en Fullscreen</CardTitle>
+                      <CardDescription className="mt-2">
+                        <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                          "El [Popover/DropdownMenu/Dialog/Select] no funciona en fullscreen. Aplica la solución del Portal con container."
+                        </span>
+                        <p className="mt-2">
+                          Para componentes de Radix UI que usan Portal y no funcionan en modo fullscreen.
+                        </p>
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Palabras Clave Importantes</CardTitle>
+                      <CardDescription className="mt-2 space-y-1">
+                        <p>• <strong>Portal</strong> - Problema de renderizado de Radix UI</p>
+                        <p>• <strong>fullscreen</strong> - Contexto del problema</p>
+                        <p>• <strong>container prop</strong> - La solución específica</p>
+                        <p>• <strong>como [componente anterior]</strong> - Referencia a solución ya implementada</p>
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-purple-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Componentes que Pueden Tener Este Problema</CardTitle>
+                      <CardDescription className="mt-2 space-y-1">
+                        <p>✅ Popover (arreglado)</p>
+                        <p>✅ DropdownMenu (arreglado)</p>
+                        <p>⚠️ Dialog / AlertDialog</p>
+                        <p>⚠️ Select</p>
+                        <p>⚠️ Tooltip</p>
+                        <p>⚠️ HoverCard</p>
+                        <p>⚠️ ContextMenu</p>
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent>
