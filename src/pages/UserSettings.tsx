@@ -68,10 +68,10 @@ const UserSettings = () => {
       });
 
       if (error) throw error;
-      toast.success('Perfil actualizado correctamente');
+      toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error saving profile:', error);
-      toast.error('Error al guardar el perfil');
+      toast.error('Error saving profile');
     } finally {
       setLoading(false);
     }
@@ -79,12 +79,12 @@ const UserSettings = () => {
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
-    toast.success(`Idioma cambiado a ${lang === 'es' ? 'Español' : lang === 'en' ? 'English' : 'Français'}`);
+    toast.success(`Language changed to ${lang === 'es' ? 'Spanish' : lang === 'en' ? 'English' : lang === 'fr' ? 'French' : 'German'}`);
   };
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme as 'light' | 'dark' | 'system');
-    toast.success(`Tema cambiado a ${newTheme === 'light' ? 'Claro' : newTheme === 'dark' ? 'Oscuro' : 'Sistema'}`);
+    toast.success(`Theme changed to ${newTheme === 'light' ? 'Light' : newTheme === 'dark' ? 'Dark' : 'System'}`);
   };
 
   if (authLoading) {
@@ -92,7 +92,7 @@ const UserSettings = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p className="text-muted-foreground">Cargando...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -109,15 +109,15 @@ const UserSettings = () => {
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver al Dashboard
+          Back to Dashboard
         </Button>
 
         <div className="flex items-center gap-3 mb-8">
           <User className="w-8 h-8 text-primary" />
           <div>
-            <h1 className="text-4xl font-bold">Configuración</h1>
+            <h1 className="text-4xl font-bold">Settings</h1>
             <p className="text-muted-foreground">
-              Personaliza tu experiencia en la aplicación
+              Customize your application experience
             </p>
           </div>
         </div>
@@ -126,24 +126,24 @@ const UserSettings = () => {
           <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="profile">
               <User className="w-4 h-4 mr-2" />
-              Perfil
+              Profile
             </TabsTrigger>
             <TabsTrigger value="notifications">
               <Bell className="w-4 h-4 mr-2" />
-              Notificaciones
+              Notifications
             </TabsTrigger>
             <TabsTrigger value="preferences">
               <Palette className="w-4 h-4 mr-2" />
-              Preferencias
+              Preferences
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Mi Perfil</CardTitle>
+                <CardTitle className="text-2xl">My Profile</CardTitle>
                 <CardDescription>
-                  Actualiza tu información personal
+                  Update your personal information
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -155,7 +155,7 @@ const UserSettings = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <Label htmlFor="avatar_url">URL del Avatar</Label>
+                    <Label htmlFor="avatar_url">Avatar URL</Label>
                     <Input
                       id="avatar_url"
                       value={profile.avatar_url}
@@ -167,12 +167,12 @@ const UserSettings = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="full_name">Nombre Completo</Label>
+                  <Label htmlFor="full_name">Full Name</Label>
                   <Input
                     id="full_name"
                     value={profile.full_name}
                     onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                    placeholder="Tu nombre completo"
+                    placeholder="Your full name"
                     className="mt-1"
                   />
                 </div>
@@ -189,7 +189,7 @@ const UserSettings = () => {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    El email no se puede modificar
+                    Email cannot be modified
                   </p>
                 </div>
 
@@ -199,7 +199,7 @@ const UserSettings = () => {
                   className="w-full sm:w-auto"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Guardar Cambios
+                  Save Changes
                 </Button>
               </CardContent>
             </Card>
@@ -211,9 +211,9 @@ const UserSettings = () => {
               
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-2xl">Configuración de Notificaciones</CardTitle>
+                  <CardTitle className="text-2xl">Notification Settings</CardTitle>
                   <CardDescription>
-                    Personaliza cómo y cuándo recibes notificaciones
+                    Customize how and when you receive notifications
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -226,31 +226,31 @@ const UserSettings = () => {
           <TabsContent value="preferences">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Preferencias de la Aplicación</CardTitle>
+                <CardTitle className="text-2xl">Application Preferences</CardTitle>
                 <CardDescription>
-                  Personaliza la apariencia y el idioma
+                  Customize appearance and language
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <Label htmlFor="theme">Tema</Label>
+                  <Label htmlFor="theme">Theme</Label>
                   <Select value={theme} onValueChange={handleThemeChange}>
                     <SelectTrigger id="theme" className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="light">Claro</SelectItem>
-                      <SelectItem value="dark">Oscuro</SelectItem>
-                      <SelectItem value="system">Sistema</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="system">System</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Elige entre tema claro, oscuro o automático
+                    Choose between light, dark, or automatic theme
                   </p>
                 </div>
 
                 <div>
-                  <Label htmlFor="language">Idioma</Label>
+                  <Label htmlFor="language">Language</Label>
                   <Select value={i18n.language} onValueChange={handleLanguageChange}>
                     <SelectTrigger id="language" className="mt-1">
                       <SelectValue />
@@ -263,7 +263,7 @@ const UserSettings = () => {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Selecciona tu idioma preferido
+                    Select your preferred language
                   </p>
                 </div>
               </CardContent>

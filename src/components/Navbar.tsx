@@ -58,7 +58,7 @@ export const Navbar = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/app/user-settings" className="flex items-center cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
-                      Mi Configuración
+                      My Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
