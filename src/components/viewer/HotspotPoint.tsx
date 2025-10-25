@@ -1,5 +1,6 @@
 import { MapPin, Eye } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HotspotPointProps {
   index: number;
@@ -32,21 +33,25 @@ export const HotspotPoint = ({
   photoNames = [],
   style 
 }: HotspotPointProps) => {
+  const isMobile = useIsMobile();
   const IconComponent = style?.icon 
     ? (LucideIcons as any)[style.icon] || MapPin 
     : MapPin;
   
   const baseColor = style?.color || '#4285F4';
   const color = isSelected ? '#10b981' : baseColor;
-  const size = style?.size || 40;
+  const baseSize = isMobile ? 48 : (style?.size || 40);
+  const size = baseSize;
 
   return (
     <button
-      className="absolute group cursor-pointer transition-all duration-300 hover:z-50"
+      className="absolute group cursor-pointer transition-all duration-300 hover:z-50 touch-manipulation"
       style={{
         left: `${x}%`,
         top: `${y}%`,
         transform: 'translate(-50%, -50%)',
+        minWidth: '48px',
+        minHeight: '48px',
       }}
       onClick={onClick}
     >

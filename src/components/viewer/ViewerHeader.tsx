@@ -30,26 +30,26 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
 
   return (
     <div className="border-b border-border bg-card">
-      <div className="container mx-auto px-4 py-3">
+      <div className="container mx-auto px-2 md:px-4 py-2 md:py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={handleBack}>
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+            <Button variant="ghost" size="sm" onClick={handleBack} className="shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-xl font-bold text-foreground">{tourTitle}</h1>
+            <h1 className="text-base md:text-xl font-bold text-foreground truncate">{tourTitle}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleHelp}>
-              <Info className="w-4 h-4 mr-2" />
-              {t('viewer.help')}
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
+            <Button variant="ghost" size="sm" onClick={handleHelp} className="min-w-[44px] min-h-[44px]">
+              <Info className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">{t('viewer.help')}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" />
-              {t('viewer.share')}
+            <Button variant="ghost" size="sm" onClick={handleShare} className="min-w-[44px] min-h-[44px]">
+              <Share2 className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">{t('viewer.share')}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={onToggleFullscreen}>
-              <Maximize2 className="w-4 h-4 mr-2" />
-              {isFullscreen ? t('viewer.exit') : t('viewer.fullscreen')}
+            <Button variant="ghost" size="sm" onClick={onToggleFullscreen} className="min-w-[44px] min-h-[44px]">
+              <Maximize2 className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">{isFullscreen ? t('viewer.exit') : t('viewer.fullscreen')}</span>
             </Button>
           </div>
         </div>

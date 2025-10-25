@@ -84,16 +84,16 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
   if (floorPlans.length <= 1) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 md:left-auto md:right-4 -translate-x-1/2 md:translate-x-0 ml-[120px] md:ml-0 z-10">
+    <div className="fixed bottom-4 left-4 md:left-auto md:right-4 z-10">
       {/* Selector de pisos con mismo estilo que zoom controls */}
       <Button
         variant="secondary"
         size="icon"
         onClick={() => setShowFloorList(!showFloorList)}
-        className="shadow-lg h-9 w-9 md:h-10 md:w-10"
+        className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
         title="Cambiar de Piso"
       >
-        <Layers className="w-4 h-4" />
+        <Layers className="w-5 h-5 md:w-4 md:h-4" />
       </Button>
 
       {/* Ventana emergente con la lista de pisos - AMPLIADA */}
@@ -103,7 +103,7 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-12 right-0 w-80 sm:w-96 max-w-[90vw]"
+            className="absolute bottom-14 left-0 md:bottom-12 md:right-0 md:left-auto w-80 sm:w-96 max-w-[90vw]"
           >
             <Card className="bg-black/80 backdrop-blur-lg border-white/20 text-white shadow-2xl max-h-[70vh]">
               <CardContent className="p-2 sm:p-3">
@@ -118,7 +118,7 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                <ScrollArea className="h-[60vh] max-h-[500px] pr-2">
+                <ScrollArea className="h-[60vh] max-h-[500px] pr-2 overflow-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <div className="space-y-1">
                     {floorPlans
                       .sort((a, b) => (b.floor_order || 0) - (a.floor_order || 0))
