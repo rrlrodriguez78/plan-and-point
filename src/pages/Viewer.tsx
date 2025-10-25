@@ -332,145 +332,137 @@ const Viewer = () => {
         isFullscreen={isFullscreen}
       />
 
-      {/* Canvas */}
-      <div className="flex-1 relative">
-        <ViewerCanvas
-          imageUrl={currentFloorPlan.image_url}
-          hotspots={currentHotspots}
-          onHotspotClick={handleHotspotClick}
-          renderHotspot={(hotspot, index) => (
-            <HotspotPoint
-              key={hotspot.id}
-              index={index}
-              title={hotspot.title}
-              x={hotspot.x_position}
-              y={hotspot.y_position}
-              onClick={(e) => handleHotspotClick(hotspot, e)}
-              hasPanorama={hotspot.has_panorama}
+      {/* Solo renderizar el contenido del viewer si NO estamos mostrando password prompt */}
+      {!showPasswordPrompt && currentFloorPlan && (
+        <>
+          {/* Canvas */}
+          <div className="flex-1 relative">
+            <ViewerCanvas
+              imageUrl={currentFloorPlan.image_url}
+              hotspots={currentHotspots}
+              onHotspotClick={handleHotspotClick}
+              renderHotspot={(hotspot, index) => (
+                <HotspotPoint
+                  key={hotspot.id}
+                  index={index}
+                  title={hotspot.title}
+                  x={hotspot.x_position}
+                  y={hotspot.y_position}
+                  onClick={(e) => handleHotspotClick(hotspot, e)}
+                  hasPanorama={hotspot.has_panorama}
+                />
+              )}
+            />
+          </div>
+
+          {/* Hotspot Modal (for regular hotspots) */}
+          {!showPanoramaViewer && (
+            <HotspotModal
+              hotspot={selectedHotspot}
+              onClose={() => setSelectedHotspot(null)}
+              onNext={handleNextHotspot}
+              onPrevious={handlePreviousHotspot}
+              currentIndex={selectedHotspotIndex}
+              totalCount={currentHotspots.length}
+              availableHotspots={currentHotspots}
+              onHotspotSelect={(hotspot) => {
+                const fullHotspot = currentHotspots.find(h => h.id === hotspot.id);
+                if (fullHotspot) {
+                  setSelectedHotspot(null);
+                  setTimeout(() => handleHotspotClick(fullHotspot), 100);
+                }
+              }}
+              floorPlans={floorPlans}
+              currentFloorPlan={currentFloorPlan}
+              onFloorChange={setCurrentFloorPlanId}
             />
           )}
-        />
-      </div>
 
-      {/* Hotspot Modal (for regular hotspots) */}
-      {!showPanoramaViewer && (
-        <HotspotModal
-          hotspot={selectedHotspot}
-          onClose={() => setSelectedHotspot(null)}
-          onNext={handleNextHotspot}
-          onPrevious={handlePreviousHotspot}
-          currentIndex={selectedHotspotIndex}
-          totalCount={currentHotspots.length}
-          availableHotspots={currentHotspots}
-          onHotspotSelect={(hotspot) => {
-            const fullHotspot = currentHotspots.find(h => h.id === hotspot.id);
-            if (fullHotspot) {
+          {/* Panorama Viewer (for 360° photos) */}
+          <PanoramaViewer
+            isVisible={showPanoramaViewer}
+            onClose={() => {
+              setShowPanoramaViewer(false);
               setSelectedHotspot(null);
-              setTimeout(() => handleHotspotClick(fullHotspot), 100);
-            }
-          }}
-          floorPlans={floorPlans}
-          currentFloorPlan={currentFloorPlan}
-          onFloorChange={setCurrentFloorPlanId}
-        />
-      )}
-
-      {/* Panorama Viewer (for 360° photos) */}
-      <PanoramaViewer
-        isVisible={showPanoramaViewer}
-        onClose={() => {
-          setShowPanoramaViewer(false);
-          setSelectedHotspot(null);
-        }}
-        photos={panoramaPhotos}
-        activePhoto={activePanoramaPhoto}
-        setActivePhoto={setActivePanoramaPhoto}
-        hotspotName={selectedHotspot?.title || ''}
-        allHotspotsOnFloor={currentHotspots}
-        onNavigate={async (hotspot) => {
-          // Guardar la fecha actual ANTES de cambiar de hotspot
-          const currentDate = activePanoramaPhoto?.capture_date;
-          
-          // Cargar fotos del nuevo hotspot ANTES de cambiar el estado
-          const photos = await loadPanoramaPhotos(hotspot.id);
-          
-          if (photos.length === 0) {
-            // Si no hay fotos en absoluto, mostrar error y NO cambiar hotspot
-            toast.error(t('viewer.noPhotosAvailable'), {
-              description: t('viewer.noPhotosDescription', { name: hotspot.title }),
-            });
-            return; // Quedarse en el hotspot actual
-          }
-          
-          // Verificar si hay foto para la fecha actual
-          if (currentDate) {
-            const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
-            if (!photoWithSameDate) {
-              // Si no hay foto para la fecha actual, mostrar error y NO cambiar hotspot
-              const formatDate = (dateString: string) => {
-                try {
-                  return new Date(dateString).toLocaleDateString(i18n.language, { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  });
-                } catch {
-                  return dateString;
-                }
-              };
+            }}
+            photos={panoramaPhotos}
+            activePhoto={activePanoramaPhoto}
+            setActivePhoto={setActivePanoramaPhoto}
+            hotspotName={selectedHotspot?.title || ''}
+            allHotspotsOnFloor={currentHotspots}
+            onNavigate={async (hotspot) => {
+              // Guardar la fecha actual ANTES de cambiar de hotspot
+              const currentDate = activePanoramaPhoto?.capture_date;
               
-              toast.error(t('viewer.noPhotoForDate'), {
-                description: t('viewer.noPhotoForDateDescription', { date: formatDate(currentDate) }),
-              });
-              return; // Quedarse en el hotspot actual
-            }
-          }
-          
-          // Si llegamos aquí, hay fotos disponibles para la fecha actual
-          setSelectedHotspot(hotspot);
-          setPanoramaPhotos(photos);
-          
-          // Intentar mantener la misma fecha
-          let photoToShow = photos[0]; // Fallback: primera foto
-          
-          if (currentDate) {
-            const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
-            if (photoWithSameDate) {
-              photoToShow = photoWithSameDate;
-            }
-          }
-          
-          setActivePanoramaPhoto(photoToShow);
-        }}
-        floorPlans={floorPlans}
-        currentFloorPlan={currentFloorPlan}
-        onFloorChange={(floorPlanId) => {
-          setCurrentFloorPlanId(floorPlanId);
-          setShowPanoramaViewer(false);
-          setSelectedHotspot(null);
-        }}
-        hotspotsByFloor={hotspotsByFloor}
-      />
+              // Cargar fotos del nuevo hotspot ANTES de cambiar el estado
+              const photos = await loadPanoramaPhotos(hotspot.id);
+              
+              if (photos.length === 0) {
+                // Si no hay fotos en absoluto, mostrar error y NO cambiar hotspot
+                toast.error(t('viewer.noPhotosAvailable'), {
+                  description: t('viewer.noPhotosDescription', { name: hotspot.title }),
+                });
+                return; // Quedarse en el hotspot actual
+              }
+              
+              // Verificar si hay foto para la fecha actual
+              if (currentDate) {
+                const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+                if (!photoWithSameDate) {
+                  // Si no hay foto para la fecha actual, mostrar error y NO cambiar hotspot
+                  const formatDate = (dateString: string) => {
+                    try {
+                      return new Date(dateString).toLocaleDateString(i18n.language, { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      });
+                    } catch {
+                      return dateString;
+                    }
+                  };
+                  
+                  toast.error(t('viewer.noPhotoForDate'), {
+                    description: t('viewer.noPhotoForDateDescription', { date: formatDate(currentDate) }),
+                  });
+                  return; // Quedarse en el hotspot actual
+                }
+              }
+              
+              // Si llegamos aquí, hay fotos disponibles para la fecha actual
+              setSelectedHotspot(hotspot);
+              setPanoramaPhotos(photos);
+              
+              // Intentar mantener la misma fecha
+              let photoToShow = photos[0]; // Fallback: primera foto
+              
+              if (currentDate) {
+                const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+                if (photoWithSameDate) {
+                  photoToShow = photoWithSameDate;
+                }
+              }
+              
+              setActivePanoramaPhoto(photoToShow);
+            }}
+            floorPlans={floorPlans}
+            currentFloorPlan={currentFloorPlan}
+            onFloorChange={(floorPlanId) => {
+              setCurrentFloorPlanId(floorPlanId);
+              setShowPanoramaViewer(false);
+              setSelectedHotspot(null);
+            }}
+            hotspotsByFloor={hotspotsByFloor}
+          />
 
-      {/* Password Prompt for Protected Tours */}
-      {showPasswordPrompt && tour && (
-        <TourPasswordPrompt
-          open={showPasswordPrompt}
-          tourId={id!}
-          tourTitle={tour.title}
-          onSuccess={(updatedAt) => {
-            setShowPasswordPrompt(false);
-            loadTourData(); // Recargar el tour después de ingresar la contraseña
-          }}
-        />
+          {/* Floor Controls */}
+          <ViewerControls
+            floorPlans={floorPlans}
+            activeFloorPlanId={currentFloorPlanId}
+            onFloorPlanChange={setCurrentFloorPlanId}
+          />
+        </>
       )}
-
-      {/* Floor Controls */}
-      <ViewerControls
-        floorPlans={floorPlans}
-        activeFloorPlanId={currentFloorPlanId}
-        onFloorPlanChange={setCurrentFloorPlanId}
-      />
     </div>
   );
 };
