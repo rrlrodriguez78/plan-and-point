@@ -445,7 +445,8 @@
     "installPwaStep": "Para mejor experiencia, instala la app completa desde el menú de Chrome",
     "manualRotateStep": "O simplemente gira tu teléfono a posición horizontal",
     "installInstructions": "Abre el menú de Chrome (⋮) y selecciona 'Agregar a la pantalla principal'",
-    "installApp": "Instalar App Completa"
+    "installApp": "Instalar App Completa",
+    "forceLandscape": "Forzar Horizontal"
   },
   "publicTours": {
     "title": "Tours Públicos Disponibles",

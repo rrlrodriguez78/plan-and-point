@@ -445,7 +445,8 @@
     "installPwaStep": "For best experience, install the full app from Chrome menu",
     "manualRotateStep": "Or simply rotate your phone to landscape position",
     "installInstructions": "Open Chrome menu (⋮) and select 'Add to Home screen'",
-    "installApp": "Install Full App"
+    "installApp": "Install Full App",
+    "forceLandscape": "Force Landscape"
   },
   "publicTours": {
     "title": "Public Tours",

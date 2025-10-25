@@ -217,6 +217,34 @@ export const OrientationWarning = ({ onContinue, onTryRotate, onForceLandscape, 
             </button>
           )}
           
+          {onForceLandscape && isStandalone && (
+            <button
+              onClick={onForceLandscape}
+              style={{
+                background: '#ff6b6b',
+                color: 'white',
+                padding: '0.875rem 1.5rem',
+                borderRadius: '0.75rem',
+                fontWeight: '600',
+                fontSize: '1rem',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              }}
+            >
+              🔄 {t('orientation.forceLandscape', 'Forzar Horizontal')}
+            </button>
+          )}
+          
           {isStandalone && (
             <button
               onClick={() => {
