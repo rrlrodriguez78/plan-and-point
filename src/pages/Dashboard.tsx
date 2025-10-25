@@ -236,7 +236,7 @@ const Dashboard = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tours.map((tour) => (
               <Card key={tour.id} className="hover:shadow-lg transition-all overflow-hidden">
-                <div className="relative aspect-video bg-muted">
+                <div className="relative aspect-[16/10] bg-muted">
                   {tour.cover_image_url ? (
                     <>
                       <div 
@@ -256,36 +256,36 @@ const Dashboard = () => {
                       </div>
                       
                       {/* Title and Status Overlay - Top */}
-                      <div className="absolute top-2 left-2 right-2 z-10 flex justify-between items-start gap-2">
-                        <div className="backdrop-blur-sm bg-black/40 px-3 py-1.5 rounded-md border border-white/20 flex-1 min-w-0">
-                          <h3 className="text-white font-semibold text-sm truncate">{tour.title}</h3>
+                      <div className="absolute top-1.5 left-1.5 right-1.5 z-10 flex justify-between items-start gap-2">
+                        <div className="backdrop-blur-sm bg-black/40 px-2 py-1 rounded border border-white/20 flex-1 min-w-0">
+                          <h3 className="text-white font-semibold text-xs truncate">{tour.title}</h3>
                         </div>
-                        <div className="backdrop-blur-sm bg-black/40 px-2 py-1.5 rounded-md border border-white/20 flex items-center justify-center shrink-0">
+                        <div className="backdrop-blur-sm bg-black/40 px-1.5 py-1 rounded border border-white/20 flex items-center justify-center shrink-0">
                           {tour.is_published ? (
-                            <Globe className="w-4 h-4 text-green-400" />
+                            <Globe className="w-3.5 h-3.5 text-green-400" />
                           ) : (
-                            <Lock className="w-4 h-4 text-gray-300" />
+                            <Lock className="w-3.5 h-3.5 text-gray-300" />
                           )}
                         </div>
                       </div>
                       
                       {/* Action Buttons - Bottom Left */}
-                      <div className="absolute bottom-2 left-2 flex gap-2 z-10">
+                      <div className="absolute bottom-1.5 left-1.5 flex gap-1.5 z-10">
                         <Button
                           variant="secondary"
                           size="sm"
                           onClick={() => navigate(`/app/editor/${tour.id}`)}
-                          className="backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                          className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="secondary"
                           size="sm"
                           onClick={() => deleteTour(tour.id)}
-                          className="backdrop-blur-sm bg-black/40 hover:bg-red-600/60 transition-all border border-white/20"
+                          className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-red-600/60 transition-all border border-white/20"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                       
@@ -295,9 +295,9 @@ const Dashboard = () => {
                         size="sm"
                         onClick={() => handleUploadCover(tour.id)}
                         disabled={uploadingCover === tour.id}
-                        className="absolute bottom-2 right-2 z-10 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                        className="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
                       >
-                        <Upload className="w-4 h-4" />
+                        <Upload className="w-3.5 h-3.5" />
                       </Button>
                     </>
                   ) : (
@@ -313,13 +313,13 @@ const Dashboard = () => {
                     </div>
                   )}
                 </div>
-                <CardHeader>
-                  <CardDescription>
+                <CardHeader className="p-3 pb-2">
+                  <CardDescription className="text-xs line-clamp-2">
                     {tour.description || t('dashboard.noDescription')}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground text-center">
+                <CardContent className="p-3 pt-0">
+                  <p className="text-xs text-muted-foreground text-center">
                     {tour.is_published ? t('dashboard.clickCoverToView') : t('dashboard.publishToView')}
                   </p>
                 </CardContent>
