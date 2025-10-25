@@ -186,7 +186,11 @@
     "noPhotoForDateDescription": "No photo available for {{date}}",
     "hotspotList": "Hotspot list",
     "allHotspots": "All points",
-    "hotspotsAvailable": "points available"
+    "hotspotsAvailable": "points available",
+    "installPwaForRotation": "To enable auto-rotation install the full app",
+    "rotationNotSupported": "Could not force rotation. Please rotate your device manually",
+    "landscapeLocked": "Landscape orientation activated!",
+    "rotationError": "Error trying to force rotation"
   },
   "auth": {
     "login": "Login",

@@ -186,7 +186,11 @@
     "noPhotoForDateDescription": "No hay foto disponible para {{date}}",
     "hotspotList": "Lista de hotspots",
     "allHotspots": "Todos los puntos",
-    "hotspotsAvailable": "puntos disponibles"
+    "hotspotsAvailable": "puntos disponibles",
+    "installPwaForRotation": "Para rotación automática instala la app completa",
+    "rotationNotSupported": "No se pudo forzar la rotación. Por favor rota tu dispositivo manualmente",
+    "landscapeLocked": "¡Orientación horizontal activada!",
+    "rotationError": "Error al intentar forzar la rotación"
   },
   "auth": {
     "login": "Iniciar Sesión",
