@@ -69,6 +69,7 @@
     "view": "Ver",
     "addCover": "Agregar Portada",
     "uploadCover": "Subir portada",
+    "preview": "Vista Previa",
     "coverUploaded": "Imagen de portada subida exitosamente",
     "errorUploadingCover": "Error al subir imagen de portada",
     "errorLoading": "Error al cargar datos",

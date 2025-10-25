@@ -69,6 +69,7 @@
     "view": "Voir",
     "addCover": "Ajouter Couverture",
     "uploadCover": "Télécharger couverture",
+    "preview": "Aperçu",
     "coverUploaded": "Image de couverture téléchargée avec succès",
     "errorUploadingCover": "Erreur lors du téléchargement de l'image",
     "errorLoading": "Erreur de chargement des données",

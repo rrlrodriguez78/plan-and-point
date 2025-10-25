@@ -265,19 +265,17 @@ const Dashboard = () => {
                   {tour.cover_image_url ? (
                     <>
                       <div 
-                        onClick={() => tour.is_published && navigate(`/viewer/${tour.id}`)}
-                        className={tour.is_published ? "cursor-pointer group w-full h-full" : "w-full h-full"}
+                        onClick={() => navigate(`/viewer/${tour.id}`)}
+                        className="cursor-pointer group w-full h-full"
                       >
                         <img 
                           src={tour.cover_image_url} 
                           alt={tour.title}
                           className="w-full h-full object-cover object-center"
                         />
-                        {tour.is_published && (
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <Eye className="w-12 h-12 text-white drop-shadow-lg" />
-                          </div>
-                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Eye className="w-12 h-12 text-white drop-shadow-lg" />
+                        </div>
                       </div>
                     </>
                   ) : (
@@ -353,25 +351,23 @@ const Dashboard = () => {
                       </Tooltip>
                     </TooltipProvider>
                     
-                    {tour.is_published && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => navigate(`/viewer/${tour.id}`)}
-                              className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-blue-600/60 transition-all border border-white/20"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{t('dashboard.view')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => navigate(`/viewer/${tour.id}`)}
+                            className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-blue-600/60 transition-all border border-white/20"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{tour.is_published ? t('dashboard.view') : t('dashboard.preview')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   
                   {/* Upload Button - Bottom Right */}

@@ -69,6 +69,7 @@
     "view": "View",
     "addCover": "Add Cover",
     "uploadCover": "Upload cover",
+    "preview": "Preview",
     "coverUploaded": "Cover image uploaded successfully",
     "errorUploadingCover": "Error uploading cover image",
     "errorLoading": "Error loading data",
