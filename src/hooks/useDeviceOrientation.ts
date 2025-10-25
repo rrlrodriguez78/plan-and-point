@@ -7,6 +7,7 @@ interface DeviceInfo {
   isPortrait: boolean;
   isLandscape: boolean;
   shouldShowOrientationWarning: boolean;
+  isStandalone: boolean;
   lockLandscape: () => Promise<boolean>;
   unlockOrientation: () => void;
   orientation: string | null;
@@ -20,6 +21,7 @@ export function useDeviceOrientation(): DeviceInfo {
     isPortrait: false,
     isLandscape: true,
     shouldShowOrientationWarning: false,
+    isStandalone: false,
     lockLandscape: async () => false,
     unlockOrientation: () => {},
     orientation: null
@@ -45,8 +47,19 @@ export function useDeviceOrientation(): DeviceInfo {
       // Obtener orientación actual del navegador
       const orientation = (screen.orientation?.type || 'unknown') as string;
       
+      // Detectar si está en modo standalone (PWA instalada)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                           (window.navigator as any).standalone ||
+                           document.referrer.includes('android-app://');
+      
       // Función para bloquear en landscape
       const lockLandscape = async (): Promise<boolean> => {
+        // Si NO es standalone, no intentar bloquear
+        if (!isStandalone) {
+          console.log('⚠️ No es PWA instalada, no se puede bloquear orientación');
+          return false;
+        }
+        
         try {
           if (screen.orientation && 'lock' in screen.orientation) {
             await (screen.orientation as any).lock('landscape');
@@ -81,6 +94,7 @@ export function useDeviceOrientation(): DeviceInfo {
         isPortrait,
         isLandscape,
         shouldShowOrientationWarning,
+        isStandalone,
         lockLandscape,
         unlockOrientation,
         orientation

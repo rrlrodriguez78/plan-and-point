@@ -441,7 +441,11 @@
     "step2": "Gira tu teléfono a posición horizontal",
     "tryAgain": "Intentar de nuevo",
     "continueAnyway": "Continuar en vertical",
-    "instruction": "Rota tu dispositivo para una mejor experiencia"
+    "instruction": "Rota tu dispositivo para una mejor experiencia",
+    "installPwaStep": "Para mejor experiencia, instala la app completa desde el menú de Chrome",
+    "manualRotateStep": "O simplemente gira tu teléfono a posición horizontal",
+    "installInstructions": "Abre el menú de Chrome (⋮) y selecciona 'Agregar a la pantalla principal'",
+    "installApp": "Instalar App Completa"
   },
   "publicTours": {
     "title": "Tours Públicos Disponibles",

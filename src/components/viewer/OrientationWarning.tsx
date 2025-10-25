@@ -4,9 +4,10 @@ import { Smartphone } from 'lucide-react';
 interface OrientationWarningProps {
   onContinue: () => void;
   onTryRotate?: () => void;
+  isStandalone?: boolean;
 }
 
-export const OrientationWarning = ({ onContinue, onTryRotate }: OrientationWarningProps) => {
+export const OrientationWarning = ({ onContinue, onTryRotate, isStandalone = false }: OrientationWarningProps) => {
   const { t } = useTranslation();
   
   return (
@@ -78,52 +79,107 @@ export const OrientationWarning = ({ onContinue, onTryRotate }: OrientationWarni
           textAlign: 'left',
           border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'start',
-            marginBottom: '1rem'
-          }}>
-            <div style={{
-              background: 'white',
-              color: '#667eea',
-              borderRadius: '50%',
-              width: '1.75rem',
-              height: '1.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              marginRight: '0.75rem',
-              flexShrink: 0,
-              fontSize: '0.875rem'
-            }}>1</div>
-            <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
-              {t('orientation.step1', 'Disable rotation lock on your device')}
-            </p>
-          </div>
-          
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'start'
-          }}>
-            <div style={{
-              background: 'white',
-              color: '#667eea',
-              borderRadius: '50%',
-              width: '1.75rem',
-              height: '1.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              marginRight: '0.75rem',
-              flexShrink: 0,
-              fontSize: '0.875rem'
-            }}>2</div>
-            <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
-              {t('orientation.step2', 'Rotate your phone to landscape position')}
-            </p>
-          </div>
+          {isStandalone ? (
+            // Instrucciones para PWA instalada
+            <>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'start',
+                marginBottom: '1rem'
+              }}>
+                <div style={{
+                  background: 'white',
+                  color: '#667eea',
+                  borderRadius: '50%',
+                  width: '1.75rem',
+                  height: '1.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  marginRight: '0.75rem',
+                  flexShrink: 0,
+                  fontSize: '0.875rem'
+                }}>1</div>
+                <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+                  {t('orientation.step1', 'Disable rotation lock on your device')}
+                </p>
+              </div>
+              
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'start'
+              }}>
+                <div style={{
+                  background: 'white',
+                  color: '#667eea',
+                  borderRadius: '50%',
+                  width: '1.75rem',
+                  height: '1.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  marginRight: '0.75rem',
+                  flexShrink: 0,
+                  fontSize: '0.875rem'
+                }}>2</div>
+                <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+                  {t('orientation.step2', 'Rotate your phone to landscape position')}
+                </p>
+              </div>
+            </>
+          ) : (
+            // Instrucciones para acceso directo web
+            <>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'start',
+                marginBottom: '1rem'
+              }}>
+                <div style={{
+                  background: 'white',
+                  color: '#667eea',
+                  borderRadius: '50%',
+                  width: '1.75rem',
+                  height: '1.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  marginRight: '0.75rem',
+                  flexShrink: 0,
+                  fontSize: '0.875rem'
+                }}>1</div>
+                <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+                  {t('orientation.installPwaStep', 'Para mejor experiencia, instala la app completa desde el menú de Chrome')}
+                </p>
+              </div>
+              
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'start'
+              }}>
+                <div style={{
+                  background: 'white',
+                  color: '#667eea',
+                  borderRadius: '50%',
+                  width: '1.75rem',
+                  height: '1.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  marginRight: '0.75rem',
+                  flexShrink: 0,
+                  fontSize: '0.875rem'
+                }}>2</div>
+                <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+                  {t('orientation.manualRotateStep', 'O simplemente gira tu teléfono a posición horizontal')}
+                </p>
+              </div>
+            </>
+          )}
         </div>
         
         {/* Botones */}
@@ -132,7 +188,7 @@ export const OrientationWarning = ({ onContinue, onTryRotate }: OrientationWarni
           flexDirection: 'column',
           gap: '0.75rem'
         }}>
-          {onTryRotate && (
+          {onTryRotate && isStandalone && (
             <button
               onClick={onTryRotate}
               style={{
@@ -157,6 +213,37 @@ export const OrientationWarning = ({ onContinue, onTryRotate }: OrientationWarni
               }}
             >
               {t('orientation.tryAgain', 'Try again')}
+            </button>
+          )}
+          
+          {!isStandalone && (
+            <button
+              onClick={() => {
+                alert(t('orientation.installInstructions', 
+                  'Abre el menú de Chrome (⋮) y selecciona "Agregar a la pantalla principal"'));
+              }}
+              style={{
+                background: 'white',
+                color: '#667eea',
+                padding: '0.875rem 1.5rem',
+                borderRadius: '0.75rem',
+                fontWeight: '600',
+                fontSize: '1rem',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              }}
+            >
+              {t('orientation.installApp', 'Instalar App Completa')}
             </button>
           )}
           

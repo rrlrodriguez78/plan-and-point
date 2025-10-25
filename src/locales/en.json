@@ -441,7 +441,11 @@
     "step2": "Rotate your phone to landscape position",
     "tryAgain": "Try again",
     "continueAnyway": "Continue in portrait",
-    "instruction": "Rotate your device for better experience"
+    "instruction": "Rotate your device for better experience",
+    "installPwaStep": "For best experience, install the full app from Chrome menu",
+    "manualRotateStep": "Or simply rotate your phone to landscape position",
+    "installInstructions": "Open Chrome menu (⋮) and select 'Add to Home screen'",
+    "installApp": "Install Full App"
   },
   "publicTours": {
     "title": "Public Tours",

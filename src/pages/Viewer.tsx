@@ -20,7 +20,7 @@ const Viewer = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  const { shouldShowOrientationWarning, lockLandscape, isMobile } = useDeviceOrientation();
+  const { shouldShowOrientationWarning, lockLandscape, isMobile, isStandalone } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
@@ -404,6 +404,7 @@ const Viewer = () => {
         <OrientationWarning 
           onContinue={() => setUserDismissedWarning(true)}
           onTryRotate={handleTryRotate}
+          isStandalone={isStandalone}
         />
       )}
       
