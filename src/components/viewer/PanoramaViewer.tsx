@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { 
   X, RotateCw, ZoomIn, ZoomOut, 
   Maximize, Minimize, Info, MapPin,
-  ChevronLeft, ChevronRight, Building2, Calendar, List
+  ChevronLeft, ChevronRight, Building2, Calendar, List,
+  Menu, ChevronDown
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,6 +25,7 @@ import { format } from 'date-fns';
 import { enUS, es } from 'date-fns/locale';
 import { PanoramaPhoto, Hotspot, FloorPlan } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -58,6 +60,7 @@ export default function PanoramaViewer({
 }: PanoramaViewerProps) {
   const { t, i18n } = useTranslation();
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
+  const { isMobile } = useDeviceDetection();
   
   // Helper function para obtener el número de hotspots por piso
   const getHotspotCount = useCallback((floorPlanId: string): number => {
@@ -107,6 +110,7 @@ export default function PanoramaViewer({
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoadingScene, setIsLoadingScene] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 99998 : 30;
@@ -597,6 +601,22 @@ export default function PanoramaViewer({
             </>
           )}
 
+          {/* Botón flotante toggle menú - SOLO MÓVILES */}
+          {isMobile && !loadingError && !isLoadingScene && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMenuVisible(!isMenuVisible)}
+              className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] 
+                         text-white bg-black/80 hover:bg-black/90 
+                         backdrop-blur-sm rounded-full h-12 w-12 shadow-2xl 
+                         border border-white/30"
+              title={isMenuVisible ? t('viewer.hideMenu') : t('viewer.showMenu')}
+            >
+              {isMenuVisible ? <ChevronDown className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </Button>
+          )}
+
           {/* Header superior - SIEMPRE VISIBLE */}
           <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-50">
             <div className={`flex justify-between items-center ${isLoadingScene ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}>
@@ -635,10 +655,20 @@ export default function PanoramaViewer({
             </div>
           </div>
 
-          {/* Controles inferiores - SIEMPRE VISIBLES */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 z-50">
-              <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : ''}`}>
-              <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
+          {/* Controles inferiores - Responsive según dispositivo */}
+          {(!isMobile || isMenuVisible) && (
+            <AnimatePresence>
+              <motion.div 
+                {...(isMobile && {
+                  initial: { y: 100, opacity: 0 },
+                  animate: { y: 0, opacity: 1 },
+                  exit: { y: 100, opacity: 0 },
+                  transition: { type: "spring", damping: 25, stiffness: 300 }
+                })}
+                className="absolute bottom-0 left-0 right-0 p-4 z-50"
+              >
+                <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : ''}`}>
+                  <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
                 {/* Floor Selector */}
                 {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
                   <DropdownMenu key={`floor-${fullscreenVersion}`} modal={false}>
@@ -907,8 +937,9 @@ export default function PanoramaViewer({
                 </Popover>
               </div>
             </div>
-          </div>
-
+          </motion.div>
+        </AnimatePresence>
+      )}
 
           <AnimatePresence>
             {showInfo && activePhoto?.description && !loadingError && (
