@@ -1,9 +1,15 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, LogOut, Settings } from 'lucide-react';
+import { MapPin, LogOut, Settings, Menu, Home, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -23,21 +29,40 @@ export const Navbar = () => {
           <LanguageSwitcher />
           {user ? (
             <>
-              <Link to="/app/inicio">
-                <Button variant="ghost">{t('nav.dashboard')}</Button>
-              </Link>
-              <Link to="/app/tours">
-                <Button variant="ghost">{t('nav.tours')}</Button>
-              </Link>
-              <Link to="/app/tours-publicos">
-                <Button variant="ghost">{t('nav.publicTours')}</Button>
-              </Link>
-              <Link to="/app/settings">
-                <Button variant="ghost">
-                  <Settings className="w-4 h-4 mr-2" />
-                  {t('nav.settings')}
-                </Button>
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Menu className="w-4 h-4 mr-2" />
+                    {t('nav.pages')}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/inicio" className="flex items-center cursor-pointer">
+                      <Home className="w-4 h-4 mr-2" />
+                      {t('nav.dashboard')}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/tours" className="flex items-center cursor-pointer">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      {t('nav.tours')}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/tours-publicos" className="flex items-center cursor-pointer">
+                      <Globe className="w-4 h-4 mr-2" />
+                      {t('nav.publicTours')}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/settings" className="flex items-center cursor-pointer">
+                      <Settings className="w-4 h-4 mr-2" />
+                      {t('nav.settings')}
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 {t('nav.logout')}
