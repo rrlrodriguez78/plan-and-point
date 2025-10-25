@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_summary: {
+        Row: {
+          avg_duration_seconds: number | null
+          created_at: string
+          date: string
+          id: string
+          total_views: number | null
+          tour_id: string
+          unique_viewers: number | null
+          updated_at: string
+        }
+        Insert: {
+          avg_duration_seconds?: number | null
+          created_at?: string
+          date: string
+          id?: string
+          total_views?: number | null
+          tour_id: string
+          unique_viewers?: number | null
+          updated_at?: string
+        }
+        Update: {
+          avg_duration_seconds?: number | null
+          created_at?: string
+          date?: string
+          id?: string
+          total_views?: number | null
+          tour_id?: string
+          unique_viewers?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_summary_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commands: {
         Row: {
           command_number: number
@@ -168,6 +209,86 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          created_at: string
+          email_on_new_user: boolean | null
+          email_on_new_view: boolean | null
+          email_weekly_report: boolean | null
+          id: string
+          push_on_new_view: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_on_new_user?: boolean | null
+          email_on_new_view?: boolean | null
+          email_weekly_report?: boolean | null
+          id?: string
+          push_on_new_view?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_on_new_user?: boolean | null
+          email_on_new_view?: boolean | null
+          email_weekly_report?: boolean | null
+          id?: string
+          push_on_new_view?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          read: boolean
+          related_tour_id: string | null
+          related_user_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          read?: boolean
+          related_tour_id?: string | null
+          related_user_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          read?: boolean
+          related_tour_id?: string | null
+          related_user_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_related_tour_id_fkey"
+            columns: ["related_tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -297,6 +418,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      tour_views: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          ip_address: string | null
+          session_id: string | null
+          tour_id: string
+          user_agent: string | null
+          viewed_at: string
+          viewer_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          ip_address?: string | null
+          session_id?: string | null
+          tour_id: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          ip_address?: string | null
+          session_id?: string | null
+          tour_id?: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_views_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

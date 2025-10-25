@@ -40,6 +40,63 @@ const Viewer = () => {
     loadTourData();
   }, [id]);
 
+  // Track tour view for analytics
+  useEffect(() => {
+    if (!tour || !id) return;
+
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = Date.now();
+
+    // Record initial view
+    const recordView = async () => {
+      try {
+        await supabase.from('tour_views').insert({
+          tour_id: id,
+          viewer_id: user?.id || null,
+          session_id: sessionId,
+          ip_address: null, // Could be added via edge function if needed
+          user_agent: navigator.userAgent
+        });
+      } catch (error) {
+        console.error('Error recording tour view:', error);
+      }
+    };
+
+    recordView();
+
+    // Record duration when user leaves
+    const handleBeforeUnload = async () => {
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      
+      // Use sendBeacon for reliable tracking on page unload
+      const data = {
+        tour_id: id,
+        viewer_id: user?.id || null,
+        session_id: sessionId,
+        duration_seconds: duration,
+        user_agent: navigator.userAgent
+      };
+
+      // Try to update the existing view record
+      navigator.sendBeacon(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tour_views?session_id=eq.${sessionId}`,
+        JSON.stringify(data)
+      );
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also record duration when component unmounts
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      supabase.from('tour_views')
+        .update({ duration_seconds: duration })
+        .eq('session_id', sessionId)
+        .then(() => {});
+    };
+  }, [tour, id, user]);
+
   const loadTourData = async () => {
     try {
       // Validar que id existe y es un UUID válido

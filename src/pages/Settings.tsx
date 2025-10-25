@@ -8,7 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -20,6 +20,9 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NotificationsList } from '@/components/settings/NotificationsList';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { AnalyticsDashboard } from '@/components/settings/AnalyticsDashboard';
 
 interface GoldenRule {
   id: string;
@@ -445,7 +448,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="rules" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="rules">
               <Shield className="w-4 h-4 mr-2" />
               {t('settings.goldenRules')}
@@ -457,6 +460,10 @@ const Settings = () => {
             <TabsTrigger value="pages">
               <FileText className="w-4 h-4 mr-2" />
               Pages
+            </TabsTrigger>
+            <TabsTrigger value="notifications">
+              <Bell className="w-4 h-4 mr-2" />
+              Notificaciones
             </TabsTrigger>
           </TabsList>
 
@@ -651,6 +658,48 @@ const Settings = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl">Sistema de Notificaciones y Analytics</CardTitle>
+                  <CardDescription>
+                    Monitorea la actividad de tus tours, visualiza estadísticas y configura notificaciones
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              <Tabs defaultValue="notifications" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-6">
+                  <TabsTrigger value="notifications">
+                    <Bell className="w-4 h-4 mr-2" />
+                    Notificaciones
+                  </TabsTrigger>
+                  <TabsTrigger value="analytics">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Analytics
+                  </TabsTrigger>
+                  <TabsTrigger value="config">
+                    <Terminal className="w-4 h-4 mr-2" />
+                    Configuración
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="notifications">
+                  <NotificationsList />
+                </TabsContent>
+
+                <TabsContent value="analytics">
+                  <AnalyticsDashboard />
+                </TabsContent>
+
+                <TabsContent value="config">
+                  <NotificationSettings />
+                </TabsContent>
+              </Tabs>
+            </div>
           </TabsContent>
         </Tabs>
 
