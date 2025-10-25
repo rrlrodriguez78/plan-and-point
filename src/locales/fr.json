@@ -1,10 +1,36 @@
 {
   "nav": {
     "dashboard": "Tableau de bord",
+    "tours": "Tours",
     "settings": "Paramètres",
     "logout": "Déconnexion",
     "login": "Se connecter",
     "signup": "S'inscrire"
+  },
+  "inicio": {
+    "title": "Tableau de Bord Analytique",
+    "welcomeBack": "Bon retour",
+    "overview": "Aperçu",
+    "totalTours": "Tours Totaux",
+    "totalViews": "Vues Totales",
+    "totalLikes": "J'aime Totaux",
+    "totalComments": "Commentaires Totaux",
+    "viewsLastMonth": "Vues des 30 Derniers Jours",
+    "topTours": "Tours Populaires",
+    "activityFeed": "Activité Récente",
+    "quickActions": "Actions Rapides",
+    "createNewTour": "Créer un Nouveau Tour",
+    "viewAllTours": "Voir Tous les Tours",
+    "viewReport": "Rapport Analytique",
+    "published": "publié",
+    "draft": "brouillon",
+    "noDataYet": "Pas encore de données",
+    "startCreatingTours": "Commencez à créer des tours pour voir les analyses"
+  },
+  "tours": {
+    "title": "Gestionnaire de Tours",
+    "subtitle": "Gérez et modifiez tous vos tours virtuels",
+    "backToHome": "Retour au Tableau de Bord"
   },
   "landing": {
     "title": "Créez des Visites Virtuelles Interactives",

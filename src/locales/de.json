@@ -1,10 +1,36 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "tours": "Touren",
     "settings": "Einstellungen",
     "logout": "Abmelden",
     "login": "Anmelden",
     "signup": "Registrieren"
+  },
+  "inicio": {
+    "title": "Analyse-Dashboard",
+    "welcomeBack": "Willkommen zurück",
+    "overview": "Übersicht",
+    "totalTours": "Touren Gesamt",
+    "totalViews": "Ansichten Gesamt",
+    "totalLikes": "Likes Gesamt",
+    "totalComments": "Kommentare Gesamt",
+    "viewsLastMonth": "Ansichten der letzten 30 Tage",
+    "topTours": "Top-Touren",
+    "activityFeed": "Letzte Aktivität",
+    "quickActions": "Schnellaktionen",
+    "createNewTour": "Neue Tour Erstellen",
+    "viewAllTours": "Alle Touren Anzeigen",
+    "viewReport": "Analysebericht",
+    "published": "veröffentlicht",
+    "draft": "entwurf",
+    "noDataYet": "Noch keine Daten",
+    "startCreatingTours": "Beginnen Sie mit der Erstellung von Touren, um Analysen zu sehen"
+  },
+  "tours": {
+    "title": "Touren-Manager",
+    "subtitle": "Verwalten und bearbeiten Sie alle Ihre virtuellen Touren",
+    "backToHome": "Zurück zum Dashboard"
   },
   "landing": {
     "title": "Erstellen Sie Interaktive Virtuelle Touren",

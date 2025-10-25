@@ -1,10 +1,36 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "tours": "Tours",
     "settings": "Settings",
     "logout": "Logout",
     "login": "Login",
     "signup": "Sign Up"
+  },
+  "inicio": {
+    "title": "Analytics Dashboard",
+    "welcomeBack": "Welcome back",
+    "overview": "Overview",
+    "totalTours": "Total Tours",
+    "totalViews": "Total Views",
+    "totalLikes": "Total Likes",
+    "totalComments": "Total Comments",
+    "viewsLastMonth": "Views Last 30 Days",
+    "topTours": "Top Tours",
+    "activityFeed": "Recent Activity",
+    "quickActions": "Quick Actions",
+    "createNewTour": "Create New Tour",
+    "viewAllTours": "View All Tours",
+    "viewReport": "Analytics Report",
+    "published": "published",
+    "draft": "draft",
+    "noDataYet": "No data yet",
+    "startCreatingTours": "Start creating tours to see analytics"
+  },
+  "tours": {
+    "title": "Tours Manager",
+    "subtitle": "Manage and edit all your virtual tours",
+    "backToHome": "Back to Dashboard"
   },
   "landing": {
     "title": "Create Interactive Virtual Tours",

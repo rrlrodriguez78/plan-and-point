@@ -23,8 +23,11 @@ export const Navbar = () => {
           <LanguageSwitcher />
           {user ? (
             <>
-              <Link to="/app/tours">
+              <Link to="/app/inicio">
                 <Button variant="ghost">{t('nav.dashboard')}</Button>
+              </Link>
+              <Link to="/app/tours">
+                <Button variant="ghost">{t('nav.tours')}</Button>
               </Link>
               <Link to="/app/settings">
                 <Button variant="ghost">

@@ -7,6 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/contexts/ThemeContext";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import Inicio from "./pages/Inicio";
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Auth />} />
               <Route path="/signup" element={<Auth />} />
+              <Route path="/app/inicio" element={<Inicio />} />
               <Route path="/app/tours" element={<Dashboard />} />
               <Route path="/app/editor/:id" element={<Editor />} />
               <Route path="/app/settings" element={<Settings />} />
