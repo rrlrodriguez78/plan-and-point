@@ -254,7 +254,23 @@ const Dashboard = () => {
                           </div>
                         )}
                       </div>
-                      <div className="absolute top-2 left-2 flex gap-2 z-10">
+                      
+                      {/* Title and Status Overlay - Top */}
+                      <div className="absolute top-2 left-2 right-2 z-10 flex justify-between items-start gap-2">
+                        <div className="backdrop-blur-sm bg-black/40 px-3 py-1.5 rounded-md border border-white/20 flex-1 min-w-0">
+                          <h3 className="text-white font-semibold text-sm truncate">{tour.title}</h3>
+                        </div>
+                        <div className="backdrop-blur-sm bg-black/40 px-2 py-1.5 rounded-md border border-white/20 flex items-center justify-center shrink-0">
+                          {tour.is_published ? (
+                            <Globe className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <Lock className="w-4 h-4 text-gray-300" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons - Bottom Left */}
+                      <div className="absolute bottom-2 left-2 flex gap-2 z-10">
                         <Button
                           variant="secondary"
                           size="sm"
@@ -272,12 +288,14 @@ const Dashboard = () => {
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
+                      
+                      {/* Upload Button - Bottom Right */}
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => handleUploadCover(tour.id)}
                         disabled={uploadingCover === tour.id}
-                        className="absolute top-2 right-2 z-10 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                        className="absolute bottom-2 right-2 z-10 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
                       >
                         <Upload className="w-4 h-4" />
                       </Button>
@@ -296,14 +314,6 @@ const Dashboard = () => {
                   )}
                 </div>
                 <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <CardTitle className="text-xl">{tour.title}</CardTitle>
-                    {tour.is_published ? (
-                      <Globe className="w-5 h-5 text-secondary" />
-                    ) : (
-                      <Lock className="w-5 h-5 text-muted-foreground" />
-                    )}
-                  </div>
                   <CardDescription>
                     {tour.description || t('dashboard.noDescription')}
                   </CardDescription>
