@@ -200,7 +200,7 @@ const Settings = () => {
             </TabsTrigger>
             <TabsTrigger value="commands">
               <Terminal className="w-4 h-4 mr-2" />
-              Lista de Comandos
+              Command List
             </TabsTrigger>
           </TabsList>
 
@@ -265,22 +265,22 @@ const Settings = () => {
           <TabsContent value="commands">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Lista de Comandos</CardTitle>
+                <CardTitle className="text-2xl">Command List</CardTitle>
                 <CardDescription>
-                  Comandos útiles para solucionar problemas comunes en la aplicación
+                  Useful commands to solve common problems in the application
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <Card className="border-l-4 border-l-blue-500">
                     <CardHeader>
-                      <CardTitle className="text-lg">Fix de Componentes en Fullscreen</CardTitle>
+                      <CardTitle className="text-lg">Fullscreen Components Fix</CardTitle>
                       <CardDescription className="mt-2">
                         <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                          "El [Popover/DropdownMenu/Dialog/Select] no funciona en fullscreen. Aplica la solución del Portal con container."
+                          "The [Popover/DropdownMenu/Dialog/Select] doesn't work in fullscreen. Apply the Portal container solution."
                         </span>
                         <p className="mt-2">
-                          Para componentes de Radix UI que usan Portal y no funcionan en modo fullscreen.
+                          For Radix UI components that use Portal and don't work in fullscreen mode.
                         </p>
                       </CardDescription>
                     </CardHeader>
@@ -288,22 +288,22 @@ const Settings = () => {
 
                   <Card className="border-l-4 border-l-green-500">
                     <CardHeader>
-                      <CardTitle className="text-lg">Palabras Clave Importantes</CardTitle>
+                      <CardTitle className="text-lg">Important Keywords</CardTitle>
                       <CardDescription className="mt-2 space-y-1">
-                        <p>• <strong>Portal</strong> - Problema de renderizado de Radix UI</p>
-                        <p>• <strong>fullscreen</strong> - Contexto del problema</p>
-                        <p>• <strong>container prop</strong> - La solución específica</p>
-                        <p>• <strong>como [componente anterior]</strong> - Referencia a solución ya implementada</p>
+                        <p>• <strong>Portal</strong> - Radix UI rendering issue</p>
+                        <p>• <strong>fullscreen</strong> - Problem context</p>
+                        <p>• <strong>container prop</strong> - The specific solution</p>
+                        <p>• <strong>like [previous component]</strong> - Reference to already implemented solution</p>
                       </CardDescription>
                     </CardHeader>
                   </Card>
 
                   <Card className="border-l-4 border-l-purple-500">
                     <CardHeader>
-                      <CardTitle className="text-lg">Componentes que Pueden Tener Este Problema</CardTitle>
+                      <CardTitle className="text-lg">Components That May Have This Issue</CardTitle>
                       <CardDescription className="mt-2 space-y-1">
-                        <p>✅ Popover (arreglado)</p>
-                        <p>✅ DropdownMenu (arreglado)</p>
+                        <p>✅ Popover (fixed)</p>
+                        <p>✅ DropdownMenu (fixed)</p>
                         <p>⚠️ Dialog / AlertDialog</p>
                         <p>⚠️ Select</p>
                         <p>⚠️ Tooltip</p>
