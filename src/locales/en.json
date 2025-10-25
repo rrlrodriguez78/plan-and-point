@@ -187,10 +187,12 @@
     "hotspotList": "Hotspot list",
     "allHotspots": "All points",
     "hotspotsAvailable": "points available",
-    "installPwaForRotation": "To enable auto-rotation install the full app",
-    "rotationNotSupported": "Could not force rotation. Please rotate your device manually",
+    "installPwaForRotation": "Install the full app to use this feature",
+    "rotationNotSupported": "Your browser doesn't support orientation locking",
     "landscapeLocked": "Landscape orientation activated!",
-    "rotationError": "Error trying to force rotation"
+    "rotationError": "Error trying to force rotation",
+    "enableAutoRotate": "Enable auto-rotation in your device settings",
+    "rotateManually": "Please rotate your device manually to landscape"
   },
   "auth": {
     "login": "Login",

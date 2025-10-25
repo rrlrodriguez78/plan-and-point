@@ -187,10 +187,12 @@
     "hotspotList": "Lista de hotspots",
     "allHotspots": "Todos los puntos",
     "hotspotsAvailable": "puntos disponibles",
-    "installPwaForRotation": "Para rotación automática instala la app completa",
-    "rotationNotSupported": "No se pudo forzar la rotación. Por favor rota tu dispositivo manualmente",
+    "installPwaForRotation": "Instala la app completa para usar esta función",
+    "rotationNotSupported": "Tu navegador no soporta bloqueo de orientación",
     "landscapeLocked": "¡Orientación horizontal activada!",
-    "rotationError": "Error al intentar forzar la rotación"
+    "rotationError": "Error al intentar forzar la rotación",
+    "enableAutoRotate": "Habilita la rotación automática en los ajustes de tu dispositivo",
+    "rotateManually": "Por favor rota tu dispositivo manualmente a posición horizontal"
   },
   "auth": {
     "login": "Iniciar Sesión",

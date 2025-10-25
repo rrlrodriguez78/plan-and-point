@@ -20,7 +20,7 @@ const Viewer = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  const { shouldShowOrientationWarning, lockLandscape, isMobile, isStandalone } = useDeviceOrientation();
+  const { shouldShowOrientationWarning, lockLandscape, isMobile, isStandalone, isLandscape } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
@@ -36,41 +36,69 @@ const Viewer = () => {
   const [passwordProtected, setPasswordProtected] = useState(false);
   const [passwordUpdatedAt, setPasswordUpdatedAt] = useState<string | null>(null);
 
-  // NUEVO: Handler para forzar landscape manualmente con estrategia Fullscreen First
+  // Auto-dismiss warning cuando el usuario rota manualmente a landscape
+  useEffect(() => {
+    if (isLandscape && !userDismissedWarning && isMobile) {
+      console.log('✅ Usuario rotó manualmente a landscape, ocultando warning');
+      setUserDismissedWarning(true);
+    }
+  }, [isLandscape, userDismissedWarning, isMobile]);
+
+  // Handler mejorado para forzar landscape con mejor detección de errores
   const handleForceLandscape = async () => {
-    console.log('🔄 Forzando landscape manualmente con Fullscreen First...');
+    console.log('🔄 Forzando landscape con estrategia Fullscreen First...');
     
     try {
       // PASO 1: Intentar entrar a fullscreen primero
-      console.log('📺 Intentando entrar a fullscreen...');
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
         console.log('✅ Fullscreen activado');
+        
+        // Esperar a que fullscreen se active completamente
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       
-      // PASO 2: Esperar 200ms para que el navegador procese el cambio
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // PASO 3: Ahora intentar lockear la orientación
-      console.log('🔒 Intentando lockear orientación landscape...');
+      // PASO 2: Intentar lockear la orientación
       const success = await lockLandscape();
       
       if (success) {
-        console.log('✅ Landscape forzado exitosamente');
+        console.log('✅ Landscape bloqueado exitosamente');
         setUserDismissedWarning(true);
         toast.success(t('viewer.landscapeLocked', '¡Orientación horizontal activada!'));
       } else {
         console.log('⚠️ No se pudo lockear la orientación');
-        // Feedback específico según el modo
-        if (!isStandalone) {
-          toast.error(t('viewer.installPwaForRotation', 'Para rotación automática instala la app completa'));
+        
+        // Detectar si auto-rotate está deshabilitado
+        const initialAngle = screen.orientation?.angle || 0;
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const currentAngle = screen.orientation?.angle || 0;
+        
+        if (initialAngle === currentAngle && initialAngle === 0) {
+          // Auto-rotate probablemente deshabilitado
+          toast.error(
+            t('viewer.enableAutoRotate', 'Habilita la rotación automática en los ajustes de tu dispositivo'),
+            { duration: 5000 }
+          );
         } else {
-          toast.error(t('viewer.rotationNotSupported', 'No se pudo forzar la rotación. Por favor rota tu dispositivo manualmente'));
+          // Otro tipo de error
+          toast.error(
+            t('viewer.rotateManually', 'Por favor rota tu dispositivo manualmente a posición horizontal'),
+            { duration: 4000 }
+          );
         }
       }
     } catch (error) {
       console.error('❌ Error en handleForceLandscape:', error);
-      toast.error(t('viewer.rotationError', 'Error al intentar forzar la rotación'));
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotSupportedError') {
+          toast.error(t('viewer.rotationNotSupported', 'Tu navegador no soporta bloqueo de orientación'));
+        } else if (error.name === 'SecurityError') {
+          toast.error(t('viewer.installPwaForRotation', 'Instala la app completa para usar esta función'));
+        } else {
+          toast.error(t('viewer.rotationError', 'Error al intentar forzar la rotación'));
+        }
+      }
     }
   };
 
