@@ -129,6 +129,87 @@ export const useEnhancedAnalytics = () => {
 
   useEffect(() => {
     loadAnalytics();
+
+    // Subscribe to real-time updates
+    if (!user) return;
+
+    const channels = [
+      // Tours updates
+      supabase
+        .channel('virtual_tours_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'virtual_tours'
+          },
+          () => loadAnalytics()
+        )
+        .subscribe(),
+
+      // Analytics updates
+      supabase
+        .channel('tour_analytics_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tour_analytics'
+          },
+          () => loadAnalytics()
+        )
+        .subscribe(),
+
+      // Comments updates
+      supabase
+        .channel('tour_comments_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tour_comments'
+          },
+          () => loadAnalytics()
+        )
+        .subscribe(),
+
+      // Notifications updates
+      supabase
+        .channel('notifications_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => loadAnalytics()
+        )
+        .subscribe(),
+
+      // Email logs updates
+      supabase
+        .channel('email_logs_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'email_logs',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => loadAnalytics()
+        )
+        .subscribe(),
+    ];
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
   }, [user]);
 
   return {

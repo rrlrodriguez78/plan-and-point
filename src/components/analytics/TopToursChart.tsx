@@ -21,6 +21,43 @@ export const TopToursChart = () => {
 
   useEffect(() => {
     loadTopTours();
+
+    // Subscribe to real-time analytics updates
+    if (!user) return;
+
+    const channels = [
+      // Tour analytics updates
+      supabase
+        .channel('tour_analytics_top_tours')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tour_analytics'
+          },
+          () => loadTopTours()
+        )
+        .subscribe(),
+
+      // Tour views updates
+      supabase
+        .channel('tour_views_top_tours')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tour_views'
+          },
+          () => loadTopTours()
+        )
+        .subscribe(),
+    ];
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
   }, [user]);
 
   const loadTopTours = async () => {

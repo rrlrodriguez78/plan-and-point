@@ -25,6 +25,72 @@ export const ActivityFeed = () => {
 
   useEffect(() => {
     loadActivities();
+
+    // Subscribe to real-time updates
+    if (!user) return;
+
+    const channels = [
+      // Tour views
+      supabase
+        .channel('tour_views_activity')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tour_views'
+          },
+          () => loadActivities()
+        )
+        .subscribe(),
+
+      // Tour comments
+      supabase
+        .channel('tour_comments_activity')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tour_comments'
+          },
+          () => loadActivities()
+        )
+        .subscribe(),
+
+      // Email logs
+      supabase
+        .channel('email_logs_activity')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'email_logs',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => loadActivities()
+        )
+        .subscribe(),
+
+      // Virtual tours
+      supabase
+        .channel('virtual_tours_activity')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'virtual_tours'
+          },
+          () => loadActivities()
+        )
+        .subscribe(),
+    ];
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
   }, [user]);
 
   const loadActivities = async () => {

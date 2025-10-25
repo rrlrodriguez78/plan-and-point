@@ -66,6 +66,29 @@ export const useEmailLogs = () => {
 
   useEffect(() => {
     loadEmailLogs();
+
+    // Subscribe to real-time email log updates
+    if (!user) return;
+
+    const channel = supabase
+      .channel('email_logs_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'email_logs',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          loadEmailLogs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   return {
