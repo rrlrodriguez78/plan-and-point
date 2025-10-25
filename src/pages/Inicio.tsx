@@ -15,12 +15,14 @@ import { CommentsWidget } from '@/components/analytics/CommentsWidget';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, Eye, Heart, MessageSquare, TrendingUp, Bell, Mail } from 'lucide-react';
 import { useEnhancedAnalytics } from '@/hooks/useEnhancedAnalytics';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const Inicio = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { analytics, loading } = useEnhancedAnalytics();
+  const { displayName } = useUserProfile();
 
   useEffect(() => {
     if (!user) {
@@ -44,7 +46,7 @@ const Inicio = () => {
             {t('inicio.title')}
           </h1>
           <p className="text-muted-foreground text-lg font-body-future">
-            {t('inicio.welcomeBack')}, {user.email}
+            {t('inicio.welcomeBack')}, {displayName}
           </p>
         </div>
 
