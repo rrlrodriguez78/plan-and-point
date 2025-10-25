@@ -181,6 +181,27 @@ const Dashboard = () => {
     }
   };
 
+  const togglePublishStatus = async (tourId: string, currentStatus: boolean) => {
+    try {
+      const newStatus = !currentStatus;
+      const { error } = await supabase
+        .from('virtual_tours')
+        .update({ is_published: newStatus })
+        .eq('id', tourId);
+
+      if (error) throw error;
+
+      setTours(tours.map(t => 
+        t.id === tourId ? { ...t, is_published: newStatus } : t
+      ));
+      
+      toast.success(newStatus ? t('dashboard.tourPublished') : t('dashboard.tourUnpublished'));
+    } catch (error) {
+      console.error('Error toggling publish status:', error);
+      toast.error(t('dashboard.errorChangingStatus'));
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -273,13 +294,16 @@ const Dashboard = () => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="backdrop-blur-sm bg-black/40 px-1.5 py-1 rounded border border-white/20 flex items-center justify-center shrink-0">
+                          <button
+                            onClick={() => togglePublishStatus(tour.id, tour.is_published)}
+                            className="backdrop-blur-sm bg-black/40 px-1.5 py-1 rounded border border-white/20 flex items-center justify-center shrink-0 hover:bg-black/60 transition-all cursor-pointer"
+                          >
                             {tour.is_published ? (
                               <Globe className="w-3.5 h-3.5 text-green-400" />
                             ) : (
                               <Lock className="w-3.5 h-3.5 text-gray-300" />
                             )}
-                          </div>
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>{tour.is_published ? t('dashboard.published') : t('dashboard.notPublished')}</p>

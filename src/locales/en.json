@@ -72,8 +72,11 @@
     "errorLoading": "Error loading data",
     "errorCreating": "Error creating tour",
     "errorDeleting": "Error deleting tour",
+    "errorChangingStatus": "Error changing status",
     "tourCreated": "Tour created successfully",
     "tourDeleted": "Tour deleted",
+    "tourPublished": "Tour published",
+    "tourUnpublished": "Tour unpublished",
     "organizationNotFound": "Organization not found",
     "clickCoverToView": "Click on the cover to view the tour",
     "publishToView": "Publish the tour to view it"

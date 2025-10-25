@@ -72,8 +72,11 @@
     "errorLoading": "Erreur de chargement des données",
     "errorCreating": "Erreur de création de la visite",
     "errorDeleting": "Erreur de suppression de la visite",
+    "errorChangingStatus": "Erreur lors du changement de statut",
     "tourCreated": "Visite créée avec succès",
     "tourDeleted": "Visite supprimée",
+    "tourPublished": "Visite publiée",
+    "tourUnpublished": "Visite dépubliée",
     "organizationNotFound": "Organisation non trouvée",
     "clickCoverToView": "Cliquez sur la couverture pour voir la visite",
     "publishToView": "Publiez la visite pour la voir"
