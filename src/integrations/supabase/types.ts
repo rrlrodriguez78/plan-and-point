@@ -458,6 +458,94 @@ export type Database = {
         }
         Relationships: []
       }
+      tour_analytics: {
+        Row: {
+          avg_duration_seconds: number | null
+          comments_count: number | null
+          created_at: string
+          id: string
+          last_viewed_at: string | null
+          likes_count: number | null
+          tour_id: string
+          unique_viewers: number | null
+          updated_at: string
+          views_count: number | null
+        }
+        Insert: {
+          avg_duration_seconds?: number | null
+          comments_count?: number | null
+          created_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          likes_count?: number | null
+          tour_id: string
+          unique_viewers?: number | null
+          updated_at?: string
+          views_count?: number | null
+        }
+        Update: {
+          avg_duration_seconds?: number | null
+          comments_count?: number | null
+          created_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          likes_count?: number | null
+          tour_id?: string
+          unique_viewers?: number | null
+          updated_at?: string
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_analytics_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: true
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_comments: {
+        Row: {
+          comment_text: string
+          commenter_email: string | null
+          commenter_name: string | null
+          created_at: string
+          id: string
+          is_read: boolean | null
+          tour_id: string
+          user_id: string | null
+        }
+        Insert: {
+          comment_text: string
+          commenter_email?: string | null
+          commenter_name?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          tour_id: string
+          user_id?: string | null
+        }
+        Update: {
+          comment_text?: string
+          commenter_email?: string | null
+          commenter_name?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          tour_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_comments_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_views: {
         Row: {
           created_at: string

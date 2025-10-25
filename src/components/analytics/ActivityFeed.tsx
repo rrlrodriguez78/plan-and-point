@@ -3,14 +3,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
-import { Clock, Plus, Eye, MessageSquare, Heart } from 'lucide-react';
+import { Clock, Plus, Eye, MessageSquare, Heart, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 
 interface Activity {
   id: string;
-  type: 'tour_created' | 'view' | 'comment' | 'like';
+  type: 'tour_created' | 'new_view' | 'new_comment' | 'new_like' | 'email_sent';
   title: string;
   timestamp: string;
   icon: React.ReactNode;
@@ -29,6 +29,8 @@ export const ActivityFeed = () => {
 
   const loadActivities = async () => {
     try {
+      const allActivities: Activity[] = [];
+
       // Get user's organization
       const { data: orgData } = await supabase
         .from('organizations')
@@ -38,26 +40,95 @@ export const ActivityFeed = () => {
 
       if (!orgData) return;
 
-      // Get recent tours
+      // Get tours
       const { data: tours } = await supabase
         .from('virtual_tours')
         .select('id, title, created_at')
-        .eq('organization_id', orgData.id)
+        .eq('organization_id', orgData.id);
+
+      if (!tours || tours.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // 1. Tour creation activities
+      const tourActivities = tours.slice(0, 5).map(tour => ({
+        id: `tour-${tour.id}`,
+        type: 'tour_created' as const,
+        title: `${t('inicio.createdTour')}: ${tour.title}`,
+        timestamp: tour.created_at,
+        icon: <Plus className="w-4 h-4" />,
+        color: 'text-success',
+      }));
+      allActivities.push(...tourActivities);
+
+      // 2. View activities from tour_views
+      const { data: recentViews } = await supabase
+        .from('tour_views')
+        .select('id, tour_id, viewed_at, virtual_tours(title)')
+        .in('tour_id', tours.map(t => t.id))
+        .order('viewed_at', { ascending: false })
+        .limit(10);
+
+      if (recentViews) {
+        const viewActivities = recentViews.map(view => ({
+          id: `view-${view.id}`,
+          type: 'new_view' as const,
+          title: `${t('inicio.newViewOn')}: ${(view.virtual_tours as any)?.title || 'Tour'}`,
+          timestamp: view.viewed_at,
+          icon: <Eye className="w-4 h-4" />,
+          color: 'text-info',
+        }));
+        allActivities.push(...viewActivities);
+      }
+
+      // 3. Comment activities
+      const { data: recentComments } = await supabase
+        .from('tour_comments')
+        .select('id, comment_text, created_at')
+        .in('tour_id', tours.map(t => t.id))
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (tours) {
-        const recentActivities: Activity[] = tours.map(tour => ({
-          id: tour.id,
-          type: 'tour_created' as const,
-          title: `Created tour: ${tour.title}`,
-          timestamp: tour.created_at,
-          icon: <Plus className="w-4 h-4" />,
-          color: 'text-green-500',
+      if (recentComments) {
+        const commentActivities = recentComments.map(comment => ({
+          id: `comment-${comment.id}`,
+          type: 'new_comment' as const,
+          title: `${t('inicio.newComment')}: ${comment.comment_text.substring(0, 40)}...`,
+          timestamp: comment.created_at,
+          icon: <MessageSquare className="w-4 h-4" />,
+          color: 'text-secondary',
         }));
-
-        setActivities(recentActivities);
+        allActivities.push(...commentActivities);
       }
+
+      // 4. Email activities
+      const { data: recentEmails } = await supabase
+        .from('email_logs')
+        .select('id, notification_type, sent_at, status')
+        .eq('user_id', user?.id)
+        .order('sent_at', { ascending: false })
+        .limit(10);
+
+      if (recentEmails) {
+        const emailActivities = recentEmails.map(email => ({
+          id: `email-${email.id}`,
+          type: 'email_sent' as const,
+          title: `${t('inicio.emailSent')}: ${email.notification_type.replace('_', ' ')}`,
+          timestamp: email.sent_at,
+          icon: <Mail className="w-4 h-4" />,
+          color: email.status === 'sent' ? 'text-success' : 'text-destructive',
+        }));
+        allActivities.push(...emailActivities);
+      }
+
+      // Sort all activities by timestamp
+      allActivities.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      // Take top 20 activities
+      setActivities(allActivities.slice(0, 20));
     } catch (error) {
       console.error('Error loading activities:', error);
     } finally {

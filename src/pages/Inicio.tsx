@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { StatsCard } from '@/components/analytics/StatsCard';
 import { ViewsChart } from '@/components/analytics/ViewsChart';
@@ -10,104 +9,25 @@ import { TopToursChart } from '@/components/analytics/TopToursChart';
 import { ActivityFeed } from '@/components/analytics/ActivityFeed';
 import { QuickActions } from '@/components/analytics/QuickActions';
 import { DistributionPieChart } from '@/components/analytics/DistributionPieChart';
+import { NotificationsWidget } from '@/components/analytics/NotificationsWidget';
+import { EmailActivityWidget } from '@/components/analytics/EmailActivityWidget';
+import { CommentsWidget } from '@/components/analytics/CommentsWidget';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, Eye, Heart, MessageSquare, TrendingUp } from 'lucide-react';
-
-interface AnalyticsData {
-  totalTours: number;
-  publishedTours: number;
-  draftTours: number;
-  totalViews: number;
-  totalLikes: number;
-  totalComments: number;
-  unreadComments: number;
-}
+import { BarChart3, Eye, Heart, MessageSquare, TrendingUp, Bell, Mail } from 'lucide-react';
+import { useEnhancedAnalytics } from '@/hooks/useEnhancedAnalytics';
 
 const Inicio = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
-  const [analytics, setAnalytics] = useState<AnalyticsData>({
-    totalTours: 0,
-    publishedTours: 0,
-    draftTours: 0,
-    totalViews: 0,
-    totalLikes: 0,
-    totalComments: 0,
-    unreadComments: 0,
-  });
+  const { analytics, loading } = useEnhancedAnalytics();
 
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
-
-    loadAnalytics();
   }, [user, navigate]);
-
-  const loadAnalytics = async () => {
-    try {
-      setLoading(true);
-
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user?.id)
-        .single();
-
-      if (!orgData) {
-        setLoading(false);
-        return;
-      }
-
-      // Get tours count
-      const { data: tours } = await supabase
-        .from('virtual_tours')
-        .select('id, is_published')
-        .eq('organization_id', orgData.id);
-
-      const totalTours = tours?.length || 0;
-      const publishedTours = tours?.filter(t => t.is_published).length || 0;
-      const draftTours = totalTours - publishedTours;
-
-      // Get analytics data (types will be regenerated after migration)
-      const analyticsQuery = await supabase
-        .from('tour_analytics' as any)
-        .select('views_count, likes_count, comments_count')
-        .in('tour_id', tours?.map(t => t.id) || []);
-
-      const analyticsData = analyticsQuery.data as any[];
-      const totalViews = analyticsData?.reduce((sum: number, a: any) => sum + (a.views_count || 0), 0) || 0;
-      const totalLikes = analyticsData?.reduce((sum: number, a: any) => sum + (a.likes_count || 0), 0) || 0;
-      const totalCommentsCount = analyticsData?.reduce((sum: number, a: any) => sum + (a.comments_count || 0), 0) || 0;
-
-      // Get unread comments (types will be regenerated after migration)
-      const commentsQuery = await supabase
-        .from('tour_comments' as any)
-        .select('id, is_read')
-        .in('tour_id', tours?.map(t => t.id) || [])
-        .eq('is_read', false);
-
-      const comments = commentsQuery.data as any[];
-
-      setAnalytics({
-        totalTours,
-        publishedTours,
-        draftTours,
-        totalViews,
-        totalLikes,
-        totalComments: totalCommentsCount,
-        unreadComments: comments?.length || 0,
-      });
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!user) {
     return null;
@@ -128,15 +48,15 @@ const Inicio = () => {
           </p>
         </div>
 
-        {/* Stats Cards Grid */}
+        {/* Stats Cards Grid - 6 cards */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
+            {[...Array(6)].map((_, i) => (
               <Skeleton key={i} className="h-40 rounded-xl" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
             <StatsCard
               title={t('inicio.totalTours')}
               value={analytics.totalTours}
@@ -164,10 +84,26 @@ const Inicio = () => {
             <StatsCard
               title={t('inicio.totalComments')}
               value={analytics.totalComments}
-              subtitle={`${analytics.unreadComments} unread`}
+              subtitle={`${analytics.unreadComments} ${t('inicio.unread')}`}
               icon={<MessageSquare className="w-6 h-6" />}
               badge={analytics.unreadComments}
               color="pink"
+            />
+            <StatsCard
+              title={t('inicio.notifications')}
+              value={analytics.totalNotifications}
+              subtitle={`${analytics.unreadNotifications} ${t('inicio.unread')}`}
+              icon={<Bell className="w-6 h-6" />}
+              badge={analytics.unreadNotifications}
+              color="orange"
+            />
+            <StatsCard
+              title={t('inicio.emailsSent')}
+              value={analytics.totalEmailsSent}
+              subtitle={`${analytics.emailSuccessRate}% ${t('inicio.successRate')}`}
+              icon={<Mail className="w-6 h-6" />}
+              trend={analytics.emailsToday > 0 ? `+${analytics.emailsToday} ${t('inicio.today')}` : undefined}
+              color="green"
             />
           </div>
         )}
@@ -203,6 +139,13 @@ const Inicio = () => {
             <TopToursChart />
           </div>
         )}
+
+        {/* Widgets Row: Notifications, Comments, Email Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+          <NotificationsWidget />
+          <CommentsWidget />
+          <EmailActivityWidget />
+        </div>
 
         {/* Bottom Section: Activity Feed & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

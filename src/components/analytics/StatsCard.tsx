@@ -10,7 +10,7 @@ interface StatsCardProps {
   icon: React.ReactNode;
   trend?: string;
   badge?: number;
-  color?: 'cyan' | 'blue' | 'purple' | 'pink';
+  color?: 'cyan' | 'blue' | 'purple' | 'pink' | 'orange' | 'green';
 }
 
 const colorMap = {
@@ -37,6 +37,18 @@ const colorMap = {
     border: 'border-pink-500/30',
     icon: 'text-pink-500',
     glow: 'shadow-pink-500/20',
+  },
+  orange: {
+    gradient: 'from-orange-500/20 to-orange-600/5',
+    border: 'border-orange-500/30',
+    icon: 'text-orange-500',
+    glow: 'shadow-orange-500/20',
+  },
+  green: {
+    gradient: 'from-green-500/20 to-green-600/5',
+    border: 'border-green-500/30',
+    icon: 'text-green-500',
+    glow: 'shadow-green-500/20',
   },
 };
 
