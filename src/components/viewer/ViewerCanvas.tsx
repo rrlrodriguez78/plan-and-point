@@ -28,30 +28,30 @@ export const ViewerCanvas = ({
       className="relative w-full h-full bg-accent/30 overflow-hidden cursor-grab active:cursor-grabbing"
     >
       {/* Zoom controls */}
-      <div className="absolute bottom-4 md:top-4 left-1/2 md:left-auto right-auto md:right-4 -translate-x-1/2 md:translate-x-0 z-10 flex flex-row md:flex-col gap-2">
+      <div className="absolute bottom-4 md:top-4 right-4 md:right-4 z-10 flex flex-row md:flex-col gap-2 safe-area-bottom safe-area-right">
         <Button
           variant="secondary"
           size="icon"
           onClick={zoomIn}
-          className="shadow-lg h-9 w-9 md:h-10 md:w-10"
+          className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
         >
-          <ZoomIn className="w-4 h-4" />
+          <ZoomIn className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
         <Button
           variant="secondary"
           size="icon"
           onClick={zoomOut}
-          className="shadow-lg h-9 w-9 md:h-10 md:w-10"
+          className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
         >
-          <ZoomOut className="w-4 h-4" />
+          <ZoomOut className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
         <Button
           variant="secondary"
           size="icon"
           onClick={resetTransform}
-          className="shadow-lg h-9 w-9 md:h-10 md:w-10"
+          className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
         >
-          <Maximize className="w-4 h-4" />
+          <Maximize className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
       </div>
 

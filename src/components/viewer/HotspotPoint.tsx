@@ -38,15 +38,19 @@ export const HotspotPoint = ({
   
   const baseColor = style?.color || '#4285F4';
   const color = isSelected ? '#10b981' : baseColor;
-  const size = style?.size || 40;
+  // Increased size for mobile: 48px for better touch targets
+  const baseSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 48 : 40;
+  const size = style?.size || baseSize;
 
   return (
     <button
-      className="absolute group cursor-pointer transition-all duration-300 hover:z-50"
+      className="absolute group cursor-pointer transition-all duration-300 hover:z-50 touch-manipulation"
       style={{
         left: `${x}%`,
         top: `${y}%`,
         transform: 'translate(-50%, -50%)',
+        minWidth: '48px',
+        minHeight: '48px',
       }}
       onClick={onClick}
     >
