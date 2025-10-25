@@ -72,10 +72,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
         }
         break;
       case 2:
-        if (!tourData.description.trim()) {
-          isValid = false;
-          newErrors.description = t('tourSetup.descriptionRequired');
-        }
+        // Descripción es opcional, no validar
         break;
       default:
         break;
@@ -227,8 +224,13 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
   };
 
   const handleFinalConfirm = () => {
-    if (tourData.title.trim() && tourData.description.trim()) {
-      onConfirm(tourData);
+    if (tourData.title.trim()) {
+      // Convertir thumbnail_url a coverImageUrl para el Dashboard
+      onConfirm({
+        title: tourData.title,
+        description: tourData.description,
+        coverImageUrl: tourData.thumbnail_url,
+      });
     }
   };
 
