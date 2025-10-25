@@ -117,12 +117,7 @@ const Inicio = () => {
               <ViewsChart />
             </div>
             <div>
-              <DistributionPieChart 
-                views={analytics.totalViews}
-                likes={analytics.totalLikes}
-                comments={analytics.totalComments}
-                shares={0}
-              />
+              <DistributionPieChart />
             </div>
           </div>
         ) : (

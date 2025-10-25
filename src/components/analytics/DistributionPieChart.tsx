@@ -1,48 +1,181 @@
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useTranslation } from 'react-i18next';
-import { Activity } from 'lucide-react';
-
-interface DistributionPieChartProps {
-  views: number;
-  likes: number;
-  comments: number;
-  shares: number;
-}
+import { Activity, RotateCcw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
-export const DistributionPieChart = ({ views, likes, comments, shares }: DistributionPieChartProps) => {
+export const DistributionPieChart = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const [data, setData] = useState({
+    views: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-  const data = [
-    { name: 'Views', value: views || 1 },
-    { name: 'Likes', value: likes || 1 },
-    { name: 'Comments', value: comments || 1 },
-    { name: 'Shares', value: shares || 1 },
+  const loadDistributionData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Get user's organization
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!orgData) {
+        setLoading(false);
+        return;
+      }
+
+      // Get tours
+      const { data: tours } = await supabase
+        .from('virtual_tours')
+        .select('id')
+        .eq('organization_id', orgData.id);
+
+      if (!tours || tours.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // Get analytics data
+      const { data: analyticsData } = await supabase
+        .from('tour_analytics')
+        .select('views_count, likes_count, comments_count')
+        .in('tour_id', tours.map(t => t.id));
+
+      const views = analyticsData?.reduce((sum, a) => sum + (a.views_count || 0), 0) || 0;
+      const likes = analyticsData?.reduce((sum, a) => sum + (a.likes_count || 0), 0) || 0;
+      const comments = analyticsData?.reduce((sum, a) => sum + (a.comments_count || 0), 0) || 0;
+
+      setData({
+        views,
+        likes,
+        comments,
+        shares: 0,
+      });
+    } catch (error) {
+      console.error('Error loading distribution data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDistributionData();
+
+    // Subscribe to real-time updates
+    if (!user) return;
+
+    const channels = [
+      // Tour analytics updates
+      supabase
+        .channel('tour_analytics_distribution')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tour_analytics'
+          },
+          () => loadDistributionData()
+        )
+        .subscribe(),
+
+      // Tour views updates
+      supabase
+        .channel('tour_views_distribution')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tour_views'
+          },
+          () => loadDistributionData()
+        )
+        .subscribe(),
+
+      // Tour comments updates
+      supabase
+        .channel('tour_comments_distribution')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tour_comments'
+          },
+          () => loadDistributionData()
+        )
+        .subscribe(),
+    ];
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
+  }, [user]);
+
+  const chartData = [
+    { name: 'Views', value: data.views || 1 },
+    { name: 'Likes', value: data.likes || 1 },
+    { name: 'Comments', value: data.comments || 1 },
+    { name: 'Shares', value: data.shares || 1 },
   ];
 
-  const total = views + likes + comments + shares;
+  const total = data.views + data.likes + data.comments + data.shares;
+
+  const handleReset = () => {
+    loadDistributionData();
+  };
 
   return (
     <Card className="p-6 border-2 border-secondary/20 bg-gradient-to-br from-background to-secondary/5 backdrop-blur-sm h-full">
       {/* Header */}
-      <div className="mb-6">
-        <h3 className="text-xl font-bold font-futuristic flex items-center gap-2">
-          <Activity className="w-5 h-5 text-secondary" />
-          Activity Distribution
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1 font-body-future">
-          Engagement breakdown
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h3 className="text-xl font-bold font-futuristic flex items-center gap-2">
+            <Activity className="w-5 h-5 text-secondary" />
+            Activity Distribution
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 font-body-future">
+            Engagement breakdown
+          </p>
+        </div>
+        {total > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="h-8 text-xs"
+          >
+            <RotateCcw className="w-3 h-3 mr-1" />
+            {t('inicio.reset')}
+          </Button>
+        )}
       </div>
 
       {/* Chart */}
-      {total > 0 ? (
+      {loading ? (
+        <div className="h-72 flex items-center justify-center">
+          <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      ) : total > 0 ? (
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>
             <Pie
-              data={data}
+              data={chartData}
               cx="50%"
               cy="50%"
               labelLine={false}
@@ -52,7 +185,7 @@ export const DistributionPieChart = ({ views, likes, comments, shares }: Distrib
               dataKey="value"
               animationDuration={1000}
             >
-              {data.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
