@@ -16,7 +16,7 @@ import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 
 const Viewer = () => {
   const { id } = useParams();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { shouldShowOrientationWarning } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
@@ -294,24 +294,56 @@ const Viewer = () => {
           // Guardar la fecha actual ANTES de cambiar de hotspot
           const currentDate = activePanoramaPhoto?.capture_date;
           
-          setSelectedHotspot(hotspot);
+          // Cargar fotos del nuevo hotspot ANTES de cambiar el estado
           const photos = await loadPanoramaPhotos(hotspot.id);
-          if (photos.length > 0) {
-            setPanoramaPhotos(photos);
-            
-            // Intentar mantener la misma fecha
-            let photoToShow = photos[0]; // Fallback: primera foto
-            
-            if (currentDate) {
-              // Buscar una foto con la misma fecha
-              const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
-              if (photoWithSameDate) {
-                photoToShow = photoWithSameDate;
-              }
-            }
-            
-            setActivePanoramaPhoto(photoToShow);
+          
+          if (photos.length === 0) {
+            // Si no hay fotos en absoluto, mostrar error y NO cambiar hotspot
+            toast.error(t('viewer.noPhotosAvailable'), {
+              description: t('viewer.noPhotosDescription', { name: hotspot.title }),
+            });
+            return; // Quedarse en el hotspot actual
           }
+          
+          // Verificar si hay foto para la fecha actual
+          if (currentDate) {
+            const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+            if (!photoWithSameDate) {
+              // Si no hay foto para la fecha actual, mostrar error y NO cambiar hotspot
+              const formatDate = (dateString: string) => {
+                try {
+                  return new Date(dateString).toLocaleDateString(i18n.language, { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  });
+                } catch {
+                  return dateString;
+                }
+              };
+              
+              toast.error(t('viewer.noPhotoForDate'), {
+                description: t('viewer.noPhotoForDateDescription', { date: formatDate(currentDate) }),
+              });
+              return; // Quedarse en el hotspot actual
+            }
+          }
+          
+          // Si llegamos aquí, hay fotos disponibles para la fecha actual
+          setSelectedHotspot(hotspot);
+          setPanoramaPhotos(photos);
+          
+          // Intentar mantener la misma fecha
+          let photoToShow = photos[0]; // Fallback: primera foto
+          
+          if (currentDate) {
+            const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+            if (photoWithSameDate) {
+              photoToShow = photoWithSameDate;
+            }
+          }
+          
+          setActivePanoramaPhoto(photoToShow);
         }}
         floorPlans={floorPlans}
         currentFloorPlan={currentFloorPlan}
