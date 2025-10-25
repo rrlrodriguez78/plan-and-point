@@ -478,7 +478,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                 {currentStep === totalSteps && (
                   <Button
                     onClick={handleFinalConfirm}
-                    disabled={isSaving || !tourData.title.trim() || !tourData.description.trim()}
+                    disabled={isSaving || !tourData.title.trim()}
                     className="bg-gradient-to-r from-green-500 to-blue-500"
                   >
                     {isSaving ? (
