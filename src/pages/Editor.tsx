@@ -55,6 +55,7 @@ const Editor = () => {
   const [manageHotspotsOpen, setManageHotspotsOpen] = useState(false);
   const [addPointMode, setAddPointMode] = useState(false);
   const [isProcessingClick, setIsProcessingClick] = useState(false);
+  const [wasSaved, setWasSaved] = useState(false);
   
   // Auto-save
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -234,6 +235,8 @@ const Editor = () => {
   const handleSaveHotspot = async (data: Omit<Hotspot, 'floor_plan_id'>) => {
     if (!selectedFloorPlan) return;
 
+    const isNewHotspot = !data.id;
+
     try {
       if (data.id) {
         // Update existing
@@ -281,6 +284,18 @@ const Editor = () => {
         }
         
         toast.success('Hotspot creado');
+      }
+
+      // Mark as saved successfully
+      setWasSaved(true);
+      
+      // Close modal and reset editing state
+      setHotspotModalOpen(false);
+      setEditingHotspot(null);
+
+      // If it was a new hotspot, keep add point mode active
+      if (isNewHotspot && addPointMode) {
+        toast.info('Modo agregar punto activo - Click para agregar otro punto');
       }
     } catch (error) {
       console.error('Error saving hotspot:', error);
@@ -628,10 +643,13 @@ const Editor = () => {
         onClose={() => {
           setHotspotModalOpen(false);
           setEditingHotspot(null);
-          // If we're closing without saving a new hotspot, deactivate add point mode
-          if (editingHotspot && !editingHotspot.id) {
+          // Only deactivate add point mode if we're canceling (not saving)
+          if (!wasSaved && editingHotspot && !editingHotspot.id) {
             setAddPointMode(false);
+            toast.info('Modo agregar punto desactivado');
           }
+          // Reset the saved flag
+          setWasSaved(false);
         }}
         onSave={handleSaveHotspot}
         initialData={editingHotspot || undefined}

@@ -80,7 +80,7 @@ export default function HotspotModal({
     setSaving(true);
     try {
       await onSave(formData);
-      onClose();
+      // Don't call onClose here - let the parent component handle it
     } catch (error) {
       console.error('Error saving hotspot:', error);
       toast.error(t('hotspot.errorSaving'));
