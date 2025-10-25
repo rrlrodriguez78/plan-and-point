@@ -128,11 +128,11 @@ export const DistributionPieChart = () => {
   }, [user]);
 
   const chartData = [
-    { name: 'Views', value: data.views || 1 },
-    { name: 'Likes', value: data.likes || 1 },
-    { name: 'Comments', value: data.comments || 1 },
-    { name: 'Shares', value: data.shares || 1 },
-  ];
+    { name: 'Views', value: data.views },
+    { name: 'Likes', value: data.likes },
+    { name: 'Comments', value: data.comments },
+    { name: 'Shares', value: data.shares },
+  ].filter(item => item.value > 0);
 
   const total = data.views + data.likes + data.comments + data.shares;
 
