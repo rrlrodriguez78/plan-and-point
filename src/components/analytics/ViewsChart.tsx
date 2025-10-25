@@ -4,31 +4,128 @@ import { Button } from '@/components/ui/button';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-const generateMockData = (days: number) => {
-  const data = [];
-  const now = new Date();
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    data.push({
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      views: Math.floor(Math.random() * 100) + 20,
-    });
-  }
-  
-  return data;
-};
+interface ChartData {
+  date: string;
+  views: number;
+}
 
 export const ViewsChart = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
-  const [data, setData] = useState(generateMockData(30));
+  const [data, setData] = useState<ChartData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadViewsData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Get user's organization
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (!org) {
+        setData([]);
+        return;
+      }
+
+      // Get tour IDs for this organization
+      const { data: tours } = await supabase
+        .from('virtual_tours')
+        .select('id')
+        .eq('organization_id', org.id);
+
+      if (!tours || tours.length === 0) {
+        setData([]);
+        return;
+      }
+
+      const tourIds = tours.map(t => t.id);
+
+      // Calculate date range
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - period);
+
+      // Fetch views within the period
+      const { data: views } = await supabase
+        .from('tour_views')
+        .select('viewed_at')
+        .in('tour_id', tourIds)
+        .gte('viewed_at', startDate.toISOString())
+        .lte('viewed_at', endDate.toISOString())
+        .order('viewed_at', { ascending: true });
+
+      // Group views by date
+      const viewsByDate: { [key: string]: number } = {};
+      
+      // Initialize all dates in range with 0
+      for (let i = 0; i < period; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        viewsByDate[dateKey] = 0;
+      }
+
+      // Count views per date
+      views?.forEach(view => {
+        const date = new Date(view.viewed_at);
+        const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (viewsByDate[dateKey] !== undefined) {
+          viewsByDate[dateKey]++;
+        }
+      });
+
+      // Convert to array format for chart
+      const chartData = Object.entries(viewsByDate).map(([date, views]) => ({
+        date,
+        views
+      }));
+
+      setData(chartData);
+    } catch (error) {
+      console.error('Error loading views data:', error);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setData(generateMockData(period));
-  }, [period]);
+    loadViewsData();
+  }, [period, user]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('tour_views_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'tour_views'
+        },
+        () => {
+          // Reload data when new view is added
+          loadViewsData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, period]);
 
   return (
     <Card className="p-6 border-2 border-primary/20 bg-gradient-to-br from-background to-primary/5 backdrop-blur-sm">
