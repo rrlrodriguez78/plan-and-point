@@ -301,7 +301,7 @@ const Viewer = () => {
     );
   }
 
-  if (!tour || floorPlans.length === 0) {
+  if (!tour || (floorPlans.length === 0 && !showPasswordPrompt)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-12 text-center max-w-md">
