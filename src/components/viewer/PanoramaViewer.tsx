@@ -64,6 +64,7 @@ export default function PanoramaViewer({
     return hotspotsByFloor[floorPlanId]?.length || 0;
   }, [hotspotsByFloor]);
   const mountRef = useRef<HTMLDivElement>(null);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -522,6 +523,7 @@ export default function PanoramaViewer({
     <AnimatePresence>
       {isVisible && (
         <motion.div
+          ref={fullscreenContainerRef}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -845,6 +847,7 @@ export default function PanoramaViewer({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent 
+                    container={isFullscreen ? fullscreenContainerRef.current : undefined}
                     className="w-80 bg-black/95 backdrop-blur-md border-white/30 text-white p-0"
                     style={{ zIndex: 99999 }}
                     align="end"
