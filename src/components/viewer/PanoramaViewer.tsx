@@ -826,6 +826,20 @@ export default function PanoramaViewer({
                 >
                   <RotateCw className="w-5 h-5" />
                 </Button>
+                
+                {/* Botón personalizado (copia visual de Reset View) */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    // Función vacía - aquí puedes agregar tu lógica personalizada
+                    console.log('Botón personalizado clickeado');
+                  }} 
+                  className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                  title="Función Personalizada"
+                >
+                  <RotateCw className="w-5 h-5" />
+                </Button>
               </div>
             </div>
           </div>
