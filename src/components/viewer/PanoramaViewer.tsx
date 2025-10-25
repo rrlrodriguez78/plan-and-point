@@ -102,7 +102,7 @@ export default function PanoramaViewer({
   const [isLoadingScene, setIsLoadingScene] = useState(false);
 
   // Z-index dinámico para fullscreen
-  const containerZIndex = isFullscreen ? 9999 : 30;
+  const containerZIndex = isFullscreen ? 99998 : 30;
   console.log('PanoramaViewer render - isFullscreen:', isFullscreen, 'zIndex:', containerZIndex);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
@@ -513,7 +513,7 @@ export default function PanoramaViewer({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="panorama-container fullscreen-container fixed inset-0 bg-black flex items-center justify-center overflow-hidden select-none"
-          style={{ zIndex: containerZIndex }}
+          style={{ zIndex: containerZIndex, isolation: 'isolate' }}
         >
           <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
           
@@ -607,7 +607,7 @@ export default function PanoramaViewer({
                 </div>
                 {/* Floor Selector */}
                 {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
-                  <DropdownMenu modal={false}>
+                  <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 rounded-full gap-2 backdrop-blur-sm bg-black/30">
                         <Building2 className="w-4 h-4" />
@@ -675,7 +675,7 @@ export default function PanoramaViewer({
               <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
-                  <DropdownMenu modal={false}>
+                  <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -721,7 +721,7 @@ export default function PanoramaViewer({
 
                 {/* Dropdown de Fechas */}
                 {availableDates.length > 0 && (
-                  <DropdownMenu modal={false}>
+                  <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
