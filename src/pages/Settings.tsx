@@ -8,7 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Edit, Trash2, Shield } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Terminal } from 'lucide-react';
 
 interface GoldenRule {
   id: string;
@@ -41,17 +40,29 @@ interface Command {
   created_at: string;
 }
 
+interface Page {
+  id: string;
+  name: string;
+  route: string;
+  description: string | null;
+  is_locked: boolean;
+  created_at: string;
+}
+
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { t } = useTranslation();
   const [rules, setRules] = useState<GoldenRule[]>([]);
   const [commands, setCommands] = useState<Command[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [commandModalOpen, setCommandModalOpen] = useState(false);
+  const [pageModalOpen, setPageModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<GoldenRule | null>(null);
   const [editingCommand, setEditingCommand] = useState<Command | null>(null);
+  const [editingPage, setEditingPage] = useState<Page | null>(null);
   const [formData, setFormData] = useState({
     rule_number: 0,
     title: '',
@@ -62,6 +73,11 @@ const Settings = () => {
     title: '',
     description: '',
     command_text: '',
+  });
+  const [pageFormData, setPageFormData] = useState({
+    name: '',
+    route: '',
+    description: '',
   });
 
   useEffect(() => {
@@ -74,6 +90,7 @@ const Settings = () => {
     if (user) {
       loadRules();
       loadCommands();
+      loadPages();
     }
   }, [user]);
 
@@ -108,6 +125,21 @@ const Settings = () => {
     } catch (error) {
       console.error('Error loading commands:', error);
       toast.error('Error loading commands');
+    }
+  };
+
+  const loadPages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('pages')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      if (data) setPages(data);
+    } catch (error) {
+      console.error('Error loading pages:', error);
+      toast.error('Error loading pages');
     }
   };
 
@@ -279,6 +311,104 @@ const Settings = () => {
     }
   };
 
+  const handleOpenPageModal = (page?: Page) => {
+    if (page) {
+      setEditingPage(page);
+      setPageFormData({
+        name: page.name,
+        route: page.route,
+        description: page.description || '',
+      });
+    } else {
+      setEditingPage(null);
+      setPageFormData({
+        name: '',
+        route: '',
+        description: '',
+      });
+    }
+    setPageModalOpen(true);
+  };
+
+  const handleClosePageModal = () => {
+    setPageModalOpen(false);
+    setEditingPage(null);
+    setPageFormData({ name: '', route: '', description: '' });
+  };
+
+  const handleSavePage = async () => {
+    if (!pageFormData.name.trim() || !pageFormData.route.trim()) {
+      toast.error('Please fill name and route fields');
+      return;
+    }
+
+    try {
+      if (editingPage) {
+        const { error } = await supabase
+          .from('pages')
+          .update({
+            name: pageFormData.name,
+            route: pageFormData.route,
+            description: pageFormData.description,
+          })
+          .eq('id', editingPage.id);
+
+        if (error) throw error;
+        toast.success('Page updated successfully');
+      } else {
+        const { error } = await supabase
+          .from('pages')
+          .insert({
+            name: pageFormData.name,
+            route: pageFormData.route,
+            description: pageFormData.description,
+            is_locked: false,
+          });
+
+        if (error) throw error;
+        toast.success('Page added successfully');
+      }
+
+      handleClosePageModal();
+      loadPages();
+    } catch (error) {
+      console.error('Error saving page:', error);
+      toast.error('Error saving page');
+    }
+  };
+
+  const handleTogglePageLock = async (id: string, currentLockState: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .update({ is_locked: !currentLockState })
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success(`Page ${!currentLockState ? 'locked' : 'unlocked'} successfully`);
+      loadPages();
+    } catch (error) {
+      console.error('Error toggling page lock:', error);
+      toast.error('Error toggling page lock');
+    }
+  };
+
+  const handleDeletePage = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Page deleted successfully');
+      loadPages();
+    } catch (error) {
+      console.error('Error deleting page:', error);
+      toast.error('Error deleting page');
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -315,7 +445,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="rules" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="rules">
               <Shield className="w-4 h-4 mr-2" />
               {t('settings.goldenRules')}
@@ -323,6 +453,10 @@ const Settings = () => {
             <TabsTrigger value="commands">
               <Terminal className="w-4 h-4 mr-2" />
               Command List
+            </TabsTrigger>
+            <TabsTrigger value="pages">
+              <FileText className="w-4 h-4 mr-2" />
+              Pages
             </TabsTrigger>
           </TabsList>
 
@@ -432,6 +566,80 @@ const Settings = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteCommand(command.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pages">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-2xl">Pages</CardTitle>
+                    <CardDescription>
+                      Manage all app pages. Lock pages to prevent modifications.
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => handleOpenPageModal()}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Page
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {pages.map((page) => (
+                    <Card key={page.id} className={`border-l-4 ${page.is_locked ? 'border-l-red-500 bg-red-500/5' : 'border-l-green-500'}`}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-sm font-semibold px-2 py-1 rounded flex items-center gap-1 ${page.is_locked ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                                {page.is_locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                                {page.is_locked ? 'Locked' : 'Unlocked'}
+                              </span>
+                            </div>
+                            <CardTitle className="text-lg">{page.name}</CardTitle>
+                            <CardDescription className="mt-1">
+                              <span className="font-mono text-sm">{page.route}</span>
+                            </CardDescription>
+                            {page.description && (
+                              <CardDescription className="mt-2">
+                                {page.description}
+                              </CardDescription>
+                            )}
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleTogglePageLock(page.id, page.is_locked)}
+                              className={page.is_locked ? 'text-red-500 hover:text-red-600' : 'text-green-500 hover:text-green-600'}
+                            >
+                              {page.is_locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenPageModal(page)}
+                              disabled={page.is_locked}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeletePage(page.id)}
+                              disabled={page.is_locked}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -562,6 +770,61 @@ const Settings = () => {
               </Button>
               <Button onClick={handleSaveCommand}>
                 {editingCommand ? 'Update Command' : 'Add Command'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={pageModalOpen} onOpenChange={setPageModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingPage ? 'Edit Page' : 'Add New Page'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingPage ? 'Update the page details' : 'Create a new page entry'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="page_name">Page Name</Label>
+                <Input
+                  id="page_name"
+                  value={pageFormData.name}
+                  onChange={(e) => setPageFormData({ ...pageFormData, name: e.target.value })}
+                  placeholder="e.g., Dashboard"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="page_route">Route</Label>
+                <Input
+                  id="page_route"
+                  value={pageFormData.route}
+                  onChange={(e) => setPageFormData({ ...pageFormData, route: e.target.value })}
+                  placeholder="e.g., /app/dashboard"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="page_description">Description</Label>
+                <Textarea
+                  id="page_description"
+                  value={pageFormData.description}
+                  onChange={(e) => setPageFormData({ ...pageFormData, description: e.target.value })}
+                  placeholder="Brief description of the page"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClosePageModal}>
+                Cancel
+              </Button>
+              <Button onClick={handleSavePage}>
+                {editingPage ? 'Update Page' : 'Add Page'}
               </Button>
             </DialogFooter>
           </DialogContent>
