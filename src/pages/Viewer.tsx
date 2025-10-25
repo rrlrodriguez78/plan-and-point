@@ -49,7 +49,7 @@ const Viewer = () => {
         return;
       }
 
-      // Cargar tour con información de la organización para verificar ownership
+      // 1. Cargar tour básico (accesible públicamente si está publicado)
       const { data: tourData, error: tourError } = await supabase
         .from('virtual_tours')
         .select(`
@@ -58,10 +58,7 @@ const Viewer = () => {
           is_published,
           organization_id,
           password_protected,
-          password_updated_at,
-          organizations!inner (
-            owner_id
-          )
+          password_updated_at
         `)
         .eq('id', id)
         .maybeSingle();
@@ -77,10 +74,19 @@ const Viewer = () => {
         return;
       }
 
-      // Verificar si el usuario es el dueño del tour
-      const isOwner = user && tourData.organizations?.owner_id === user.id;
+      // 2. Verificar ownership solo si el usuario está autenticado
+      let isOwner = false;
+      if (user) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('owner_id')
+          .eq('id', tourData.organization_id)
+          .single();
+        
+        isOwner = orgData?.owner_id === user.id;
+      }
       
-      // Si el tour no está publicado, solo el dueño puede verlo
+      // 3. Si el tour no está publicado, solo el dueño puede verlo
       if (!tourData.is_published && !isOwner) {
         console.warn('⚠️ Usuario no autorizado para ver este tour');
         setLoading(false);
