@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Languages } from 'lucide-react';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
 
 export const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
+  const { updateSettings } = useUserSettingsContext();
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇬🇧' },
@@ -20,8 +22,13 @@ export const LanguageSwitcher = () => {
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
 
+  const handleLanguageChange = async (value: string) => {
+    await i18n.changeLanguage(value);
+    await updateSettings({ language: value as 'en' | 'es' | 'fr' | 'de' });
+  };
+
   return (
-    <Select value={i18n.language} onValueChange={(value) => i18n.changeLanguage(value)}>
+    <Select value={i18n.language} onValueChange={handleLanguageChange}>
       <SelectTrigger className="w-[140px]">
         <Languages className="w-4 h-4 mr-2" />
         <SelectValue>

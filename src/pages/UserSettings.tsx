@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationsList } from '@/components/settings/NotificationsList';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUserSettings } from '@/hooks/useUserSettings';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
 import { LanguageRegionSettings } from '@/components/settings/LanguageRegionSettings';
 import { PrivacySecuritySettings } from '@/components/settings/PrivacySecuritySettings';
@@ -40,7 +40,7 @@ import { AccountSettings } from '@/components/settings/AccountSettings';
 const UserSettings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { settings, loading: settingsLoading, updateSettings } = useUserSettings();
+  const { settings, loading: settingsLoading, updateSettings } = useUserSettingsContext();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     email: '',
