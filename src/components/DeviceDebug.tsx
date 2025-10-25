@@ -7,7 +7,7 @@ export function DeviceDebug() {
     <div 
       style={{ 
         position: 'fixed', 
-        top: '10px', 
+        bottom: '10px', 
         right: '10px', 
         background: 'rgba(0, 0, 0, 0.9)', 
         color: 'white', 

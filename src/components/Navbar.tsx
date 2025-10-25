@@ -17,23 +17,23 @@ export const Navbar = () => {
 
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <MapPin className="w-5 h-5 text-primary-foreground" />
+      <div className="container mx-auto px-2 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
+        <Link to="/" className="flex items-center gap-1 sm:gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-xl">VirtualTour</span>
+          <span className="font-bold text-base sm:text-xl truncate">VirtualTour</span>
         </Link>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1 sm:gap-4">
           <LanguageSwitcher />
           {user ? (
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Menu className="w-4 h-4 mr-2" />
-                    {t('nav.pages')}
+                  <Button variant="outline" size="sm" className="h-9 w-9 sm:w-auto sm:px-4 p-0 sm:p-2">
+                    <Menu className="w-4 h-4" />
+                    <span className="hidden sm:inline sm:ml-2">{t('nav.pages')}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-background z-50">
@@ -69,18 +69,27 @@ export const Navbar = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline" onClick={signOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                {t('nav.logout')}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={signOut}
+                className="h-9 w-9 sm:w-auto sm:px-4 p-0 sm:p-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline sm:ml-2">{t('nav.logout')}</span>
               </Button>
             </>
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost">{t('nav.login')}</Button>
+                <Button variant="ghost" size="sm" className="h-9 px-2 sm:px-4">
+                  <span className="text-sm">{t('nav.login')}</span>
+                </Button>
               </Link>
               <Link to="/signup">
-                <Button>{t('nav.signup')}</Button>
+                <Button size="sm" className="h-9 px-2 sm:px-4">
+                  <span className="text-sm">{t('nav.signup')}</span>
+                </Button>
               </Link>
             </>
           )}

@@ -29,11 +29,11 @@ export const LanguageSwitcher = () => {
 
   return (
     <Select value={i18n.language} onValueChange={handleLanguageChange}>
-      <SelectTrigger className="w-[140px]">
-        <Languages className="w-4 h-4 mr-2" />
+      <SelectTrigger className="w-[50px] sm:w-[140px] h-9">
+        <Languages className="w-4 h-4 hidden sm:block sm:mr-2" />
         <SelectValue>
           <span className="flex items-center gap-2">
-            <span>{currentLanguage.flag}</span>
+            <span className="text-lg">{currentLanguage.flag}</span>
             <span className="hidden sm:inline">{currentLanguage.name}</span>
           </span>
         </SelectValue>
