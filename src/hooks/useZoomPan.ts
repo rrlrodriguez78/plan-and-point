@@ -4,7 +4,7 @@ import { useDeviceDetection } from './useDeviceDetection';
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 0.15;
-const MOBILE_INITIAL_SCALE = 0.5; // 50% para móviles
+const MOBILE_INITIAL_SCALE = 0.75; // 75% para móviles
 const TABLET_INITIAL_SCALE = 0.7; // 70% para tablets
 const DESKTOP_INITIAL_SCALE = 1.0; // 100% para desktop
 
