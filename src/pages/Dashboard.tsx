@@ -236,17 +236,17 @@ const Dashboard = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tours.map((tour) => (
               <Card key={tour.id} className="p-0 hover:shadow-lg transition-all overflow-hidden">
-                <div className="relative h-32 bg-muted">
+                <div className="relative h-32 bg-muted overflow-hidden">
                   {tour.cover_image_url ? (
                     <>
                       <div 
                         onClick={() => tour.is_published && navigate(`/viewer/${tour.id}`)}
-                        className={tour.is_published ? "cursor-pointer group" : ""}
+                        className={tour.is_published ? "cursor-pointer group w-full h-full" : "w-full h-full"}
                       >
                         <img 
                           src={tour.cover_image_url} 
                           alt={tour.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover object-center"
                         />
                         {tour.is_published && (
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
