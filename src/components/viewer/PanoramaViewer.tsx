@@ -657,6 +657,7 @@ export default function PanoramaViewer({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
+                      container={isFullscreen ? fullscreenContainerRef.current : undefined}
                       align="start" 
                       className="bg-black/90 backdrop-blur-sm border-white/20 text-white"
                       style={{ zIndex: 99999 }}
@@ -710,6 +711,7 @@ export default function PanoramaViewer({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
+                      container={isFullscreen ? fullscreenContainerRef.current : undefined}
                       className="w-72 bg-black/95 backdrop-blur-md border-white/30 text-white"
                       style={{ zIndex: 99999 }}
                     >
@@ -756,6 +758,7 @@ export default function PanoramaViewer({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
+                      container={isFullscreen ? fullscreenContainerRef.current : undefined}
                       className="w-64 bg-black/95 backdrop-blur-md border-white/30 text-white"
                       style={{ zIndex: 99999 }}
                     >
