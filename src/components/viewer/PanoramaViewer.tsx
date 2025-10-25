@@ -95,7 +95,7 @@ export default function PanoramaViewer({
   const theta = useRef(0);
   // Removed showControls state - controls are now always visible
   const [showInfo, setShowInfo] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(120);
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
