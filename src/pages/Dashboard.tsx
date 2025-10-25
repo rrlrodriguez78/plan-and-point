@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon } from 'lucide-react';
 import TourSetupModal from '@/components/editor/TourSetupModal';
 import { useTranslation } from 'react-i18next';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Organization {
   id: string;
@@ -269,55 +270,102 @@ const Dashboard = () => {
                     <div className="backdrop-blur-sm bg-black/40 px-2 py-1 rounded border border-white/20 flex-1 min-w-0">
                       <h3 className="text-white font-semibold text-xs truncate">{tour.title}</h3>
                     </div>
-                    <div className="backdrop-blur-sm bg-black/40 px-1.5 py-1 rounded border border-white/20 flex items-center justify-center shrink-0">
-                      {tour.is_published ? (
-                        <Globe className="w-3.5 h-3.5 text-green-400" />
-                      ) : (
-                        <Lock className="w-3.5 h-3.5 text-gray-300" />
-                      )}
-                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="backdrop-blur-sm bg-black/40 px-1.5 py-1 rounded border border-white/20 flex items-center justify-center shrink-0">
+                            {tour.is_published ? (
+                              <Globe className="w-3.5 h-3.5 text-green-400" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5 text-gray-300" />
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{tour.is_published ? t('dashboard.published') : t('dashboard.notPublished')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   
                   {/* Action Buttons - Bottom Left */}
                   <div className="absolute bottom-1.5 left-1.5 flex gap-1.5 z-10">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => navigate(`/app/editor/${tour.id}`)}
-                      className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => deleteTour(tour.id)}
-                      className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-red-600/60 transition-all border border-white/20"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => navigate(`/app/editor/${tour.id}`)}
+                            className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('dashboard.edit')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => deleteTour(tour.id)}
+                            className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-red-600/60 transition-all border border-white/20"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('dashboard.delete')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
                     {tour.is_published && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => navigate(`/viewer/${tour.id}`)}
-                        className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-blue-600/60 transition-all border border-white/20"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => navigate(`/viewer/${tour.id}`)}
+                              className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-blue-600/60 transition-all border border-white/20"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('dashboard.view')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                   
                   {/* Upload Button - Bottom Right */}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleUploadCover(tour.id)}
-                    disabled={uploadingCover === tour.id}
-                    className="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleUploadCover(tour.id)}
+                          disabled={uploadingCover === tour.id}
+                          className="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('dashboard.uploadCover')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </Card>
             ))}
