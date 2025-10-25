@@ -31,18 +31,37 @@ interface GoldenRule {
   created_at: string;
 }
 
+interface Command {
+  id: string;
+  command_number: number;
+  title: string;
+  description: string;
+  command_text: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { t } = useTranslation();
   const [rules, setRules] = useState<GoldenRule[]>([]);
+  const [commands, setCommands] = useState<Command[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [commandModalOpen, setCommandModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<GoldenRule | null>(null);
+  const [editingCommand, setEditingCommand] = useState<Command | null>(null);
   const [formData, setFormData] = useState({
     rule_number: 0,
     title: '',
     description: '',
+  });
+  const [commandFormData, setCommandFormData] = useState({
+    command_number: 0,
+    title: '',
+    description: '',
+    command_text: '',
   });
 
   useEffect(() => {
@@ -54,6 +73,7 @@ const Settings = () => {
   useEffect(() => {
     if (user) {
       loadRules();
+      loadCommands();
     }
   }, [user]);
 
@@ -72,6 +92,22 @@ const Settings = () => {
       toast.error(t('settings.errorLoading'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCommands = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('commands')
+        .select('*')
+        .eq('is_active', true)
+        .order('command_number', { ascending: true });
+
+      if (error) throw error;
+      if (data) setCommands(data);
+    } catch (error) {
+      console.error('Error loading commands:', error);
+      toast.error('Error loading commands');
     }
   };
 
@@ -154,6 +190,92 @@ const Settings = () => {
     } catch (error) {
       console.error('Error deleting rule:', error);
       toast.error(t('settings.errorDeleting'));
+    }
+  };
+
+  const handleOpenCommandModal = (command?: Command) => {
+    if (command) {
+      setEditingCommand(command);
+      setCommandFormData({
+        command_number: command.command_number,
+        title: command.title,
+        description: command.description,
+        command_text: command.command_text,
+      });
+    } else {
+      setEditingCommand(null);
+      const nextCommandNumber = commands.length > 0 ? Math.max(...commands.map(c => c.command_number)) + 1 : 1;
+      setCommandFormData({
+        command_number: nextCommandNumber,
+        title: '',
+        description: '',
+        command_text: '',
+      });
+    }
+    setCommandModalOpen(true);
+  };
+
+  const handleCloseCommandModal = () => {
+    setCommandModalOpen(false);
+    setEditingCommand(null);
+    setCommandFormData({ command_number: 0, title: '', description: '', command_text: '' });
+  };
+
+  const handleSaveCommand = async () => {
+    if (!commandFormData.title.trim() || !commandFormData.description.trim() || !commandFormData.command_text.trim()) {
+      toast.error('Please fill all fields');
+      return;
+    }
+
+    try {
+      if (editingCommand) {
+        const { error } = await supabase
+          .from('commands')
+          .update({
+            command_number: commandFormData.command_number,
+            title: commandFormData.title,
+            description: commandFormData.description,
+            command_text: commandFormData.command_text,
+          })
+          .eq('id', editingCommand.id);
+
+        if (error) throw error;
+        toast.success('Command updated successfully');
+      } else {
+        const { error } = await supabase
+          .from('commands')
+          .insert({
+            command_number: commandFormData.command_number,
+            title: commandFormData.title,
+            description: commandFormData.description,
+            command_text: commandFormData.command_text,
+          });
+
+        if (error) throw error;
+        toast.success('Command added successfully');
+      }
+
+      handleCloseCommandModal();
+      loadCommands();
+    } catch (error) {
+      console.error('Error saving command:', error);
+      toast.error('Error saving command');
+    }
+  };
+
+  const handleDeleteCommand = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('commands')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Command deleted successfully');
+      loadCommands();
+    } catch (error) {
+      console.error('Error deleting command:', error);
+      toast.error('Error deleting command');
     }
   };
 
@@ -265,53 +387,59 @@ const Settings = () => {
           <TabsContent value="commands">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Command List</CardTitle>
-                <CardDescription>
-                  Useful commands to solve common problems in the application
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-2xl">Command List</CardTitle>
+                    <CardDescription>
+                      Numbered commands for quick reference. Say "Apply command #1" to execute.
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => handleOpenCommandModal()}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Command
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Card className="border-l-4 border-l-blue-500">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Fullscreen Components Fix</CardTitle>
-                      <CardDescription className="mt-2">
-                        <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                          "The [Popover/DropdownMenu/Dialog/Select] doesn't work in fullscreen. Apply the Portal container solution."
-                        </span>
-                        <p className="mt-2">
-                          For Radix UI components that use Portal and don't work in fullscreen mode.
-                        </p>
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-
-                  <Card className="border-l-4 border-l-green-500">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Important Keywords</CardTitle>
-                      <CardDescription className="mt-2 space-y-1">
-                        <p>• <strong>Portal</strong> - Radix UI rendering issue</p>
-                        <p>• <strong>fullscreen</strong> - Problem context</p>
-                        <p>• <strong>container prop</strong> - The specific solution</p>
-                        <p>• <strong>like [previous component]</strong> - Reference to already implemented solution</p>
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-
-                  <Card className="border-l-4 border-l-purple-500">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Components That May Have This Issue</CardTitle>
-                      <CardDescription className="mt-2 space-y-1">
-                        <p>✅ Popover (fixed)</p>
-                        <p>✅ DropdownMenu (fixed)</p>
-                        <p>⚠️ Dialog / AlertDialog</p>
-                        <p>⚠️ Select</p>
-                        <p>⚠️ Tooltip</p>
-                        <p>⚠️ HoverCard</p>
-                        <p>⚠️ ContextMenu</p>
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
+                  {commands.map((command) => (
+                    <Card key={command.id} className="border-l-4 border-l-blue-500">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-semibold text-blue-500 bg-blue-500/10 px-2 py-1 rounded">
+                                Command #{command.command_number}
+                              </span>
+                            </div>
+                            <CardTitle className="text-lg">{command.title}</CardTitle>
+                            <CardDescription className="mt-2">
+                              {command.description}
+                            </CardDescription>
+                            <div className="mt-3 p-3 bg-muted rounded-md">
+                              <p className="text-sm font-mono">{command.command_text}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenCommandModal(command)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCommand(command.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -368,6 +496,72 @@ const Settings = () => {
               </Button>
               <Button onClick={handleSaveRule}>
                 {editingRule ? t('settings.updateRule') : t('settings.addRule')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={commandModalOpen} onOpenChange={setCommandModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingCommand ? 'Edit Command' : 'Add New Command'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingCommand ? 'Update the command details' : 'Create a new numbered command for quick reference'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="command_number">Command Number</Label>
+                <Input
+                  id="command_number"
+                  type="number"
+                  value={commandFormData.command_number}
+                  onChange={(e) => setCommandFormData({ ...commandFormData, command_number: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="command_title">Title</Label>
+                <Input
+                  id="command_title"
+                  value={commandFormData.title}
+                  onChange={(e) => setCommandFormData({ ...commandFormData, title: e.target.value })}
+                  placeholder="e.g., Fullscreen Portal Fix"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="command_description">Description</Label>
+                <Textarea
+                  id="command_description"
+                  value={commandFormData.description}
+                  onChange={(e) => setCommandFormData({ ...commandFormData, description: e.target.value })}
+                  placeholder="Brief description of what this command does"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="command_text">Command Instructions</Label>
+                <Textarea
+                  id="command_text"
+                  value={commandFormData.command_text}
+                  onChange={(e) => setCommandFormData({ ...commandFormData, command_text: e.target.value })}
+                  placeholder="Detailed instructions for executing this command"
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseCommandModal}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveCommand}>
+                {editingCommand ? 'Update Command' : 'Add Command'}
               </Button>
             </DialogFooter>
           </DialogContent>

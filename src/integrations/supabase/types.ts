@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      commands: {
+        Row: {
+          command_number: number
+          command_text: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          command_number: number
+          command_text: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          command_number?: number
+          command_text?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       floor_plans: {
         Row: {
           capture_date: string | null
