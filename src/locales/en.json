@@ -31,6 +31,7 @@
     "notifications": "Notifications",
     "unread": "unread",
     "markAllRead": "Mark all as read",
+    "reset": "Reset",
     "noNotifications": "No notifications yet",
     "emailsSent": "Emails Sent",
     "successRate": "success rate",

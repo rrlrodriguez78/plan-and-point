@@ -2,14 +2,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Check, Eye, MessageSquare, Mail } from 'lucide-react';
+import { Bell, Check, Eye, MessageSquare, Mail, RotateCcw } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
 
 export const NotificationsWidget = () => {
   const { t } = useTranslation();
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+  const previousCountRef = useRef(unreadCount);
+
+  useEffect(() => {
+    if (unreadCount > previousCountRef.current && previousCountRef.current !== 0) {
+      setHasNewNotification(true);
+      setTimeout(() => setHasNewNotification(false), 4000);
+    }
+    previousCountRef.current = unreadCount;
+  }, [unreadCount]);
+
+  const handleReset = () => {
+    markAllAsRead();
+    setHasNewNotification(false);
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -36,7 +52,7 @@ export const NotificationsWidget = () => {
   };
 
   return (
-    <Card className="border-2 border-border bg-gradient-to-br from-card to-card/50">
+    <Card className={`border-2 border-border bg-gradient-to-br from-card to-card/50 transition-all ${hasNewNotification ? 'widget-alert-notification' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-futuristic flex items-center gap-2">
@@ -48,17 +64,30 @@ export const NotificationsWidget = () => {
               </Badge>
             )}
           </CardTitle>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={markAllAsRead}
-              className="h-8 text-xs"
-            >
-              <Check className="w-3 h-3 mr-1" />
-              {t('inicio.markAllRead')}
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReset}
+                  className="h-8 text-xs"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  {t('inicio.reset')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={markAllAsRead}
+                  className="h-8 text-xs"
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  {t('inicio.markAllRead')}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>

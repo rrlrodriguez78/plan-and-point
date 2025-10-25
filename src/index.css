@@ -161,3 +161,51 @@ All colors MUST be HSL.
   border: 1px solid rgba(248, 113, 113, 0.5) !important;
   box-shadow: 0 8px 32px 0 rgba(220, 38, 38, 0.6) !important;
 }
+
+/* Widget Alert Animations */
+@keyframes widget-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.7);
+  }
+  50% { 
+    transform: scale(1.02);
+    box-shadow: 0 0 20px 10px hsl(var(--primary) / 0);
+  }
+}
+
+@keyframes widget-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-1deg); }
+  20%, 40%, 60%, 80% { transform: translateX(5px) rotate(1deg); }
+}
+
+@keyframes color-flash-notification {
+  0%, 100% { 
+    border-color: hsl(var(--border));
+    background: linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card) / 0.5));
+  }
+  50% { 
+    border-color: hsl(280 75% 60%);
+    background: linear-gradient(to bottom right, hsl(280 75% 60% / 0.15), hsl(280 75% 60% / 0.05));
+  }
+}
+
+@keyframes color-flash-email {
+  0%, 100% { 
+    border-color: hsl(var(--border));
+    background: linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card) / 0.5));
+  }
+  50% { 
+    border-color: hsl(160 70% 50%);
+    background: linear-gradient(to bottom right, hsl(160 70% 50% / 0.15), hsl(160 70% 50% / 0.05));
+  }
+}
+
+.widget-alert-notification {
+  animation: widget-pulse 1s ease-in-out 3, widget-shake 0.5s ease-in-out 0.5s 2, color-flash-notification 1s ease-in-out 3;
+}
+
+.widget-alert-email {
+  animation: widget-pulse 1s ease-in-out 3, widget-shake 0.5s ease-in-out 0.5s 2, color-flash-email 1s ease-in-out 3;
+}

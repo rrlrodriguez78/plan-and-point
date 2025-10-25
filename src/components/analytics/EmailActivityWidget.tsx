@@ -1,14 +1,31 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mail, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Mail, CheckCircle2, XCircle, Clock, RotateCcw } from 'lucide-react';
 import { useEmailLogs } from '@/hooks/useEmailLogs';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
 
 export const EmailActivityWidget = () => {
   const { t } = useTranslation();
-  const { stats, loading } = useEmailLogs();
+  const { stats, loading, refresh } = useEmailLogs();
+  const [hasNewEmail, setHasNewEmail] = useState(false);
+  const previousSentTodayRef = useRef(stats.sentToday);
+
+  useEffect(() => {
+    if (stats.sentToday > previousSentTodayRef.current && previousSentTodayRef.current !== 0) {
+      setHasNewEmail(true);
+      setTimeout(() => setHasNewEmail(false), 4000);
+    }
+    previousSentTodayRef.current = stats.sentToday;
+  }, [stats.sentToday]);
+
+  const handleReset = () => {
+    setHasNewEmail(false);
+    refresh();
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -42,16 +59,31 @@ export const EmailActivityWidget = () => {
   };
 
   return (
-    <Card className="border-2 border-border bg-gradient-to-br from-card to-card/50">
+    <Card className={`border-2 border-border bg-gradient-to-br from-card to-card/50 transition-all ${hasNewEmail ? 'widget-alert-email' : ''}`}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-futuristic flex items-center gap-2">
-          <Mail className="w-5 h-5 text-primary" />
-          {t('inicio.emailActivity')}
-        </CardTitle>
-        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-          <span>{t('inicio.successRate')}: {stats.successRate}%</span>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-futuristic flex items-center gap-2">
+              <Mail className="w-5 h-5 text-primary" />
+              {t('inicio.emailActivity')}
+            </CardTitle>
+            <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+              <span>{t('inicio.successRate')}: {stats.successRate}%</span>
+              {stats.sentToday > 0 && (
+                <span>+{stats.sentToday} {t('inicio.today')}</span>
+              )}
+            </div>
+          </div>
           {stats.sentToday > 0 && (
-            <span>+{stats.sentToday} {t('inicio.today')}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="h-8 text-xs"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              {t('inicio.reset')}
+            </Button>
           )}
         </div>
       </CardHeader>
