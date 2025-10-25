@@ -192,6 +192,43 @@ export const useZoomPan = (): UseZoomPanReturn => {
     };
   }, [handleWheel, handlePointerDown, handlePointerMove, handlePointerUp]);
 
+  // Effect para ajustar zoom cuando cambia el tamaño de pantalla (rotación)
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      const currentWidth = window.innerWidth;
+      const isMobileNow = currentWidth < MOBILE_BREAKPOINT;
+      
+      // Detectar si está en escala por defecto
+      const isAtDefaultScale = 
+        Math.abs(transform.scale - MOBILE_INITIAL_SCALE) < 0.01 ||
+        Math.abs(transform.scale - DESKTOP_INITIAL_SCALE) < 0.01;
+      
+      // Solo ajustar si el usuario no ha hecho zoom manual
+      if (isAtDefaultScale) {
+        const newScale = isMobileNow ? MOBILE_INITIAL_SCALE : DESKTOP_INITIAL_SCALE;
+        
+        // Solo actualizar si realmente cambió el tipo de dispositivo
+        if (Math.abs(transform.scale - newScale) > 0.01) {
+          setTransform(prev => ({
+            ...prev,
+            scale: newScale,
+            // Mantener posición proporcional al cambiar zoom
+            x: prev.x * (newScale / prev.scale),
+            y: prev.y * (newScale / prev.scale)
+          }));
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [transform.scale, transform.x, transform.y]);
+
   return {
     transform,
     containerRef,
