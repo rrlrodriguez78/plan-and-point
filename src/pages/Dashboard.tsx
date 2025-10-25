@@ -239,12 +239,22 @@ const Dashboard = () => {
                 <div className="relative aspect-video bg-muted">
                   {tour.cover_image_url ? (
                     <>
-                      <img 
-                        src={tour.cover_image_url} 
-                        alt={tour.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 left-2 flex gap-2">
+                      <div 
+                        onClick={() => tour.is_published && navigate(`/viewer/${tour.id}`)}
+                        className={tour.is_published ? "cursor-pointer group" : ""}
+                      >
+                        <img 
+                          src={tour.cover_image_url} 
+                          alt={tour.title}
+                          className="w-full h-full object-cover"
+                        />
+                        {tour.is_published && (
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <Eye className="w-12 h-12 text-white drop-shadow-lg" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute top-2 left-2 flex gap-2 z-10">
                         <Button
                           variant="secondary"
                           size="sm"
@@ -267,7 +277,7 @@ const Dashboard = () => {
                         size="sm"
                         onClick={() => handleUploadCover(tour.id)}
                         disabled={uploadingCover === tour.id}
-                        className="absolute top-2 right-2 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                        className="absolute top-2 right-2 z-10 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
                       >
                         <Upload className="w-4 h-4" />
                       </Button>
@@ -299,17 +309,9 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {tour.is_published && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/viewer/${tour.id}`)}
-                      className="w-full"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      {t('dashboard.view')}
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground text-center">
+                    {tour.is_published ? t('dashboard.clickCoverToView') : t('dashboard.publishToView')}
+                  </p>
                 </CardContent>
               </Card>
             ))}

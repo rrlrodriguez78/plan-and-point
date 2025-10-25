@@ -71,7 +71,9 @@
     "errorDeleting": "Erreur de suppression de la visite",
     "tourCreated": "Visite créée avec succès",
     "tourDeleted": "Visite supprimée",
-    "organizationNotFound": "Organisation non trouvée"
+    "organizationNotFound": "Organisation non trouvée",
+    "clickCoverToView": "Cliquez sur la couverture pour voir la visite",
+    "publishToView": "Publiez la visite pour la voir"
   },
   "editor": {
     "tour": "Visite",

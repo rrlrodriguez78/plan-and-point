@@ -71,7 +71,9 @@
     "errorDeleting": "Fehler beim Löschen der Tour",
     "tourCreated": "Tour erfolgreich erstellt",
     "tourDeleted": "Tour gelöscht",
-    "organizationNotFound": "Organisation nicht gefunden"
+    "organizationNotFound": "Organisation nicht gefunden",
+    "clickCoverToView": "Klicken Sie auf das Cover, um die Tour anzusehen",
+    "publishToView": "Veröffentlichen Sie die Tour, um sie anzusehen"
   },
   "editor": {
     "tour": "Tour",
