@@ -2,45 +2,26 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Audio notification management using Web Audio API
+// Audio notification management using HTMLAudioElement
 const playNotificationSound = () => {
   const soundEnabled = localStorage.getItem('notificationSoundEnabled') !== 'false';
-  
   if (!soundEnabled) return;
 
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    // Create a pleasant notification sound (two tones)
-    oscillator.frequency.value = 800;
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
-
-    // Second tone
-    setTimeout(() => {
-      const oscillator2 = audioContext.createOscillator();
-      const gainNode2 = audioContext.createGain();
-      
-      oscillator2.connect(gainNode2);
-      gainNode2.connect(audioContext.destination);
-      
-      oscillator2.frequency.value = 1000;
-      gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-      
-      oscillator2.start(audioContext.currentTime);
-      oscillator2.stop(audioContext.currentTime + 0.1);
-    }, 100);
+    // Crear elemento de audio simple - funciona sin user gesture
+    const audio = new Audio();
+    
+    // Usar data URI para sonido básico (evita CORS)
+    audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Dyvm0lCjF8y/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+Dyvm0lCjF8y/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+Dyvm0lCjF8y/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+Dyvm0lCjF8y/LMeSsFJHfH8N2QQAo=';
+    audio.volume = 0.3;
+    
+    // Reproducir y manejar errores silenciosamente
+    audio.play().catch(() => {
+      // Ignorar errores de reproducción (usuarios con audio deshabilitado)
+    });
   } catch (error) {
-    console.log('Could not play notification sound:', error);
+    // Fallback silencioso
+    console.log('Audio not available');
   }
 };
 
