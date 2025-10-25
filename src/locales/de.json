@@ -423,5 +423,21 @@
     "searchPlaceholder": "Touren suchen...",
     "viewTour": "Tour Ansehen",
     "errorLoading": "Fehler beim Laden der öffentlichen Touren"
+  },
+  "tourPassword": {
+    "title": "Passwortschutz",
+    "enable": "Schutz aktivieren",
+    "disable": "Schutz deaktivieren",
+    "enterPassword": "Passwort eingeben",
+    "confirmPassword": "Passwort bestätigen",
+    "passwordSet": "Passwort festgelegt",
+    "passwordRemoved": "Passwort entfernt",
+    "passwordRequired": "Diese Tour ist geschützt",
+    "passwordPrompt": "Geben Sie das Passwort ein, um darauf zuzugreifen",
+    "incorrectPassword": "Falsches Passwort",
+    "minLength": "Mindestens 6 Zeichen",
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "protected": "Geschützt",
+    "accessFree": "Freier Zugang"
   }
 }

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Globe, Search } from 'lucide-react';
+import { Eye, Globe, Search, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -18,6 +18,7 @@ interface Tour {
   cover_image_url: string | null;
   created_at: string;
   is_published: boolean;
+  password_protected?: boolean;
 }
 
 const PublicTours = () => {
@@ -49,7 +50,7 @@ const PublicTours = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('virtual_tours')
-        .select('*')
+        .select('id, title, description, cover_image_url, created_at, is_published, password_protected')
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
@@ -131,9 +132,16 @@ const PublicTours = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-2">
                     <CardTitle className="text-xl line-clamp-1">{tour.title}</CardTitle>
-                    <Badge variant="secondary" className="flex items-center gap-1 shrink-0 ml-2">
-                      <Globe className="w-3 h-3" />
-                    </Badge>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {tour.password_protected && (
+                        <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20">
+                          <Lock className="w-3 h-3" />
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Globe className="w-3 h-3" />
+                      </Badge>
+                    </div>
                   </div>
                   {tour.description && (
                     <CardDescription className="line-clamp-2">

@@ -418,5 +418,29 @@
     "landscapeRequired": "This app works best in landscape mode",
     "instruction": "Rotate your device to continue",
     "continueAnyway": "Continue in portrait"
+  },
+  "publicTours": {
+    "title": "Public Tours",
+    "subtitle": "Explore published virtual tours",
+    "searchPlaceholder": "Search tours...",
+    "viewTour": "View Tour",
+    "noTours": "No tours available",
+    "errorLoading": "Error loading tours"
+  },
+  "tourPassword": {
+    "title": "Password Protection",
+    "enable": "Enable protection",
+    "disable": "Disable protection",
+    "enterPassword": "Enter password",
+    "confirmPassword": "Confirm password",
+    "passwordSet": "Password set",
+    "passwordRemoved": "Password removed",
+    "passwordRequired": "This tour is protected",
+    "passwordPrompt": "Enter password to access",
+    "incorrectPassword": "Incorrect password",
+    "minLength": "Minimum 6 characters",
+    "passwordMismatch": "Passwords do not match",
+    "protected": "Protected",
+    "accessFree": "Free Access"
   }
 }

@@ -14,6 +14,7 @@ import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 import { OrientationWarning } from '@/components/viewer/OrientationWarning';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
+import { TourPasswordPrompt } from '@/components/viewer/TourPasswordPrompt';
 
 const Viewer = () => {
   const { id } = useParams();
@@ -31,6 +32,9 @@ const Viewer = () => {
   const [showPanoramaViewer, setShowPanoramaViewer] = useState(false);
   const [activePanoramaPhoto, setActivePanoramaPhoto] = useState<PanoramaPhoto | null>(null);
   const [userDismissedWarning, setUserDismissedWarning] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [passwordProtected, setPasswordProtected] = useState(false);
+  const [passwordUpdatedAt, setPasswordUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     loadTourData();
@@ -53,6 +57,8 @@ const Viewer = () => {
           description, 
           is_published,
           organization_id,
+          password_protected,
+          password_updated_at,
           organizations!inner (
             owner_id
           )
@@ -71,14 +77,57 @@ const Viewer = () => {
         return;
       }
 
-      // Verificar si el usuario es el dueño del tour o si el tour está publicado
+      // Verificar si el usuario es el dueño del tour
       const isOwner = user && tourData.organizations?.owner_id === user.id;
-      const canView = tourData.is_published || isOwner;
-
-      if (!canView) {
+      
+      // Si el tour no está publicado, solo el dueño puede verlo
+      if (!tourData.is_published && !isOwner) {
         console.warn('⚠️ Usuario no autorizado para ver este tour');
         setLoading(false);
         return;
+      }
+
+      // Si el tour está protegido con contraseña y el usuario NO es el dueño
+      if (tourData.password_protected && !isOwner) {
+        // Verificar si hay un token válido en localStorage
+        const storedToken = localStorage.getItem(`tour_access_${id}`);
+        
+        if (storedToken) {
+          try {
+            const tokenData = JSON.parse(storedToken);
+            // Verificar si el token es para este tour y si la contraseña no ha cambiado
+            if (tokenData.tour_id === id && tokenData.password_updated_at === tourData.password_updated_at) {
+              // Token válido, continuar con la carga
+              console.log('✅ Token de acceso válido');
+            } else {
+              // Token inválido o contraseña cambiada, solicitar nueva contraseña
+              console.log('⚠️ Token inválido o contraseña cambiada');
+              setPasswordProtected(true);
+              setPasswordUpdatedAt(tourData.password_updated_at);
+              setShowPasswordPrompt(true);
+              setTour({ title: tourData.title, description: tourData.description });
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Error parsing token:', error);
+            setPasswordProtected(true);
+            setPasswordUpdatedAt(tourData.password_updated_at);
+            setShowPasswordPrompt(true);
+            setTour({ title: tourData.title, description: tourData.description });
+            setLoading(false);
+            return;
+          }
+        } else {
+          // No hay token, solicitar contraseña
+          console.log('🔒 Tour protegido con contraseña, solicitando acceso');
+          setPasswordProtected(true);
+          setPasswordUpdatedAt(tourData.password_updated_at);
+          setShowPasswordPrompt(true);
+          setTour({ title: tourData.title, description: tourData.description });
+          setLoading(false);
+          return;
+        }
       }
 
       setTour({ title: tourData.title, description: tourData.description });
@@ -396,6 +445,19 @@ const Viewer = () => {
         }}
         hotspotsByFloor={hotspotsByFloor}
       />
+
+      {/* Password Prompt for Protected Tours */}
+      {showPasswordPrompt && tour && (
+        <TourPasswordPrompt
+          open={showPasswordPrompt}
+          tourId={id!}
+          tourTitle={tour.title}
+          onSuccess={(updatedAt) => {
+            setShowPasswordPrompt(false);
+            loadTourData(); // Recargar el tour después de ingresar la contraseña
+          }}
+        />
+      )}
 
       {/* Floor Controls */}
       <ViewerControls

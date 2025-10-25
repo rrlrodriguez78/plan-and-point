@@ -423,5 +423,21 @@
     "searchPlaceholder": "Rechercher des visites...",
     "viewTour": "Voir la Visite",
     "errorLoading": "Erreur lors du chargement des visites publiques"
+  },
+  "tourPassword": {
+    "title": "Protection par Mot de Passe",
+    "enable": "Activer la protection",
+    "disable": "Désactiver la protection",
+    "enterPassword": "Entrer le mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "passwordSet": "Mot de passe défini",
+    "passwordRemoved": "Mot de passe supprimé",
+    "passwordRequired": "Ce tour est protégé",
+    "passwordPrompt": "Entrez le mot de passe pour accéder",
+    "incorrectPassword": "Mot de passe incorrect",
+    "minLength": "Minimum 6 caractères",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "protected": "Protégé",
+    "accessFree": "Accès Libre"
   }
 }

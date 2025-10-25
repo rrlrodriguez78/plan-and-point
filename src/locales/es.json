@@ -426,5 +426,21 @@
     "searchPlaceholder": "Buscar tours...",
     "viewTour": "Ver Tour",
     "errorLoading": "Error al cargar tours públicos"
+  },
+  "tourPassword": {
+    "title": "Protección con Contraseña",
+    "enable": "Habilitar protección",
+    "disable": "Deshabilitar protección",
+    "enterPassword": "Ingresar contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordSet": "Contraseña establecida",
+    "passwordRemoved": "Contraseña removida",
+    "passwordRequired": "Este tour está protegido",
+    "passwordPrompt": "Ingrese la contraseña para acceder",
+    "incorrectPassword": "Contraseña incorrecta",
+    "minLength": "Mínimo 6 caracteres",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "protected": "Protegido",
+    "accessFree": "Acceso Libre"
   }
 }

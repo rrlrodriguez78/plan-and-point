@@ -306,6 +306,9 @@ export type Database = {
           id: string
           is_published: boolean
           organization_id: string
+          password_hash: string | null
+          password_protected: boolean | null
+          password_updated_at: string | null
           title: string
           updated_at: string
         }
@@ -316,6 +319,9 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id: string
+          password_hash?: string | null
+          password_protected?: boolean | null
+          password_updated_at?: string | null
           title: string
           updated_at?: string
         }
@@ -326,6 +332,9 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id?: string
+          password_hash?: string | null
+          password_protected?: boolean | null
+          password_updated_at?: string | null
           title?: string
           updated_at?: string
         }

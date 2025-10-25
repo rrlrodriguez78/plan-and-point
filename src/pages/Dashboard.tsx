@@ -6,11 +6,12 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield } from 'lucide-react';
 import TourSetupModal from '@/components/editor/TourSetupModal';
 import { useTranslation } from 'react-i18next';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { TourPasswordDialog } from '@/components/editor/TourPasswordDialog';
 
 interface Organization {
   id: string;
@@ -24,6 +25,7 @@ interface Tour {
   is_published: boolean;
   created_at: string;
   cover_image_url?: string;
+  password_protected?: boolean;
 }
 
 const Dashboard = () => {
@@ -37,6 +39,8 @@ const Dashboard = () => {
   const [savingTour, setSavingTour] = useState(false);
   const [uploadingCover, setUploadingCover] = useState<string | null>(null);
   const [tourToDelete, setTourToDelete] = useState<string | null>(null);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [selectedTourForPassword, setSelectedTourForPassword] = useState<Tour | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -367,7 +371,34 @@ const Dashboard = () => {
                           <p>{tour.is_published ? t('dashboard.view') : t('dashboard.preview')}</p>
                         </TooltipContent>
                       </Tooltip>
-                    </TooltipProvider>
+                     </TooltipProvider>
+                    
+                    {tour.is_published && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTourForPassword(tour);
+                                setPasswordDialogOpen(true);
+                              }}
+                              className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-purple-600/60 transition-all border border-white/20"
+                            >
+                              {tour.password_protected ? (
+                                <Shield className="w-3.5 h-3.5 text-yellow-300" />
+                              ) : (
+                                <Lock className="w-3.5 h-3.5" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{tour.password_protected ? t('tourPassword.protected') : t('tourPassword.title')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                   
                   {/* Upload Button - Bottom Right */}
@@ -415,6 +446,18 @@ const Dashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedTourForPassword && (
+        <TourPasswordDialog
+          open={passwordDialogOpen}
+          onOpenChange={setPasswordDialogOpen}
+          tourId={selectedTourForPassword.id}
+          isProtected={selectedTourForPassword.password_protected || false}
+          onSuccess={() => {
+            loadData(); // Recargar tours para actualizar el estado de protección
+          }}
+        />
+      )}
     </div>
   );
 };
