@@ -626,7 +626,7 @@ export default function PanoramaViewer({
               <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
                 {/* Floor Selector */}
                 {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
-                  <DropdownMenu modal={true}>
+                  <DropdownMenu key={`floor-${isFullscreen}`} modal={true}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -679,7 +679,7 @@ export default function PanoramaViewer({
                 
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
-                  <DropdownMenu modal={true}>
+                  <DropdownMenu key={`hotspots-${isFullscreen}`} modal={true}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -725,7 +725,7 @@ export default function PanoramaViewer({
 
                 {/* Dropdown de Fechas */}
                 {availableDates.length > 0 && (
-                  <DropdownMenu modal={true}>
+                  <DropdownMenu key={`date-${isFullscreen}`} modal={true}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
