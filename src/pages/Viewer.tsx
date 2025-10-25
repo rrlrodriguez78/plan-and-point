@@ -463,6 +463,19 @@ const Viewer = () => {
           />
         </>
       )}
+
+      {/* Password Prompt for Protected Tours */}
+      {showPasswordPrompt && tour && (
+        <TourPasswordPrompt
+          open={showPasswordPrompt}
+          tourId={id!}
+          tourTitle={tour.title}
+          onSuccess={(passwordUpdatedAt) => {
+            setShowPasswordPrompt(false);
+            loadTourData();
+          }}
+        />
+      )}
     </div>
   );
 };
