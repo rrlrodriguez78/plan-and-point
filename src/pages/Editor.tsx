@@ -77,6 +77,19 @@ const Editor = () => {
     }
   }, [selectedFloorPlan]);
 
+  // ESC key to exit add point mode
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && addPointMode) {
+        setAddPointMode(false);
+        toast.info('Modo agregar punto desactivado');
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [addPointMode]);
+
   const loadTourData = async () => {
     try {
       const { data: tourData } = await supabase
@@ -195,7 +208,7 @@ const Editor = () => {
       }
     });
     setHotspotModalOpen(true);
-    setAddPointMode(false);
+    // Keep add point mode active after creating a hotspot
     
     // Reset el flag después de un pequeño delay
     setTimeout(() => setIsProcessingClick(false), 500);
@@ -438,9 +451,22 @@ const Editor = () => {
                         <MapPin className="w-5 h-5 text-[#4285F4]" />
                         <h2 className="text-xl font-bold">{t('editor.interactivePoints')}</h2>
                         <Badge variant="secondary">{hotspots.length}</Badge>
+                        {addPointMode && (
+                          <Badge className="animate-pulse bg-[#4285F4] text-white">
+                            🎯 Modo Agregar Activo
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {t('editor.editingFor')} <span className="font-medium">{selectedFloorPlan?.name}</span>
+                        {addPointMode ? (
+                          <span className="text-[#4285F4] font-medium">
+                            Click en el plano para agregar puntos • Presiona ESC para salir
+                          </span>
+                        ) : (
+                          <>
+                            {t('editor.editingFor')} <span className="font-medium">{selectedFloorPlan?.name}</span>
+                          </>
+                        )}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -602,6 +628,10 @@ const Editor = () => {
         onClose={() => {
           setHotspotModalOpen(false);
           setEditingHotspot(null);
+          // If we're closing without saving a new hotspot, deactivate add point mode
+          if (editingHotspot && !editingHotspot.id) {
+            setAddPointMode(false);
+          }
         }}
         onSave={handleSaveHotspot}
         initialData={editingHotspot || undefined}
