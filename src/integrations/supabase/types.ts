@@ -484,6 +484,129 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          auto_downloads: boolean | null
+          auto_reports: boolean | null
+          autoplay: boolean | null
+          backup_frequency: string | null
+          cloud_sync: boolean | null
+          color_scheme: string | null
+          contact_preferences: Json | null
+          created_at: string | null
+          cross_device_sync: boolean | null
+          currency: string | null
+          data_sharing: boolean | null
+          data_usage: string | null
+          date_format: string | null
+          default_volume: number | null
+          email_notifications: boolean | null
+          font_size: string | null
+          id: string
+          image_quality: string | null
+          in_app_notifications: boolean | null
+          language: string | null
+          layout_mode: string | null
+          local_storage_limit_mb: number | null
+          metrics_to_track: Json | null
+          notification_types: Json | null
+          profile_visibility: string | null
+          push_notifications: boolean | null
+          report_frequency: string | null
+          share_usage_data: boolean | null
+          sound_effects: boolean | null
+          subscription_tier: string | null
+          sync_data_types: Json | null
+          theme: string | null
+          time_format: string | null
+          timezone: string | null
+          two_factor_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+          video_quality: string | null
+        }
+        Insert: {
+          auto_downloads?: boolean | null
+          auto_reports?: boolean | null
+          autoplay?: boolean | null
+          backup_frequency?: string | null
+          cloud_sync?: boolean | null
+          color_scheme?: string | null
+          contact_preferences?: Json | null
+          created_at?: string | null
+          cross_device_sync?: boolean | null
+          currency?: string | null
+          data_sharing?: boolean | null
+          data_usage?: string | null
+          date_format?: string | null
+          default_volume?: number | null
+          email_notifications?: boolean | null
+          font_size?: string | null
+          id?: string
+          image_quality?: string | null
+          in_app_notifications?: boolean | null
+          language?: string | null
+          layout_mode?: string | null
+          local_storage_limit_mb?: number | null
+          metrics_to_track?: Json | null
+          notification_types?: Json | null
+          profile_visibility?: string | null
+          push_notifications?: boolean | null
+          report_frequency?: string | null
+          share_usage_data?: boolean | null
+          sound_effects?: boolean | null
+          subscription_tier?: string | null
+          sync_data_types?: Json | null
+          theme?: string | null
+          time_format?: string | null
+          timezone?: string | null
+          two_factor_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          video_quality?: string | null
+        }
+        Update: {
+          auto_downloads?: boolean | null
+          auto_reports?: boolean | null
+          autoplay?: boolean | null
+          backup_frequency?: string | null
+          cloud_sync?: boolean | null
+          color_scheme?: string | null
+          contact_preferences?: Json | null
+          created_at?: string | null
+          cross_device_sync?: boolean | null
+          currency?: string | null
+          data_sharing?: boolean | null
+          data_usage?: string | null
+          date_format?: string | null
+          default_volume?: number | null
+          email_notifications?: boolean | null
+          font_size?: string | null
+          id?: string
+          image_quality?: string | null
+          in_app_notifications?: boolean | null
+          language?: string | null
+          layout_mode?: string | null
+          local_storage_limit_mb?: number | null
+          metrics_to_track?: Json | null
+          notification_types?: Json | null
+          profile_visibility?: string | null
+          push_notifications?: boolean | null
+          report_frequency?: string | null
+          share_usage_data?: boolean | null
+          sound_effects?: boolean | null
+          subscription_tier?: string | null
+          sync_data_types?: Json | null
+          theme?: string | null
+          time_format?: string | null
+          timezone?: string | null
+          two_factor_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          video_quality?: string | null
+        }
+        Relationships: []
+      }
       virtual_tours: {
         Row: {
           cover_image_url: string | null

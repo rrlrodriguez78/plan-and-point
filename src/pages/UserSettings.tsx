@@ -8,20 +8,41 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, User, Bell, Palette, Mail, Save } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { 
+  ArrowLeft, 
+  User, 
+  Bell, 
+  Palette, 
+  Mail, 
+  Save,
+  Globe,
+  Shield,
+  Smartphone,
+  RefreshCw,
+  Volume2,
+  BarChart3,
+  CreditCard
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationsList } from '@/components/settings/NotificationsList';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
+import { LanguageRegionSettings } from '@/components/settings/LanguageRegionSettings';
+import { PrivacySecuritySettings } from '@/components/settings/PrivacySecuritySettings';
+import { MobileSettings } from '@/components/settings/MobileSettings';
+import { SyncSettings } from '@/components/settings/SyncSettings';
+import { AudioVideoSettings } from '@/components/settings/AudioVideoSettings';
+import { AnalyticsSettings } from '@/components/settings/AnalyticsSettings';
+import { AccountSettings } from '@/components/settings/AccountSettings';
 import { useTheme } from '@/components/contexts/ThemeContext';
 
 const UserSettings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
+  const { settings, loading: settingsLoading, updateSettings } = useUserSettings();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     email: '',
@@ -40,6 +61,13 @@ const UserSettings = () => {
       loadProfile();
     }
   }, [user]);
+
+  // Sync theme with settings
+  useEffect(() => {
+    if (settings.theme !== theme) {
+      setTheme(settings.theme);
+    }
+  }, [settings.theme]);
 
   const loadProfile = async () => {
     if (!user) return;
@@ -77,17 +105,7 @@ const UserSettings = () => {
     }
   };
 
-  const handleLanguageChange = (lang: string) => {
-    i18n.changeLanguage(lang);
-    toast.success(`Language changed to ${lang === 'es' ? 'Spanish' : lang === 'en' ? 'English' : lang === 'fr' ? 'French' : 'German'}`);
-  };
-
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme as 'light' | 'dark' | 'system');
-    toast.success(`Theme changed to ${newTheme === 'light' ? 'Light' : newTheme === 'dark' ? 'Dark' : 'System'}`);
-  };
-
-  if (authLoading) {
+  if (authLoading || settingsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -102,7 +120,7 @@ const UserSettings = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <div className="container mx-auto px-4 pt-24 pb-12 max-w-4xl">
+      <div className="container mx-auto px-4 pt-24 pb-12 max-w-6xl">
         <Button
           variant="ghost"
           onClick={() => navigate('/app/tours')}
@@ -123,18 +141,46 @@ const UserSettings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="profile">
-              <User className="w-4 h-4 mr-2" />
-              Profile
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 mb-8">
+            <TabsTrigger value="profile" className="gap-1">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="w-4 h-4 mr-2" />
-              Notifications
+            <TabsTrigger value="appearance" className="gap-1">
+              <Palette className="w-4 h-4" />
+              <span className="hidden sm:inline">Appearance</span>
             </TabsTrigger>
-            <TabsTrigger value="preferences">
-              <Palette className="w-4 h-4 mr-2" />
-              Preferences
+            <TabsTrigger value="language" className="gap-1">
+              <Globe className="w-4 h-4" />
+              <span className="hidden sm:inline">Language</span>
+            </TabsTrigger>
+            <TabsTrigger value="privacy" className="gap-1">
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Privacy</span>
+            </TabsTrigger>
+            <TabsTrigger value="mobile" className="gap-1">
+              <Smartphone className="w-4 h-4" />
+              <span className="hidden sm:inline">Mobile</span>
+            </TabsTrigger>
+            <TabsTrigger value="sync" className="gap-1">
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden sm:inline">Sync</span>
+            </TabsTrigger>
+            <TabsTrigger value="media" className="gap-1">
+              <Volume2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Media</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-1">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="account" className="gap-1">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Account</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-1">
+              <Bell className="w-4 h-4" />
+              <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
           </TabsList>
 
@@ -205,6 +251,38 @@ const UserSettings = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="appearance">
+            <AppearanceSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="language">
+            <LanguageRegionSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="privacy">
+            <PrivacySecuritySettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="mobile">
+            <MobileSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="sync">
+            <SyncSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="media">
+            <AudioVideoSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <AnalyticsSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
+          <TabsContent value="account">
+            <AccountSettings settings={settings} onUpdate={updateSettings} />
+          </TabsContent>
+
           <TabsContent value="notifications">
             <div className="space-y-6">
               <NotificationsList />
@@ -221,53 +299,6 @@ const UserSettings = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          <TabsContent value="preferences">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Application Preferences</CardTitle>
-                <CardDescription>
-                  Customize appearance and language
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="theme">Theme</Label>
-                  <Select value={theme} onValueChange={handleThemeChange}>
-                    <SelectTrigger id="theme" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="system">System</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Choose between light, dark, or automatic theme
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="language">Language</Label>
-                  <Select value={i18n.language} onValueChange={handleLanguageChange}>
-                    <SelectTrigger id="language" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="es">Español</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="fr">Français</SelectItem>
-                      <SelectItem value="de">Deutsch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Select your preferred language
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
