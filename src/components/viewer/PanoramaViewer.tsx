@@ -605,55 +605,6 @@ export default function PanoramaViewer({
                     )}
                   </div>
                 </div>
-                {/* Floor Selector */}
-                {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
-                  <DropdownMenu modal={true}>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 rounded-full gap-2 backdrop-blur-sm bg-black/30">
-                        <Building2 className="w-4 h-4" />
-                        {currentFloorPlan.name}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      align="start" 
-                      className="bg-black/90 backdrop-blur-sm border-white/20"
-                      style={{ zIndex: 99999 }}
-                    >
-                      {floorPlans.map((floor) => {
-                        const hotspotCount = getHotspotCount(floor.id);
-                        return (
-                          <DropdownMenuItem
-                            key={floor.id}
-                            onClick={() => {
-                              // Si es el mismo piso, no hacer nada
-                              if (floor.id === currentFloorPlan.id) {
-                                return;
-                              }
-                              
-                              // Validar si el piso tiene hotspots
-                              if (hotspotCount === 0) {
-                                toast.error(t('viewer.emptyFloorTitle'), {
-                                  description: t('viewer.emptyFloorDescription')
-                                });
-                                return; // No cambiar de piso
-                              }
-                              
-                              // Si tiene hotspots, cambiar normalmente
-                              onFloorChange(floor.id);
-                            }}
-                            className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
-                          >
-                            <Building2 className="w-4 h-4 mr-2" />
-                            <span className="flex-1">{floor.name}</span>
-                            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                              {hotspotCount}
-                            </span>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full">
@@ -673,6 +624,59 @@ export default function PanoramaViewer({
             <div className="absolute bottom-0 left-0 right-0 p-4 z-50">
               <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : ''}`}>
               <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
+                {/* Floor Selector */}
+                {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
+                  <DropdownMenu modal={true}>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                      >
+                        <Building2 className="w-5 h-5" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs text-slate-400">Floor</span>
+                          <span className="text-sm font-medium">
+                            {currentFloorPlan.name}
+                          </span>
+                        </div>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent 
+                      align="start" 
+                      className="bg-black/90 backdrop-blur-sm border-white/20 text-white"
+                      style={{ zIndex: 99999 }}
+                    >
+                      {floorPlans.map((floor) => {
+                        const hotspotCount = getHotspotCount(floor.id);
+                        return (
+                          <DropdownMenuItem
+                            key={floor.id}
+                            onClick={() => {
+                              if (floor.id === currentFloorPlan.id) return;
+                              
+                              if (hotspotCount === 0) {
+                                toast.error(t('viewer.emptyFloorTitle'), {
+                                  description: t('viewer.emptyFloorDescription')
+                                });
+                                return;
+                              }
+                              
+                              onFloorChange(floor.id);
+                            }}
+                            className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
+                          >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            <span className="flex-1">{floor.name}</span>
+                            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                              {hotspotCount}
+                            </span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
                   <DropdownMenu modal={true}>
