@@ -170,7 +170,7 @@ export default function HotspotEditor({
         onTouchStart={handleCanvasClick as any}
         onMouseMove={handleMouseMove as any}
         onTouchMove={handleMouseMove as any}
-        style={{ minHeight: '500px' }}
+        style={{ maxHeight: '80vh' }}
       >
         <img
           ref={imageRef}
