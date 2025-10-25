@@ -29,6 +29,9 @@ export const Navbar = () => {
               <Link to="/app/tours">
                 <Button variant="ghost">{t('nav.tours')}</Button>
               </Link>
+              <Link to="/app/tours-publicos">
+                <Button variant="ghost">{t('nav.publicTours')}</Button>
+              </Link>
               <Link to="/app/settings">
                 <Button variant="ghost">
                   <Settings className="w-4 h-4 mr-2" />

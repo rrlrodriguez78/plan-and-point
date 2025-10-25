@@ -1,8 +1,9 @@
 {
   "nav": {
-    "dashboard": "Panel",
+    "dashboard": "Inicio",
     "tours": "Tours",
-    "settings": "Configuración",
+    "publicTours": "Tours Públicos",
+    "settings": "Ajustes",
     "logout": "Cerrar Sesión",
     "login": "Iniciar Sesión",
     "signup": "Registrarse"
@@ -415,5 +416,13 @@
     "landscapeRequired": "Esta aplicación funciona mejor en modo horizontal",
     "instruction": "Rota tu dispositivo para continuar",
     "continueAnyway": "Continuar en vertical"
+  },
+  "publicTours": {
+    "title": "Tours Públicos Disponibles",
+    "subtitle": "Explora tours virtuales compartidos por la comunidad",
+    "noTours": "No hay tours públicos disponibles",
+    "searchPlaceholder": "Buscar tours...",
+    "viewTour": "Ver Tour",
+    "errorLoading": "Error al cargar tours públicos"
   }
 }

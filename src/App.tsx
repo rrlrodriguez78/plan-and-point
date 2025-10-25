@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
 import Dashboard from "./pages/Dashboard";
+import PublicTours from "./pages/PublicTours";
 import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
 import Settings from "./pages/Settings";
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/signup" element={<Auth />} />
               <Route path="/app/inicio" element={<Inicio />} />
               <Route path="/app/tours" element={<Dashboard />} />
+              <Route path="/app/tours-publicos" element={<PublicTours />} />
               <Route path="/app/editor/:id" element={<Editor />} />
               <Route path="/app/settings" element={<Settings />} />
               <Route path="/viewer/:id" element={<Viewer />} />

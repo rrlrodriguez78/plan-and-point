@@ -2,6 +2,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "tours": "Touren",
+    "publicTours": "Öffentliche Touren",
     "settings": "Einstellungen",
     "logout": "Abmelden",
     "login": "Anmelden",
@@ -412,5 +413,13 @@
     "landscapeRequired": "Diese App funktioniert am besten im Querformat",
     "instruction": "Drehen Sie Ihr Gerät, um fortzufahren",
     "continueAnyway": "Im Hochformat fortfahren"
+  },
+  "publicTours": {
+    "title": "Verfügbare Öffentliche Touren",
+    "subtitle": "Entdecken Sie virtuelle Touren, die von der Community geteilt werden",
+    "noTours": "Keine öffentlichen Touren verfügbar",
+    "searchPlaceholder": "Touren suchen...",
+    "viewTour": "Tour Ansehen",
+    "errorLoading": "Fehler beim Laden der öffentlichen Touren"
   }
 }

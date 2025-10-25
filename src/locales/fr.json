@@ -1,10 +1,11 @@
 {
   "nav": {
     "dashboard": "Tableau de bord",
-    "tours": "Tours",
+    "tours": "Visites",
+    "publicTours": "Visites Publiques",
     "settings": "Paramètres",
     "logout": "Déconnexion",
-    "login": "Se connecter",
+    "login": "Connexion",
     "signup": "S'inscrire"
   },
   "inicio": {
@@ -412,5 +413,13 @@
     "landscapeRequired": "Cette application fonctionne mieux en mode paysage",
     "instruction": "Tournez votre appareil pour continuer",
     "continueAnyway": "Continuer en mode portrait"
+  },
+  "publicTours": {
+    "title": "Visites Publiques Disponibles",
+    "subtitle": "Explorez les visites virtuelles partagées par la communauté",
+    "noTours": "Aucune visite publique disponible",
+    "searchPlaceholder": "Rechercher des visites...",
+    "viewTour": "Voir la Visite",
+    "errorLoading": "Erreur lors du chargement des visites publiques"
   }
 }
