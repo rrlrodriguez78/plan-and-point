@@ -64,6 +64,28 @@ export const useEmailLogs = () => {
     }
   };
 
+  const deleteAllEmailLogs = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('email_logs')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setStats({
+        totalSent: 0,
+        successRate: 0,
+        sentToday: 0,
+        recentLogs: [],
+      });
+    } catch (error) {
+      console.error('Error deleting email logs:', error);
+    }
+  };
+
   useEffect(() => {
     loadEmailLogs();
 
@@ -94,6 +116,7 @@ export const useEmailLogs = () => {
   return {
     stats,
     loading,
+    deleteAllEmailLogs,
     refresh: loadEmailLogs,
   };
 };

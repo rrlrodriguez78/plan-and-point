@@ -18,6 +18,7 @@ import { useEnhancedAnalytics } from '@/hooks/useEnhancedAnalytics';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useComments } from '@/hooks/useComments';
+import { useEmailLogs } from '@/hooks/useEmailLogs';
 
 const Inicio = () => {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ const Inicio = () => {
   const { displayName } = useUserProfile();
   const { deleteAllNotifications } = useNotifications();
   const { deleteAllComments } = useComments();
+  const { deleteAllEmailLogs } = useEmailLogs();
 
   useEffect(() => {
     if (!user) {
@@ -114,6 +116,8 @@ const Inicio = () => {
               icon={<Mail className="w-6 h-6" />}
               trend={analytics.emailsToday > 0 ? `+${analytics.emailsToday} ${t('inicio.today')}` : undefined}
               color="green"
+              showReset={analytics.totalEmailsSent > 0}
+              onReset={deleteAllEmailLogs}
             />
           </div>
         )}
