@@ -249,7 +249,7 @@ const Dashboard = () => {
                         size="sm"
                         onClick={() => handleUploadCover(tour.id)}
                         disabled={uploadingCover === tour.id}
-                        className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
                       >
                         <Upload className="w-4 h-4" />
                       </Button>
