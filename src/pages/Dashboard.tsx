@@ -235,7 +235,7 @@ const Dashboard = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tours.map((tour) => (
-              <Card key={tour.id} className="hover:shadow-lg transition-all overflow-hidden">
+              <Card key={tour.id} className="p-0 hover:shadow-lg transition-all overflow-hidden">
                 <div className="relative aspect-[16/6] bg-muted">
                   {tour.cover_image_url ? (
                     <>
