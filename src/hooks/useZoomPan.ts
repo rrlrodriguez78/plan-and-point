@@ -4,7 +4,7 @@ const MIN_SCALE = 0.3;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 0.15;
 const MOBILE_BREAKPOINT = 768;
-const MOBILE_INITIAL_SCALE = 0.8; // 80% para móviles
+const MOBILE_INITIAL_SCALE = 0.5; // 50% para móviles
 const DESKTOP_INITIAL_SCALE = 1.0; // 100% para desktop
 
 interface Transform {
