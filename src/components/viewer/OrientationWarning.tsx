@@ -4,10 +4,11 @@ import { Smartphone } from 'lucide-react';
 interface OrientationWarningProps {
   onContinue: () => void;
   onTryRotate?: () => void;
+  onForceLandscape?: () => void;
   isStandalone?: boolean;
 }
 
-export const OrientationWarning = ({ onContinue, onTryRotate, isStandalone = false }: OrientationWarningProps) => {
+export const OrientationWarning = ({ onContinue, onTryRotate, onForceLandscape, isStandalone = false }: OrientationWarningProps) => {
   const { t } = useTranslation();
   
   return (

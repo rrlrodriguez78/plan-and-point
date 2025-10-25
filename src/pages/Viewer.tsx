@@ -36,6 +36,23 @@ const Viewer = () => {
   const [passwordProtected, setPasswordProtected] = useState(false);
   const [passwordUpdatedAt, setPasswordUpdatedAt] = useState<string | null>(null);
 
+  // NUEVO: Handler para forzar landscape manualmente
+  const handleForceLandscape = async () => {
+    console.log('🔄 Forzando landscape manualmente...');
+    const success = await lockLandscape();
+    if (success) {
+      console.log('✅ Landscape forzado exitosamente');
+      setUserDismissedWarning(true);
+    } else {
+      // Feedback específico según el modo
+      if (!isStandalone) {
+        toast.error(t('viewer.installPwaForRotation', 'Para rotación automática instala la app completa'));
+      } else {
+        toast.error(t('viewer.rotationNotSupported', 'Tu navegador no soporta rotación automática'));
+      }
+    }
+  };
+
   // Intentar rotación automática al entrar (solo móviles) - CON RETRASO
   useEffect(() => {
     const tryAutoRotate = async () => {
@@ -409,11 +426,12 @@ const Viewer = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Orientation Warning */}
+      {/* Orientation Warning - ACTUALIZADO con onForceLandscape */}
       {shouldShowOrientationWarning && !userDismissedWarning && (
         <OrientationWarning 
           onContinue={() => setUserDismissedWarning(true)}
           onTryRotate={handleTryRotate}
+          onForceLandscape={handleForceLandscape} // ← NUEVO PROP
           isStandalone={isStandalone}
         />
       )}
