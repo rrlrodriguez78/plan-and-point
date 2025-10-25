@@ -51,12 +51,12 @@ const Viewer = () => {
     try {
       // PASO 1: Intentar entrar a fullscreen primero
       if (!document.fullscreenElement) {
+        console.log('📱 Activando fullscreen...');
         await document.documentElement.requestFullscreen();
-        setIsFullscreen(true); // Sincronizar estado inmediatamente
-        console.log('✅ Fullscreen activado');
         
         // Esperar a que fullscreen se active completamente
         await new Promise(resolve => setTimeout(resolve, 300));
+        console.log('✅ Fullscreen activado');
       }
       
       // PASO 2: Intentar lockear la orientación
@@ -125,7 +125,7 @@ const Viewer = () => {
       }
     };
     tryAutoRotate();
-  }, [isMobile, isStandalone, userDismissedWarning, lockLandscape]);
+  }, [isMobile, isStandalone, userDismissedWarning]); // ✅ Removido lockLandscape
 
   useEffect(() => {
     loadTourData();
@@ -334,11 +334,10 @@ const Viewer = () => {
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen();
-      setIsFullscreen(false);
     }
+    // El estado se sincroniza automáticamente por el listener fullscreenchange
   }, []);
 
   const loadPanoramaPhotos = async (hotspotId: string) => {

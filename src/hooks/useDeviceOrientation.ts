@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface DeviceInfo {
   isMobile: boolean;
@@ -26,6 +26,50 @@ export function useDeviceOrientation(): DeviceInfo {
     unlockOrientation: () => {},
     orientation: null
   });
+
+  // Función para bloquear en landscape (estabilizada con useCallback)
+  const lockLandscape = useCallback(async (): Promise<boolean> => {
+    console.log('🔄 Intentando bloquear orientación...');
+    console.log('   - isStandalone:', deviceInfo.isStandalone);
+    console.log('   - screen.orientation:', screen.orientation);
+    
+    if (!deviceInfo.isStandalone) {
+      console.log('⚠️ No es PWA instalada, no se puede bloquear orientación');
+      return false;
+    }
+    
+    // Verificar si la API está disponible
+    if (!screen.orientation || !('lock' in screen.orientation)) {
+      console.log('⚠️ Screen Orientation API no disponible');
+      return false;
+    }
+    
+    try {
+      // Intentar lock con 'landscape'
+      await (screen.orientation as any).lock('landscape');
+      console.log('✅ Orientación bloqueada en landscape');
+      return true;
+    } catch (error) {
+      console.log('❌ Error al bloquear orientación:', error);
+      if (error instanceof Error) {
+        console.log('   Error name:', error.name);
+        console.log('   Error message:', error.message);
+      }
+      return false;
+    }
+  }, [deviceInfo.isStandalone]);
+  
+  // Función para desbloquear orientación (estabilizada con useCallback)
+  const unlockOrientation = useCallback(() => {
+    try {
+      if (screen.orientation && 'unlock' in screen.orientation) {
+        (screen.orientation as any).unlock();
+        console.log('✅ Orientación desbloqueada');
+      }
+    } catch (error) {
+      console.log('⚠️ Error al desbloquear orientación:', error);
+    }
+  }, []);
 
   useEffect(() => {
     const checkDeviceAndOrientation = () => {
@@ -69,50 +113,6 @@ export function useDeviceOrientation(): DeviceInfo {
         referrer: document.referrer,
         userAgent: navigator.userAgent.substring(0, 50)
       });
-      
-      // Función para bloquear en landscape (solo API nativa)
-      const lockLandscape = async (): Promise<boolean> => {
-        console.log('🔄 Intentando bloquear orientación...');
-        console.log('   - isStandalone:', isStandalone);
-        console.log('   - screen.orientation:', screen.orientation);
-        
-        if (!isStandalone) {
-          console.log('⚠️ No es PWA instalada, no se puede bloquear orientación');
-          return false;
-        }
-        
-        // Verificar si la API está disponible
-        if (!screen.orientation || !('lock' in screen.orientation)) {
-          console.log('⚠️ Screen Orientation API no disponible');
-          return false;
-        }
-        
-        try {
-          // Intentar lock con 'landscape'
-          await (screen.orientation as any).lock('landscape');
-          console.log('✅ Orientación bloqueada en landscape');
-          return true;
-        } catch (error) {
-          console.log('❌ Error al bloquear orientación:', error);
-          if (error instanceof Error) {
-            console.log('   Error name:', error.name);
-            console.log('   Error message:', error.message);
-          }
-          return false;
-        }
-      };
-      
-      // Función para desbloquear orientación
-      const unlockOrientation = () => {
-        try {
-          if (screen.orientation && 'unlock' in screen.orientation) {
-            (screen.orientation as any).unlock();
-            console.log('✅ Orientación desbloqueada');
-          }
-        } catch (error) {
-          console.log('⚠️ Error al desbloquear orientación:', error);
-        }
-      };
       
       setDeviceInfo({
         isMobile,
