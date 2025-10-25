@@ -36,19 +36,29 @@ const Viewer = () => {
   const [passwordProtected, setPasswordProtected] = useState(false);
   const [passwordUpdatedAt, setPasswordUpdatedAt] = useState<string | null>(null);
 
-  // Intentar rotación automática al entrar (solo móviles)
+  // Intentar rotación automática al entrar (solo móviles) - CON RETRASO
   useEffect(() => {
     const tryAutoRotate = async () => {
-      if (isMobile && !userDismissedWarning) {
+      if (isMobile && !userDismissedWarning && isStandalone) {
+        console.log('🚀 Iniciando intento de rotación automática...');
+        
+        // Esperar 500ms para asegurar que el DOM esté listo
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         try {
-          await lockLandscape();
+          const success = await lockLandscape();
+          if (success) {
+            console.log('✅ Rotación automática exitosa');
+          } else {
+            console.log('⚠️ Rotación automática falló, mostrando warning');
+          }
         } catch (error) {
-          console.log('Rotación automática no disponible');
+          console.log('❌ Error en rotación automática:', error);
         }
       }
     };
     tryAutoRotate();
-  }, [isMobile, lockLandscape, userDismissedWarning]);
+  }, [isMobile, isStandalone, userDismissedWarning, lockLandscape]);
 
   useEffect(() => {
     loadTourData();

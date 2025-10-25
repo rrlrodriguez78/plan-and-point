@@ -216,6 +216,35 @@ export const OrientationWarning = ({ onContinue, onTryRotate, isStandalone = fal
             </button>
           )}
           
+          {isStandalone && (
+            <button
+              onClick={() => {
+                // Mostrar información de diagnóstico
+                const info = {
+                  isStandalone: window.matchMedia('(display-mode: standalone)').matches,
+                  fullscreen: window.matchMedia('(display-mode: fullscreen)').matches,
+                  iosStandalone: (window.navigator as any).standalone,
+                  referrer: document.referrer,
+                  orientation: screen.orientation?.type,
+                  lockAvailable: 'lock' in (screen.orientation || {}),
+                  userAgent: navigator.userAgent
+                };
+                alert('Debug Info:\n' + JSON.stringify(info, null, 2));
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: 'white',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.5rem',
+                fontSize: '0.85rem',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                cursor: 'pointer'
+              }}
+            >
+              🔍 Ver Info de Debug
+            </button>
+          )}
+          
           {!isStandalone && (
             <button
               onClick={() => {

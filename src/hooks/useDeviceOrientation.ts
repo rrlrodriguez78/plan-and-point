@@ -47,13 +47,35 @@ export function useDeviceOrientation(): DeviceInfo {
       // Obtener orientación actual del navegador
       const orientation = (screen.orientation?.type || 'unknown') as string;
       
-      // Detectar si está en modo standalone (PWA instalada)
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                           (window.navigator as any).standalone ||
-                           document.referrer.includes('android-app://');
+      // Detección mejorada de standalone para Android
+      const isStandalone = 
+        // Método estándar
+        window.matchMedia('(display-mode: standalone)').matches ||
+        // iOS Safari
+        (window.navigator as any).standalone === true ||
+        // Android WebAPK (más confiable)
+        document.referrer.includes('android-app://') ||
+        // Android Chrome PWA (detectar si no hay barra de direcciones)
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        // Verificar si el user agent indica WebAPK
+        /Android.*wv/.test(navigator.userAgent);
       
-      // Función para bloquear en landscape
+      // Logs para diagnóstico
+      console.log('🔍 Detección de modo:', {
+        isStandalone,
+        displayMode: window.matchMedia('(display-mode: standalone)').matches,
+        fullscreen: window.matchMedia('(display-mode: fullscreen)').matches,
+        iosStandalone: (window.navigator as any).standalone,
+        referrer: document.referrer,
+        userAgent: navigator.userAgent.substring(0, 50)
+      });
+      
+      // Función para bloquear en landscape con múltiples estrategias
       const lockLandscape = async (): Promise<boolean> => {
+        console.log('🔄 Intentando bloquear orientación...');
+        console.log('   - isStandalone:', isStandalone);
+        console.log('   - screen.orientation:', screen.orientation);
+        
         // Si NO es standalone, no intentar bloquear
         if (!isStandalone) {
           console.log('⚠️ No es PWA instalada, no se puede bloquear orientación');
@@ -61,16 +83,29 @@ export function useDeviceOrientation(): DeviceInfo {
         }
         
         try {
+          // Estrategia 1: Lock directo
           if (screen.orientation && 'lock' in screen.orientation) {
             await (screen.orientation as any).lock('landscape');
-            console.log('✅ Orientación bloqueada en landscape');
+            console.log('✅ Orientación bloqueada en landscape (lock directo)');
             return true;
-          } else {
-            console.log('⚠️ Screen Orientation API no soportada');
-            return false;
           }
+          
+          // Estrategia 2: Intentar con landscape-primary
+          if (screen.orientation && 'lock' in screen.orientation) {
+            await (screen.orientation as any).lock('landscape-primary');
+            console.log('✅ Orientación bloqueada en landscape-primary');
+            return true;
+          }
+          
+          console.log('⚠️ Screen Orientation API no soportada');
+          return false;
         } catch (error) {
-          console.log('⚠️ No se pudo bloquear orientación:', error);
+          console.log('❌ No se pudo bloquear orientación:', error);
+          // Imprimir detalles del error
+          if (error instanceof Error) {
+            console.log('   Error name:', error.name);
+            console.log('   Error message:', error.message);
+          }
           return false;
         }
       };
