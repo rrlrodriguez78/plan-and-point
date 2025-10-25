@@ -139,7 +139,7 @@ export function useDeviceOrientation(): DeviceInfo {
       window.removeEventListener('resize', checkDeviceAndOrientation);
       window.removeEventListener('orientationchange', checkDeviceAndOrientation);
     };
-  }, []);
+  }, [lockLandscape, unlockOrientation]);
 
   return deviceInfo;
 }
