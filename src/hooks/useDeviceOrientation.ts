@@ -7,6 +7,9 @@ interface DeviceInfo {
   isPortrait: boolean;
   isLandscape: boolean;
   shouldShowOrientationWarning: boolean;
+  lockLandscape: () => Promise<boolean>;
+  unlockOrientation: () => void;
+  orientation: string | null;
 }
 
 export function useDeviceOrientation(): DeviceInfo {
@@ -16,7 +19,10 @@ export function useDeviceOrientation(): DeviceInfo {
     isDesktop: true,
     isPortrait: false,
     isLandscape: true,
-    shouldShowOrientationWarning: false
+    shouldShowOrientationWarning: false,
+    lockLandscape: async () => false,
+    unlockOrientation: () => {},
+    orientation: null
   });
 
   useEffect(() => {
@@ -33,8 +39,40 @@ export function useDeviceOrientation(): DeviceInfo {
       const isPortrait = height > width;
       const isLandscape = width > height;
       
-      // Determinar si mostrar advertencia
-      const shouldShowOrientationWarning = (isMobile || isTablet) && isPortrait;
+      // Determinar si mostrar advertencia - EXCLUIR tablets
+      const shouldShowOrientationWarning = isMobile && isPortrait;
+      
+      // Obtener orientación actual del navegador
+      const orientation = (screen.orientation?.type || 'unknown') as string;
+      
+      // Función para bloquear en landscape
+      const lockLandscape = async (): Promise<boolean> => {
+        try {
+          if (screen.orientation && 'lock' in screen.orientation) {
+            await (screen.orientation as any).lock('landscape');
+            console.log('✅ Orientación bloqueada en landscape');
+            return true;
+          } else {
+            console.log('⚠️ Screen Orientation API no soportada');
+            return false;
+          }
+        } catch (error) {
+          console.log('⚠️ No se pudo bloquear orientación:', error);
+          return false;
+        }
+      };
+      
+      // Función para desbloquear orientación
+      const unlockOrientation = () => {
+        try {
+          if (screen.orientation && 'unlock' in screen.orientation) {
+            (screen.orientation as any).unlock();
+            console.log('✅ Orientación desbloqueada');
+          }
+        } catch (error) {
+          console.log('⚠️ Error al desbloquear orientación:', error);
+        }
+      };
       
       setDeviceInfo({
         isMobile,
@@ -42,7 +80,10 @@ export function useDeviceOrientation(): DeviceInfo {
         isDesktop,
         isPortrait,
         isLandscape,
-        shouldShowOrientationWarning
+        shouldShowOrientationWarning,
+        lockLandscape,
+        unlockOrientation,
+        orientation
       });
     };
     

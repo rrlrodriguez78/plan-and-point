@@ -436,9 +436,12 @@
   },
   "orientation": {
     "rotateDevice": "Por favor, gira tu dispositivo",
-    "landscapeRequired": "Esta aplicación funciona mejor en modo horizontal",
-    "instruction": "Rota tu dispositivo para continuar",
-    "continueAnyway": "Continuar en vertical"
+    "landscapeRequired": "Esta experiencia funciona mejor en modo horizontal",
+    "step1": "Desactiva el bloqueo de rotación en tu dispositivo",
+    "step2": "Gira tu teléfono a posición horizontal",
+    "tryAgain": "Intentar de nuevo",
+    "continueAnyway": "Continuar en vertical",
+    "instruction": "Rota tu dispositivo para una mejor experiencia"
   },
   "publicTours": {
     "title": "Tours Públicos Disponibles",

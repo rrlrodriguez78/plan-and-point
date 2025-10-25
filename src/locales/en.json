@@ -436,9 +436,12 @@
   },
   "orientation": {
     "rotateDevice": "Please rotate your device",
-    "landscapeRequired": "This app works best in landscape mode",
-    "instruction": "Rotate your device to continue",
-    "continueAnyway": "Continue in portrait"
+    "landscapeRequired": "This experience works better in landscape mode",
+    "step1": "Disable rotation lock on your device",
+    "step2": "Rotate your phone to landscape position",
+    "tryAgain": "Try again",
+    "continueAnyway": "Continue in portrait",
+    "instruction": "Rotate your device for better experience"
   },
   "publicTours": {
     "title": "Public Tours",

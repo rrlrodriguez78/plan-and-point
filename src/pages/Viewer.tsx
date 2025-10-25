@@ -20,7 +20,7 @@ const Viewer = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  const { shouldShowOrientationWarning } = useDeviceOrientation();
+  const { shouldShowOrientationWarning, lockLandscape, isMobile } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
@@ -35,6 +35,20 @@ const Viewer = () => {
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordProtected, setPasswordProtected] = useState(false);
   const [passwordUpdatedAt, setPasswordUpdatedAt] = useState<string | null>(null);
+
+  // Intentar rotación automática al entrar (solo móviles)
+  useEffect(() => {
+    const tryAutoRotate = async () => {
+      if (isMobile && !userDismissedWarning) {
+        try {
+          await lockLandscape();
+        } catch (error) {
+          console.log('Rotación automática no disponible');
+        }
+      }
+    };
+    tryAutoRotate();
+  }, [isMobile, lockLandscape, userDismissedWarning]);
 
   useEffect(() => {
     loadTourData();
@@ -347,6 +361,14 @@ const Viewer = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedHotspot, toggleFullscreen, handleNextHotspot, handlePreviousHotspot]);
 
+  // Handler para reintentar rotación
+  const handleTryRotate = async () => {
+    const success = await lockLandscape();
+    if (success) {
+      setUserDismissedWarning(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -379,7 +401,10 @@ const Viewer = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Orientation Warning */}
       {shouldShowOrientationWarning && !userDismissedWarning && (
-        <OrientationWarning onDismiss={() => setUserDismissedWarning(true)} />
+        <OrientationWarning 
+          onContinue={() => setUserDismissedWarning(true)}
+          onTryRotate={handleTryRotate}
+        />
       )}
       
       {/* Header */}
