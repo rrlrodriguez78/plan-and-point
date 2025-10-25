@@ -47,8 +47,8 @@ export const HotspotModal = ({
   if (!hotspot) return null;
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4 safe-area-inset animate-in fade-in duration-200">
-      <Card className="max-w-3xl w-full max-h-[90vh] md:max-h-[85vh] relative overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <Card className="max-w-3xl w-full max-h-[85vh] relative overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Large Side Navigation Buttons - SIEMPRE VISIBLES */}
         {availableHotspots.length > 0 && (
           <>
@@ -57,10 +57,10 @@ export const HotspotModal = ({
               size="icon"
               onClick={onPrevious}
               disabled={!onPrevious || currentIndex === undefined || currentIndex <= 0}
-              className="absolute left-1 md:left-2 top-1/2 -translate-y-1/2 text-foreground bg-background/60 hover:bg-background/80 backdrop-blur-sm rounded-full h-12 w-12 md:h-14 md:w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-10 touch-manipulation"
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground bg-background/60 hover:bg-background/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-10"
               title="Punto anterior"
             >
-              <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
+              <ChevronLeft className="w-8 h-8" />
             </Button>
 
             <Button 
@@ -68,15 +68,15 @@ export const HotspotModal = ({
               size="icon"
               onClick={onNext}
               disabled={!onNext || currentIndex === undefined || totalCount === undefined || currentIndex >= totalCount - 1}
-              className="absolute right-1 md:right-2 top-1/2 -translate-y-1/2 text-foreground bg-background/60 hover:bg-background/80 backdrop-blur-sm rounded-full h-12 w-12 md:h-14 md:w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-10 touch-manipulation"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground bg-background/60 hover:bg-background/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-10"
               title="Punto siguiente"
             >
-              <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
+              <ChevronRight className="w-8 h-8" />
             </Button>
           </>
         )}
 
-        <div className="p-4 md:p-6 overflow-auto max-h-[90vh] md:max-h-[85vh] -webkit-overflow-scrolling-touch">
+        <div className="p-6 overflow-auto max-h-[85vh]">
           {/* Header with Floor Selector and Hotspot List */}
           <div className="flex justify-between items-start mb-4 gap-2">
             <div className="flex-1 flex items-start gap-2 flex-wrap">
