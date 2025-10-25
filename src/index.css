@@ -81,6 +81,33 @@ img, svg {
   background: hsl(var(--primary) / 0.5);
 }
 
+/* Safe areas para notch y curved screens (Samsung/iPhone) */
+.container,
+[class*="container"] {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Botones más grandes para touch (44px mínimo según Apple HIG) */
+button,
+.btn,
+[role="button"],
+a[class*="button"] {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px 16px;
+}
+
+/* Mejorar visibilidad en pantallas AMOLED (Samsung) */
+@media (prefers-color-scheme: dark) {
+  .card,
+  [class*="card"] {
+    background: #1a1a1a; /* Negro puro para AMOLED - ahorra batería */
+  }
+}
+
 /* Media query específico para Samsung Galaxy */
 @media screen and (max-width: 428px) {
   /* Ajustar padding para pantallas Samsung pequeñas */
