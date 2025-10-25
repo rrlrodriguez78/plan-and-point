@@ -6,7 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Eye, Edit, Trash2, Globe, Lock } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon } from 'lucide-react';
 import TourSetupModal from '@/components/editor/TourSetupModal';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +21,7 @@ interface Tour {
   description: string;
   is_published: boolean;
   created_at: string;
+  cover_image_url?: string;
 }
 
 const Dashboard = () => {
@@ -32,6 +33,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [savingTour, setSavingTour] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -96,6 +98,7 @@ const Dashboard = () => {
           title: tourData.title,
           description: tourData.description,
           organization_id: organization.id,
+          cover_image_url: tourData.coverImageUrl,
         })
         .select()
         .single();
@@ -112,6 +115,52 @@ const Dashboard = () => {
     } finally {
       setSavingTour(false);
     }
+  };
+
+  const handleUploadCover = async (tourId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      setUploadingCover(tourId);
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${tourId}/cover-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('tour-images')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('tour-images')
+          .getPublicUrl(fileName);
+
+        const { error: updateError } = await supabase
+          .from('virtual_tours')
+          .update({ cover_image_url: publicUrl })
+          .eq('id', tourId);
+
+        if (updateError) throw updateError;
+
+        setTours(tours.map(t => 
+          t.id === tourId ? { ...t, cover_image_url: publicUrl } : t
+        ));
+        toast.success(t('dashboard.coverUploaded'));
+      } catch (error) {
+        console.error('Error uploading cover:', error);
+        toast.error(t('dashboard.errorUploadingCover'));
+      } finally {
+        setUploadingCover(null);
+      }
+    };
+
+    input.click();
   };
 
   const deleteTour = async (id: string) => {
@@ -186,7 +235,38 @@ const Dashboard = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tours.map((tour) => (
-              <Card key={tour.id} className="hover:shadow-lg transition-all">
+              <Card key={tour.id} className="hover:shadow-lg transition-all overflow-hidden">
+                <div className="relative aspect-video bg-muted">
+                  {tour.cover_image_url ? (
+                    <>
+                      <img 
+                        src={tour.cover_image_url} 
+                        alt={tour.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleUploadCover(tour.id)}
+                        disabled={uploadingCover === tour.id}
+                        className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleUploadCover(tour.id)}
+                        disabled={uploadingCover === tour.id}
+                      >
+                        <ImageIcon className="w-4 h-4 mr-2" />
+                        {uploadingCover === tour.id ? t('common.loading') : t('dashboard.addCover')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 <CardHeader>
                   <div className="flex justify-between items-start mb-2">
                     <CardTitle className="text-xl">{tour.title}</CardTitle>
