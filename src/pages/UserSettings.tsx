@@ -36,12 +36,10 @@ import { SyncSettings } from '@/components/settings/SyncSettings';
 import { AudioVideoSettings } from '@/components/settings/AudioVideoSettings';
 import { AnalyticsSettings } from '@/components/settings/AnalyticsSettings';
 import { AccountSettings } from '@/components/settings/AccountSettings';
-import { useTheme } from '@/components/contexts/ThemeContext';
 
 const UserSettings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { theme, setTheme } = useTheme();
   const { settings, loading: settingsLoading, updateSettings } = useUserSettings();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
@@ -61,13 +59,6 @@ const UserSettings = () => {
       loadProfile();
     }
   }, [user]);
-
-  // Sync theme with settings
-  useEffect(() => {
-    if (settings.theme !== theme) {
-      setTheme(settings.theme);
-    }
-  }, [settings.theme]);
 
   const loadProfile = async () => {
     if (!user) return;
