@@ -13,6 +13,7 @@ import PublicTours from "./pages/PublicTours";
 import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
 import Settings from "./pages/Settings";
+import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/app/tours-publicos" element={<PublicTours />} />
               <Route path="/app/editor/:id" element={<Editor />} />
               <Route path="/app/settings" element={<Settings />} />
+              <Route path="/app/user-settings" element={<UserSettings />} />
               <Route path="/viewer/:id" element={<Viewer />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
