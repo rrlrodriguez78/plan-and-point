@@ -62,23 +62,35 @@ export const TourPasswordDialog = ({
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔐 Invocando set-tour-password:', { tour_id: tourId, enabled, has_password: !!password });
       
-      if (!session) {
+      const { data, error } = await supabase.functions.invoke('set-tour-password', {
+        body: { tour_id: tourId, password, enabled },
+      });
+
+      console.log('📡 Respuesta de set-tour-password:', { data, error });
+
+      if (error) {
+        console.error('❌ Error de la edge function:', error);
         toast({
           title: 'Error',
-          description: 'No hay sesión activa',
+          description: error.message || 'No se pudo configurar la contraseña',
           variant: 'destructive',
         });
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('set-tour-password', {
-        body: { tour_id: tourId, password, enabled },
-      });
+      if (!data || !data.success) {
+        console.error('❌ Operación no exitosa:', data);
+        toast({
+          title: 'Error',
+          description: 'La operación no se completó correctamente',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      if (error) throw error;
-
+      console.log('✅ Contraseña configurada exitosamente');
       toast({
         title: enabled ? t('tourPassword.passwordSet') : t('tourPassword.passwordRemoved'),
         description: enabled 
@@ -91,7 +103,7 @@ export const TourPasswordDialog = ({
       setPassword('');
       setConfirmPassword('');
     } catch (error) {
-      console.error('Error setting password:', error);
+      console.error('💥 Error inesperado:', error);
       toast({
         title: 'Error',
         description: 'No se pudo configurar la contraseña',
