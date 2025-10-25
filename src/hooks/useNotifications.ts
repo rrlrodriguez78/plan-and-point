@@ -44,7 +44,12 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
 
   const loadNotifications = async () => {
-    if (!user) return;
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -56,10 +61,12 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.read).length || 0);
+      const notificationsData = data || [];
+      setNotifications(notificationsData);
+      setUnreadCount(notificationsData.filter(n => !n.read).length);
     } catch (error) {
       console.error('Error loading notifications:', error);
+      // No resetear estado en error, mantener notificaciones existentes
     } finally {
       setLoading(false);
     }
@@ -126,11 +133,21 @@ export const useNotifications = () => {
   };
 
   useEffect(() => {
-    loadNotifications();
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
 
-    // Subscribe to realtime notifications
-    if (user) {
-      const channel = supabase
+    let channel: any;
+
+    const setupRealtime = async () => {
+      // Cargar notificaciones iniciales
+      await loadNotifications();
+
+      // Configurar canal realtime
+      channel = supabase
         .channel('notifications')
         .on(
           'postgres_changes',
@@ -141,19 +158,63 @@ export const useNotifications = () => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            setNotifications(prev => [payload.new as Notification, ...prev]);
-            setUnreadCount(prev => prev + 1);
+            const newNotification = payload.new as Notification;
             
-            // Play notification sound
-            playNotificationSound();
+            // Evitar duplicados
+            setNotifications(prev => {
+              const exists = prev.find(n => n.id === newNotification.id);
+              if (exists) return prev;
+              
+              return [newNotification, ...prev];
+            });
+            
+            // Solo incrementar si no está leída
+            if (!newNotification.read) {
+              setUnreadCount(prev => prev + 1);
+              playNotificationSound(); // 🔔 Solo sonar para no leídas
+            }
           }
         )
-        .subscribe();
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            const updatedNotification = payload.new as Notification;
+            
+            setNotifications(prev =>
+              prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
+            );
+            
+            // Recalcular unreadCount después de actualización
+            setUnreadCount(prev => {
+              const oldRead = (payload.old as any).read;
+              const newRead = updatedNotification.read;
+              
+              if (oldRead && !newRead) return prev + 1;  // Se marcó como no leída
+              if (!oldRead && newRead) return Math.max(0, prev - 1);  // Se marcó como leída
+              return prev;  // Sin cambio en estado read
+            });
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Notifications channel subscribed');
+          }
+        });
+    };
 
-      return () => {
+    setupRealtime();
+
+    return () => {
+      if (channel) {
         supabase.removeChannel(channel);
-      };
-    }
+      }
+    };
   }, [user]);
 
   return {
