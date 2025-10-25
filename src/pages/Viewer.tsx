@@ -111,11 +111,10 @@ const Viewer = () => {
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen();
-      setIsFullscreen(false);
     }
+    // El estado se actualizará automáticamente por el listener
   }, []);
 
   const loadPanoramaPhotos = async (hotspotId: string) => {
@@ -174,6 +173,26 @@ const Viewer = () => {
     acc[floorId] = hotspotsByFloor[floorId].length;
     return acc;
   }, {} as Record<string, number>);
+
+  // Sincronizar estado de fullscreen automáticamente
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const newFullscreenState = !!document.fullscreenElement;
+      setIsFullscreen(newFullscreenState);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
