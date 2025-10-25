@@ -442,7 +442,22 @@
     "noTours": "Aucune visite publique disponible",
     "searchPlaceholder": "Rechercher des visites...",
     "viewTour": "Voir la Visite",
-    "errorLoading": "Erreur lors du chargement des visites publiques"
+    "errorLoading": "Erreur lors du chargement des visites publiques",
+    "liked": "Visite aimée!",
+    "unliked": "J'aime supprimé",
+    "errorLike": "Erreur lors de la mise à jour du j'aime",
+    "commentAdded": "Commentaire ajouté avec succès!",
+    "errorComment": "Erreur lors de l'ajout du commentaire",
+    "commentRequired": "Le commentaire est requis",
+    "addComment": "Ajouter un Commentaire",
+    "name": "Nom",
+    "email": "Email",
+    "comment": "Commentaire",
+    "optional": "optionnel",
+    "namePlaceholder": "Votre nom",
+    "emailPlaceholder": "votre@email.com",
+    "commentPlaceholder": "Partagez votre avis sur cette visite...",
+    "submit": "Soumettre"
   },
   "tourPassword": {
     "title": "Protection par Mot de Passe",

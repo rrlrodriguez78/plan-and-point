@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Globe, Search, Lock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Eye, Globe, Search, Lock, Heart, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -21,13 +24,27 @@ interface Tour {
   password_protected?: boolean;
 }
 
+interface TourAnalytics {
+  tour_id: string;
+  likes_count: number;
+  comments_count: number;
+}
+
 const PublicTours = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [tours, setTours] = useState<Tour[]>([]);
   const [filteredTours, setFilteredTours] = useState<Tour[]>([]);
+  const [analytics, setAnalytics] = useState<Record<string, TourAnalytics>>({});
+  const [likedTours, setLikedTours] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [commentDialogOpen, setCommentDialogOpen] = useState<string | null>(null);
+  const [commentForm, setCommentForm] = useState({
+    name: '',
+    email: '',
+    comment: ''
+  });
 
   useEffect(() => {
     fetchPublicTours();
@@ -57,11 +74,145 @@ const PublicTours = () => {
       if (error) throw error;
       setTours(data || []);
       setFilteredTours(data || []);
+
+      // Fetch analytics for all tours
+      if (data && data.length > 0) {
+        const { data: analyticsData } = await supabase
+          .from('tour_analytics')
+          .select('tour_id, likes_count, comments_count')
+          .in('tour_id', data.map(t => t.id));
+
+        if (analyticsData) {
+          const analyticsMap: Record<string, TourAnalytics> = {};
+          analyticsData.forEach(a => {
+            analyticsMap[a.tour_id] = a;
+          });
+          setAnalytics(analyticsMap);
+        }
+      }
+
+      // Load liked tours from localStorage
+      const storedLikes = localStorage.getItem('likedTours');
+      if (storedLikes) {
+        setLikedTours(new Set(JSON.parse(storedLikes)));
+      }
     } catch (error) {
       console.error('Error fetching public tours:', error);
       toast.error(t('publicTours.errorLoading'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLike = async (tourId: string) => {
+    const isLiked = likedTours.has(tourId);
+    
+    try {
+      // Get current analytics
+      const { data: currentAnalytics } = await supabase
+        .from('tour_analytics')
+        .select('likes_count')
+        .eq('tour_id', tourId)
+        .single();
+
+      const currentLikes = currentAnalytics?.likes_count || 0;
+      const newLikes = isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
+
+      // Update analytics
+      const { error } = await supabase
+        .from('tour_analytics')
+        .upsert({
+          tour_id: tourId,
+          likes_count: newLikes
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      const newLikedTours = new Set(likedTours);
+      if (isLiked) {
+        newLikedTours.delete(tourId);
+      } else {
+        newLikedTours.add(tourId);
+      }
+      setLikedTours(newLikedTours);
+      localStorage.setItem('likedTours', JSON.stringify(Array.from(newLikedTours)));
+
+      // Update analytics state
+      setAnalytics(prev => ({
+        ...prev,
+        [tourId]: {
+          ...prev[tourId],
+          tour_id: tourId,
+          likes_count: newLikes,
+          comments_count: prev[tourId]?.comments_count || 0
+        }
+      }));
+
+      toast.success(isLiked ? t('publicTours.unliked') : t('publicTours.liked'));
+    } catch (error) {
+      console.error('Error updating like:', error);
+      toast.error(t('publicTours.errorLike'));
+    }
+  };
+
+  const handleComment = async (tourId: string) => {
+    if (!commentForm.comment.trim()) {
+      toast.error(t('publicTours.commentRequired'));
+      return;
+    }
+
+    try {
+      // Insert comment
+      const { error: commentError } = await supabase
+        .from('tour_comments')
+        .insert({
+          tour_id: tourId,
+          commenter_name: commentForm.name.trim() || null,
+          commenter_email: commentForm.email.trim() || null,
+          comment_text: commentForm.comment.trim(),
+          is_read: false
+        });
+
+      if (commentError) throw commentError;
+
+      // Get current analytics
+      const { data: currentAnalytics } = await supabase
+        .from('tour_analytics')
+        .select('comments_count')
+        .eq('tour_id', tourId)
+        .single();
+
+      const currentComments = currentAnalytics?.comments_count || 0;
+
+      // Update analytics
+      const { error: analyticsError } = await supabase
+        .from('tour_analytics')
+        .upsert({
+          tour_id: tourId,
+          comments_count: currentComments + 1
+        });
+
+      if (analyticsError) throw analyticsError;
+
+      // Update local analytics state
+      setAnalytics(prev => ({
+        ...prev,
+        [tourId]: {
+          ...prev[tourId],
+          tour_id: tourId,
+          likes_count: prev[tourId]?.likes_count || 0,
+          comments_count: currentComments + 1
+        }
+      }));
+
+      // Reset form and close dialog
+      setCommentForm({ name: '', email: '', comment: '' });
+      setCommentDialogOpen(null);
+      toast.success(t('publicTours.commentAdded'));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error(t('publicTours.errorComment'));
     }
   };
 
@@ -149,7 +300,76 @@ const PublicTours = () => {
                     </CardDescription>
                   )}
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <Button
+                      onClick={() => handleLike(tour.id)}
+                      variant={likedTours.has(tour.id) ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Heart className={`w-4 h-4 mr-1 ${likedTours.has(tour.id) ? 'fill-current' : ''}`} />
+                      {analytics[tour.id]?.likes_count || 0}
+                    </Button>
+
+                    <Dialog open={commentDialogOpen === tour.id} onOpenChange={(open) => setCommentDialogOpen(open ? tour.id : null)}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          {analytics[tour.id]?.comments_count || 0}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{t('publicTours.addComment')}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="name">{t('publicTours.name')} ({t('publicTours.optional')})</Label>
+                            <Input
+                              id="name"
+                              value={commentForm.name}
+                              onChange={(e) => setCommentForm(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder={t('publicTours.namePlaceholder')}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="email">{t('publicTours.email')} ({t('publicTours.optional')})</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={commentForm.email}
+                              onChange={(e) => setCommentForm(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder={t('publicTours.emailPlaceholder')}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="comment">{t('publicTours.comment')} *</Label>
+                            <Textarea
+                              id="comment"
+                              value={commentForm.comment}
+                              onChange={(e) => setCommentForm(prev => ({ ...prev, comment: e.target.value }))}
+                              placeholder={t('publicTours.commentPlaceholder')}
+                              rows={4}
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="outline" onClick={() => setCommentDialogOpen(null)}>
+                              {t('common.cancel')}
+                            </Button>
+                            <Button onClick={() => handleComment(tour.id)}>
+                              {t('publicTours.submit')}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  
                   <Button
                     onClick={() => viewTour(tour.id)}
                     className="w-full"

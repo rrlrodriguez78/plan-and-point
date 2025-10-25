@@ -442,7 +442,22 @@
     "noTours": "Keine öffentlichen Touren verfügbar",
     "searchPlaceholder": "Touren suchen...",
     "viewTour": "Tour Ansehen",
-    "errorLoading": "Fehler beim Laden der öffentlichen Touren"
+    "errorLoading": "Fehler beim Laden der öffentlichen Touren",
+    "liked": "Tour geliked!",
+    "unliked": "Like entfernt",
+    "errorLike": "Fehler beim Aktualisieren des Likes",
+    "commentAdded": "Kommentar erfolgreich hinzugefügt!",
+    "errorComment": "Fehler beim Hinzufügen des Kommentars",
+    "commentRequired": "Kommentar ist erforderlich",
+    "addComment": "Kommentar hinzufügen",
+    "name": "Name",
+    "email": "E-Mail",
+    "comment": "Kommentar",
+    "optional": "optional",
+    "namePlaceholder": "Ihr Name",
+    "emailPlaceholder": "ihre@email.com",
+    "commentPlaceholder": "Teilen Sie Ihre Meinung zu dieser Tour...",
+    "submit": "Absenden"
   },
   "tourPassword": {
     "title": "Passwortschutz",

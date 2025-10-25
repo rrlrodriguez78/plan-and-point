@@ -445,7 +445,22 @@
     "noTours": "No hay tours públicos disponibles",
     "searchPlaceholder": "Buscar tours...",
     "viewTour": "Ver Tour",
-    "errorLoading": "Error al cargar tours públicos"
+    "errorLoading": "Error al cargar tours públicos",
+    "liked": "¡Tour marcado como me gusta!",
+    "unliked": "Me gusta eliminado",
+    "errorLike": "Error al actualizar me gusta",
+    "commentAdded": "¡Comentario agregado exitosamente!",
+    "errorComment": "Error al agregar comentario",
+    "commentRequired": "El comentario es requerido",
+    "addComment": "Agregar Comentario",
+    "name": "Nombre",
+    "email": "Email",
+    "comment": "Comentario",
+    "optional": "opcional",
+    "namePlaceholder": "Tu nombre",
+    "emailPlaceholder": "tu@email.com",
+    "commentPlaceholder": "Comparte tu opinión sobre este tour...",
+    "submit": "Enviar"
   },
   "tourPassword": {
     "title": "Protección con Contraseña",

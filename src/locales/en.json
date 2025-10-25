@@ -445,7 +445,22 @@
     "searchPlaceholder": "Search tours...",
     "viewTour": "View Tour",
     "noTours": "No tours available",
-    "errorLoading": "Error loading tours"
+    "errorLoading": "Error loading tours",
+    "liked": "Tour liked!",
+    "unliked": "Like removed",
+    "errorLike": "Error updating like",
+    "commentAdded": "Comment added successfully!",
+    "errorComment": "Error adding comment",
+    "commentRequired": "Comment is required",
+    "addComment": "Add Comment",
+    "name": "Name",
+    "email": "Email",
+    "comment": "Comment",
+    "optional": "optional",
+    "namePlaceholder": "Your name",
+    "emailPlaceholder": "your@email.com",
+    "commentPlaceholder": "Share your thoughts about this tour...",
+    "submit": "Submit"
   },
   "tourPassword": {
     "title": "Password Protection",
