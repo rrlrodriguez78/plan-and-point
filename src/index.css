@@ -6,6 +6,100 @@
 All colors MUST be HSL.
 */
 
+/* ============================================
+   SAMSUNG & MOBILE OPTIMIZATIONS
+   ============================================ */
+
+/* Viewport optimizado para Samsung */
+@viewport {
+  width: device-width;
+  zoom: 1.0;
+  min-zoom: 0.25;
+  max-zoom: 5;
+}
+
+/* Prevenir zoom automático en inputs (Samsung) */
+input, 
+select, 
+textarea,
+button {
+  font-size: 16px !important; /* Samsung zoom automático se activa con font < 16px */
+}
+
+/* Mejorar scrolling táctil en toda la app */
+html {
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling en iOS/Samsung */
+  touch-action: manipulation; /* Elimina delay de 300ms en taps */
+}
+
+/* Optimizar para One UI (Samsung) */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SamsungOne', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent; /* Elimina highlight azul en Samsung */
+}
+
+/* Mejorar rendimiento de animaciones en móviles */
+* {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Optimizar gestos táctiles */
+a, button, [role="button"] {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prevenir selección accidental en elementos interactivos */
+img, svg {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+/* Mejorar visibilidad de scroll en Samsung */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
+}
+
+/* Media query específico para Samsung Galaxy */
+@media screen and (max-width: 428px) {
+  /* Ajustar padding para pantallas Samsung pequeñas */
+  body {
+    padding: 0;
+  }
+  
+  /* Asegurar que los modals no se corten en pantallas pequeñas */
+  [role="dialog"],
+  [role="alertdialog"] {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* ============================================
+   FIN SAMSUNG OPTIMIZATIONS
+   ============================================ */
+
 @layer base {
   :root {
     --background: 220 25% 97%;
