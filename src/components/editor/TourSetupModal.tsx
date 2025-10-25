@@ -465,7 +465,6 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                     onClick={handleNextStep}
                     disabled={
                       (currentStep === 1 && !tourData.title.trim()) ||
-                      (currentStep === 2 && !tourData.description.trim()) ||
                       isUploadingCover ||
                       !!serverError
                     }
