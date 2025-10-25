@@ -244,6 +244,24 @@ const Dashboard = () => {
                         alt={tour.title}
                         className="w-full h-full object-cover"
                       />
+                      <div className="absolute top-2 left-2 flex gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate(`/app/editor/${tour.id}`)}
+                          className="backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => deleteTour(tour.id)}
+                          className="backdrop-blur-sm bg-black/40 hover:bg-red-600/60 transition-all border border-white/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                       <Button
                         variant="secondary"
                         size="sm"
@@ -281,35 +299,17 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex gap-2">
+                  {tour.is_published && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/app/editor/${tour.id}`)}
-                      className="flex-1"
+                      onClick={() => navigate(`/viewer/${tour.id}`)}
+                      className="w-full"
                     >
-                      <Edit className="w-4 h-4 mr-2" />
-                      {t('dashboard.edit')}
+                      <Eye className="w-4 h-4 mr-2" />
+                      {t('dashboard.view')}
                     </Button>
-                    {tour.is_published && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/viewer/${tour.id}`)}
-                        className="flex-1"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        {t('dashboard.view')}
-                      </Button>
-                    )}
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteTour(tour.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
