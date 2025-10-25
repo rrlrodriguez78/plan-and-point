@@ -3,6 +3,9 @@ import { useRef, useState, useCallback, useEffect, RefObject } from 'react';
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 0.15;
+const MOBILE_BREAKPOINT = 768;
+const MOBILE_INITIAL_SCALE = 0.8; // 80% para móviles
+const DESKTOP_INITIAL_SCALE = 1.0; // 100% para desktop
 
 interface Transform {
   scale: number;
@@ -23,8 +26,13 @@ export const useZoomPan = (): UseZoomPanReturn => {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
+  // Detectar si es móvil al inicializar
+  const getInitialScale = () => {
+    return window.innerWidth < MOBILE_BREAKPOINT ? MOBILE_INITIAL_SCALE : DESKTOP_INITIAL_SCALE;
+  };
+  
   const [transform, setTransform] = useState<Transform>({
-    scale: 1,
+    scale: getInitialScale(),
     x: 0,
     y: 0,
   });
@@ -80,9 +88,12 @@ export const useZoomPan = (): UseZoomPanReturn => {
     setScale(transform.scale - ZOOM_STEP);
   }, [transform.scale, setScale]);
 
-  // Reset transform
+  // Reset transform (dinámico según el tamaño actual de la ventana)
   const resetTransform = useCallback(() => {
-    setTransform({ scale: 1, x: 0, y: 0 });
+    const currentIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
+    const resetScale = currentIsMobile ? MOBILE_INITIAL_SCALE : DESKTOP_INITIAL_SCALE;
+    
+    setTransform({ scale: resetScale, x: 0, y: 0 });
   }, []);
 
   // Handle wheel zoom
