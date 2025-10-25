@@ -15,6 +15,7 @@ import { OrientationWarning } from '@/components/viewer/OrientationWarning';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 import { TourPasswordPrompt } from '@/components/viewer/TourPasswordPrompt';
+import { DeviceDebug } from '@/components/DeviceDebug';
 
 const Viewer = () => {
   const { id } = useParams();
@@ -377,6 +378,9 @@ const Viewer = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Device Debug Info */}
+      <DeviceDebug />
+      
       {/* Orientation Warning */}
       {shouldShowOrientationWarning && !userDismissedWarning && (
         <OrientationWarning onDismiss={() => setUserDismissedWarning(true)} />
