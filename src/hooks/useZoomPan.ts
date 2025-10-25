@@ -1,10 +1,11 @@
 import { useRef, useState, useCallback, useEffect, RefObject } from 'react';
+import { useDeviceDetection } from './useDeviceDetection';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 0.15;
-const MOBILE_BREAKPOINT = 768;
 const MOBILE_INITIAL_SCALE = 0.5; // 50% para móviles
+const TABLET_INITIAL_SCALE = 0.7; // 70% para tablets
 const DESKTOP_INITIAL_SCALE = 1.0; // 100% para desktop
 
 interface Transform {
@@ -26,10 +27,15 @@ export const useZoomPan = (): UseZoomPanReturn => {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Detectar si es móvil al inicializar
-  const getInitialScale = () => {
-    return window.innerWidth < MOBILE_BREAKPOINT ? MOBILE_INITIAL_SCALE : DESKTOP_INITIAL_SCALE;
-  };
+  // Usar detección híbrida de dispositivos
+  const { isMobile, isTablet, isDesktop } = useDeviceDetection();
+  
+  // Determinar escala inicial basada en detección híbrida
+  const getInitialScale = useCallback(() => {
+    if (isMobile) return MOBILE_INITIAL_SCALE;
+    if (isTablet) return TABLET_INITIAL_SCALE;
+    return DESKTOP_INITIAL_SCALE;
+  }, [isMobile, isTablet]);
   
   const [transform, setTransform] = useState<Transform>({
     scale: getInitialScale(),
@@ -88,13 +94,11 @@ export const useZoomPan = (): UseZoomPanReturn => {
     setScale(transform.scale - ZOOM_STEP);
   }, [transform.scale, setScale]);
 
-  // Reset transform (dinámico según el tamaño actual de la ventana)
+  // Reset transform (usando detección híbrida)
   const resetTransform = useCallback(() => {
-    const currentIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
-    const resetScale = currentIsMobile ? MOBILE_INITIAL_SCALE : DESKTOP_INITIAL_SCALE;
-    
+    const resetScale = getInitialScale();
     setTransform({ scale: resetScale, x: 0, y: 0 });
-  }, []);
+  }, [getInitialScale]);
 
   // Handle wheel zoom
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -192,42 +196,30 @@ export const useZoomPan = (): UseZoomPanReturn => {
     };
   }, [handleWheel, handlePointerDown, handlePointerMove, handlePointerUp]);
 
-  // Effect para ajustar zoom cuando cambia el tamaño de pantalla (rotación)
+  // Effect para ajustar zoom cuando cambia el tipo de dispositivo
   useEffect(() => {
-    const handleOrientationChange = () => {
-      const currentWidth = window.innerWidth;
-      const isMobileNow = currentWidth < MOBILE_BREAKPOINT;
+    // Detectar si está en escala por defecto (móvil, tablet o desktop)
+    const isAtDefaultScale = 
+      Math.abs(transform.scale - MOBILE_INITIAL_SCALE) < 0.01 ||
+      Math.abs(transform.scale - TABLET_INITIAL_SCALE) < 0.01 ||
+      Math.abs(transform.scale - DESKTOP_INITIAL_SCALE) < 0.01;
+    
+    // Solo ajustar si el usuario no ha hecho zoom manual
+    if (isAtDefaultScale) {
+      const newScale = getInitialScale();
       
-      // Detectar si está en escala por defecto
-      const isAtDefaultScale = 
-        Math.abs(transform.scale - MOBILE_INITIAL_SCALE) < 0.01 ||
-        Math.abs(transform.scale - DESKTOP_INITIAL_SCALE) < 0.01;
-      
-      // Solo ajustar si el usuario no ha hecho zoom manual
-      if (isAtDefaultScale) {
-        const newScale = isMobileNow ? MOBILE_INITIAL_SCALE : DESKTOP_INITIAL_SCALE;
-        
-        // Solo actualizar si realmente cambió el tipo de dispositivo
-        if (Math.abs(transform.scale - newScale) > 0.01) {
-          setTransform(prev => ({
-            ...prev,
-            scale: newScale,
-            // Mantener posición proporcional al cambiar zoom
-            x: prev.x * (newScale / prev.scale),
-            y: prev.y * (newScale / prev.scale)
-          }));
-        }
+      // Solo actualizar si realmente cambió la escala
+      if (Math.abs(transform.scale - newScale) > 0.01) {
+        setTransform(prev => ({
+          ...prev,
+          scale: newScale,
+          // Mantener posición proporcional al cambiar zoom
+          x: prev.x * (newScale / prev.scale),
+          y: prev.y * (newScale / prev.scale)
+        }));
       }
-    };
-    
-    window.addEventListener('resize', handleOrientationChange);
-    window.addEventListener('orientationchange', handleOrientationChange);
-    
-    return () => {
-      window.removeEventListener('resize', handleOrientationChange);
-      window.removeEventListener('orientationchange', handleOrientationChange);
-    };
-  }, [transform.scale, transform.x, transform.y]);
+    }
+  }, [isMobile, isTablet, isDesktop, getInitialScale]);
 
   return {
     transform,
