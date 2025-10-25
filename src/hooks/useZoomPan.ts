@@ -28,14 +28,20 @@ export const useZoomPan = (): UseZoomPanReturn => {
   const contentRef = useRef<HTMLDivElement>(null);
   
   // Usar detección híbrida de dispositivos
-  const { isMobile, isTablet, isDesktop } = useDeviceDetection();
+  const { deviceType, isMobile, isTablet, isDesktop } = useDeviceDetection();
   
-  // Determinar escala inicial basada en detección híbrida
+  // Determinar escala inicial basada en tipo de dispositivo
   const getInitialScale = useCallback(() => {
-    if (isMobile) return MOBILE_INITIAL_SCALE;
-    if (isTablet) return TABLET_INITIAL_SCALE;
-    return DESKTOP_INITIAL_SCALE;
-  }, [isMobile, isTablet]);
+    switch (deviceType) {
+      case 'mobile':
+        return MOBILE_INITIAL_SCALE;
+      case 'tablet':
+        return TABLET_INITIAL_SCALE;
+      case 'desktop':
+      default:
+        return DESKTOP_INITIAL_SCALE;
+    }
+  }, [deviceType]);
   
   const [transform, setTransform] = useState<Transform>({
     scale: getInitialScale(),
@@ -219,7 +225,7 @@ export const useZoomPan = (): UseZoomPanReturn => {
         }));
       }
     }
-  }, [isMobile, isTablet, isDesktop, getInitialScale]);
+  }, [deviceType, getInitialScale]);
 
   return {
     transform,
