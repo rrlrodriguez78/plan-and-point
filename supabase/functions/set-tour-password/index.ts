@@ -68,23 +68,15 @@ serve(async (req) => {
     }
     console.log('✅ User authenticated:', user.id);
 
-    console.log('🔍 Fetching tour and verifying ownership...');
+    console.log('🔍 Fetching tour...');
     const { data: tour, error: tourError } = await supabaseClient
       .from('virtual_tours')
-      .select('organization_id, organizations(owner_id)')
+      .select('organization_id')
       .eq('id', tour_id)
       .single();
 
-    if (tourError) {
+    if (tourError || !tour) {
       console.error('❌ Error fetching tour:', tourError);
-      return new Response(
-        JSON.stringify({ error: 'Tour not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!tour) {
-      console.error('❌ Tour not found:', tour_id);
       return new Response(
         JSON.stringify({ error: 'Tour not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -93,21 +85,38 @@ serve(async (req) => {
 
     console.log('📋 Tour data:', tour);
 
-    // @ts-ignore - Supabase types
-    if (tour.organizations.owner_id !== user.id) {
-      console.error('❌ User is not owner. Owner:', tour.organizations.owner_id, 'User:', user.id);
+    // Create admin client for ownership verification and updates
+    console.log('🔧 Creating admin client...');
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    console.log('🔍 Fetching organization owner...');
+    const { data: org, error: orgError } = await supabaseAdmin
+      .from('organizations')
+      .select('owner_id')
+      .eq('id', tour.organization_id)
+      .single();
+
+    if (orgError || !org) {
+      console.error('❌ Error fetching organization:', orgError);
+      return new Response(
+        JSON.stringify({ error: 'Organization not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('👤 Organization owner:', org.owner_id);
+
+    if (org.owner_id !== user.id) {
+      console.error('❌ User is not owner. Owner:', org.owner_id, 'User:', user.id);
       return new Response(
         JSON.stringify({ error: 'You are not the owner of this tour' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     console.log('✅ Ownership verified');
-
-    console.log('🔧 Creating admin client...');
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     let updateData: any = { password_protected: enabled };
     console.log('📝 Preparing update data:', { enabled });
