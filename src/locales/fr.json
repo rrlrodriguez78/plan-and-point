@@ -120,7 +120,10 @@
     "noPhotosAvailable": "Aucune photo disponible",
     "noPhotosDescription": "Le hotspot '{{name}}' n'a pas de photos à afficher",
     "noPhotoForDate": "Aucune photo pour cette date",
-    "noPhotoForDateDescription": "Aucune photo disponible pour {{date}}"
+    "noPhotoForDateDescription": "Aucune photo disponible pour {{date}}",
+    "hotspotList": "Liste des hotspots",
+    "allHotspots": "Tous les points",
+    "hotspotsAvailable": "points disponibles"
   },
   "auth": {
     "login": "Se connecter",
