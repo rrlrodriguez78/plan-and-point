@@ -6,6 +6,17 @@ import * as LucideIcons from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Hotspot } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
+import { supabase } from '@/integrations/supabase/client';
+
+// Helper function to extract filename from URL
+const extractFilename = (url: string): string => {
+  try {
+    const parts = url.split('/');
+    return parts[parts.length - 1];
+  } catch {
+    return 'unknown';
+  }
+};
 
 interface HotspotEditorProps {
   imageUrl: string;
@@ -35,6 +46,43 @@ export default function HotspotEditor({
   const [debugClickPoint, setDebugClickPoint] = useState<{ x: number; y: number } | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [showCoordinates, setShowCoordinates] = useState(false);
+  const [photosData, setPhotosData] = useState<Record<string, { count: number; names: string[] }>>({});
+
+  // Load panorama photos for all hotspots
+  useEffect(() => {
+    const loadPhotos = async () => {
+      if (hotspots.length === 0) return;
+
+      const hotspotIds = hotspots.map(h => h.id);
+      
+      try {
+        const { data, error } = await supabase
+          .from('panorama_photos')
+          .select('hotspot_id, photo_url')
+          .in('hotspot_id', hotspotIds)
+          .order('display_order', { ascending: true });
+
+        if (error) throw error;
+
+        // Group photos by hotspot_id
+        const grouped: Record<string, { count: number; names: string[] }> = {};
+        
+        data?.forEach(photo => {
+          if (!grouped[photo.hotspot_id]) {
+            grouped[photo.hotspot_id] = { count: 0, names: [] };
+          }
+          grouped[photo.hotspot_id].count++;
+          grouped[photo.hotspot_id].names.push(extractFilename(photo.photo_url));
+        });
+
+        setPhotosData(grouped);
+      } catch (error) {
+        console.error('Error loading panorama photos:', error);
+      }
+    };
+
+    loadPhotos();
+  }, [hotspots]);
 
   // Gestión unificada de clics/taps en el canvas
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
@@ -218,12 +266,13 @@ export default function HotspotEditor({
           const size = hotspot.style?.size || 32;
           const isSelected = selectedIds.includes(hotspot.id);
           const isDragging = draggingId === hotspot.id;
+          const photoInfo = photosData[hotspot.id] || { count: 0, names: [] };
 
           return (
             <div
               key={hotspot.id}
               data-hotspot
-              className={`absolute ${
+              className={`group absolute ${
                 isDragging 
                   ? 'cursor-grabbing scale-125 shadow-2xl transition-transform duration-100' 
                   : 'cursor-grab hover:scale-110 transition-all duration-200'
@@ -252,9 +301,28 @@ export default function HotspotEditor({
                 e.stopPropagation();
                 handleHotspotPointerDown(hotspot, e);
               }}
-              title={hotspot.title}
             >
               {renderHotspotIcon(hotspot)}
+              
+              {/* Tooltip */}
+              <div className="absolute bottom-full mb-2 hidden group-hover:block animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                <div className="bg-card border border-border px-3 py-2 rounded-lg shadow-lg min-w-[200px]">
+                  <p className="text-sm font-medium text-foreground mb-1">{hotspot.title}</p>
+                  {photoInfo.count > 0 && (
+                    <div className="text-xs text-muted-foreground space-y-1 border-t border-border pt-1 mt-1">
+                      <p className="font-medium">📷 {photoInfo.count} {photoInfo.count === 1 ? 'foto' : 'fotos'}:</p>
+                      <ul className="space-y-0.5 pl-2">
+                        {photoInfo.names.slice(0, 3).map((name, idx) => (
+                          <li key={idx} className="truncate max-w-[180px]">• {name}</li>
+                        ))}
+                        {photoInfo.count > 3 && (
+                          <li className="text-muted-foreground/70">...y {photoInfo.count - 3} más</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}

@@ -10,6 +10,8 @@ interface HotspotPointProps {
   hasPanorama?: boolean;
   isSelected?: boolean;
   isManagementMode?: boolean;
+  photoCount?: number;
+  photoNames?: string[];
   style?: {
     icon?: string;
     color?: string;
@@ -26,6 +28,8 @@ export const HotspotPoint = ({
   hasPanorama, 
   isSelected = false,
   isManagementMode = false,
+  photoCount = 0,
+  photoNames = [],
   style 
 }: HotspotPointProps) => {
   const IconComponent = style?.icon 
@@ -86,8 +90,21 @@ export const HotspotPoint = ({
 
       {/* Tooltip */}
       <div className="absolute bottom-full mb-2 hidden group-hover:block animate-in fade-in zoom-in-95 duration-200">
-        <div className="bg-card border border-border px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-          <p className="text-sm font-medium text-foreground">{title}</p>
+        <div className="bg-card border border-border px-3 py-2 rounded-lg shadow-lg min-w-[200px]">
+          <p className="text-sm font-medium text-foreground mb-1">{title}</p>
+          {photoCount > 0 && (
+            <div className="text-xs text-muted-foreground space-y-1 border-t border-border pt-1 mt-1">
+              <p className="font-medium">📷 {photoCount} {photoCount === 1 ? 'foto' : 'fotos'}:</p>
+              <ul className="space-y-0.5 pl-2">
+                {photoNames.slice(0, 3).map((name, idx) => (
+                  <li key={idx} className="truncate max-w-[180px]">• {name}</li>
+                ))}
+                {photoCount > 3 && (
+                  <li className="text-muted-foreground/70">...y {photoCount - 3} más</li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </button>
