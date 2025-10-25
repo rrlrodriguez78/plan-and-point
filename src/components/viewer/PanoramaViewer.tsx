@@ -96,6 +96,7 @@ export default function PanoramaViewer({
   // Removed showControls state - controls are now always visible
   const [showInfo, setShowInfo] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenVersion, setFullscreenVersion] = useState(0);
   const [currentZoom, setCurrentZoom] = useState(120);
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
@@ -181,15 +182,22 @@ export default function PanoramaViewer({
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       console.log('Fullscreen changed:', isCurrentlyFullscreen);
       setIsFullscreen(isCurrentlyFullscreen);
+      setFullscreenVersion(v => v + 1);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
     
     // Detectar estado inicial al montar
     handleFullscreenChange();
     
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
   }, []);
 
@@ -626,7 +634,7 @@ export default function PanoramaViewer({
               <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
                 {/* Floor Selector */}
                 {floorPlans.length > 0 && currentFloorPlan && onFloorChange && (
-                  <DropdownMenu key={`floor-${isFullscreen}`} modal={false}>
+                  <DropdownMenu key={`floor-${fullscreenVersion}`} modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -679,7 +687,7 @@ export default function PanoramaViewer({
                 
                 {/* Dropdown de Puntos */}
                 {availableHotspots.length > 0 && (
-                  <DropdownMenu key={`hotspots-${isFullscreen}`} modal={false}>
+                  <DropdownMenu key={`hotspots-${fullscreenVersion}`} modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -725,7 +733,7 @@ export default function PanoramaViewer({
 
                 {/* Dropdown de Fechas */}
                 {availableDates.length > 0 && (
-                  <DropdownMenu key={`date-${isFullscreen}`} modal={false}>
+                  <DropdownMenu key={`date-${fullscreenVersion}`} modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
