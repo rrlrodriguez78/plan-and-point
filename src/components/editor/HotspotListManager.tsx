@@ -44,7 +44,7 @@ export default function HotspotListManager({
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredHotspots = hotspots.filter((h) =>
-    h.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (h.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     h.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
