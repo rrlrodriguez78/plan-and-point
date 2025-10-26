@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { Navbar } from '@/components/Navbar';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -23,6 +24,7 @@ interface Tour {
 
 export default function CreateTour() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,11 +39,12 @@ export default function CreateTour() {
     }
   }, [user, navigate]);
 
+  // Redirect to dashboard - this page no longer manages a specific tour
   useEffect(() => {
-    if (user) {
-      loadTour();
+    if (user && currentTenant) {
+      navigate('/app/dashboard');
     }
-  }, [user]);
+  }, [user, currentTenant, navigate]);
 
   const loadTour = async () => {
     try {

@@ -46,10 +46,14 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       // Set first tenant as current if none selected
       if (tenantsData.length > 0 && !currentTenant) {
         setCurrentTenant(tenantsData[0]);
+      } else if (tenantsData.length === 0) {
+        console.warn('Usuario no pertenece a ningún tenant');
+        setCurrentTenant(null);
       }
     } catch (error) {
       console.error('Error loading tenants:', error);
       setTenants([]);
+      setCurrentTenant(null);
     } finally {
       setLoading(false);
     }

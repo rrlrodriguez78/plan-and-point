@@ -210,6 +210,24 @@ const Dashboard = () => {
     );
   }
 
+  if (!currentTenant && !tenantLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          <Card className="p-12 text-center">
+            <CardHeader>
+              <CardTitle className="text-2xl">{t('dashboard.noAccess')}</CardTitle>
+              <CardDescription>
+                {t('dashboard.noAccessDescription')}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
