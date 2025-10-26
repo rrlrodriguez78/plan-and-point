@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, FileText, Image, CheckCircle2, XCircle, Loader2, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Upload, FileText, Image, CheckCircle2, XCircle, Loader2, Calendar as CalendarIcon, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { parseListFile, validateNames } from '@/utils/listParser';
-import { matchPhotosToNames, cleanupPreviews, type Match } from '@/utils/photoMatcher';
+import { matchPhotosToNames, cleanupPreviews, type Match, type PhotoGroup } from '@/utils/photoMatcher';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -25,15 +27,15 @@ interface AutoImportDialogProps {
 export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoImportDialogProps) => {
   const { toast } = useToast();
   const [listFile, setListFile] = useState<File | null>(null);
-  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [names, setNames] = useState<string[]>([]);
+  const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([
+    { id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }
+  ]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [placementMethod, setPlacementMethod] = useState<'manual' | 'auto'>('manual');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [manualDate, setManualDate] = useState<Date | undefined>(undefined);
   
   const listInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleListFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,7 +56,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
 
       setListFile(file);
       setNames(parsedNames);
-      setMatches([]); // Reset matches cuando cambia el archivo
+      setMatches([]);
       
       toast({
         title: "Archivo cargado",
@@ -69,24 +71,58 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     }
   };
 
-  const handlePhotoFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addPhotoGroup = () => {
+    setPhotoGroups(prev => [
+      ...prev,
+      { id: crypto.randomUUID(), name: `Grupo ${prev.length + 1}`, photos: [], manualDate: null }
+    ]);
+  };
+
+  const removePhotoGroup = (id: string) => {
+    if (photoGroups.length === 1) return;
+    setPhotoGroups(prev => prev.filter(g => g.id !== id));
+    setMatches([]);
+  };
+
+  const updateGroupName = (id: string, name: string) => {
+    setPhotoGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g));
+  };
+
+  const updateGroupDate = (id: string, date: Date | undefined) => {
+    setPhotoGroups(prev => prev.map(g => g.id === id ? { ...g, manualDate: date || null } : g));
+  };
+
+  const handleGroupFilesChange = (groupId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setPhotoFiles(files);
-    setMatches([]); // Reset matches cuando cambian las fotos
+    setPhotoGroups(prev => prev.map(g => 
+      g.id === groupId ? { ...g, photos: files } : g
+    ));
+    setMatches([]);
     
     if (files.length > 0) {
+      const group = photoGroups.find(g => g.id === groupId);
       toast({
-        title: "Fotos cargadas",
-        description: `${files.length} archivos seleccionados`
+        title: `${group?.name} actualizado`,
+        description: `${files.length} fotos cargadas`
       });
     }
   };
 
   const handleAnalyze = async () => {
-    if (names.length === 0 || photoFiles.length === 0) {
+    if (names.length === 0) {
       toast({
-        title: "Faltan archivos",
-        description: "Debes cargar tanto list.txt como las fotos",
+        title: "Falta list.txt",
+        description: "Debes cargar el archivo list.txt primero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const totalPhotos = photoGroups.reduce((sum, g) => sum + g.photos.length, 0);
+    if (totalPhotos === 0) {
+      toast({
+        title: "Faltan fotos",
+        description: "Debes cargar fotos en al menos un grupo",
         variant: "destructive"
       });
       return;
@@ -95,15 +131,16 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     setIsAnalyzing(true);
     
     try {
-      const matchedResults = await matchPhotosToNames(names, photoFiles);
+      const matchedResults = await matchPhotosToNames(names, [], photoGroups);
       setMatches(matchedResults);
       
-      const matched = matchedResults.filter(m => m.status === 'matched').length;
-      const missing = matchedResults.filter(m => m.status === 'missing').length;
+      const totalMatches = matchedResults.reduce((sum, m) => sum + m.photos.length, 0);
+      const pointsWithPhotos = matchedResults.filter(m => m.photos.length > 0).length;
+      const pointsWithoutPhotos = matchedResults.filter(m => m.photos.length === 0).length;
       
       toast({
-        title: "Análisis completado",
-        description: `✅ ${matched} matches exitosos${missing > 0 ? ` | ❌ ${missing} sin foto` : ''}`
+        title: "✅ Análisis completado",
+        description: `${pointsWithPhotos} puntos con fotos (${totalMatches} fotos totales)${pointsWithoutPhotos > 0 ? ` | ❌ ${pointsWithoutPhotos} sin foto` : ''}`
       });
     } catch (error) {
       toast({
@@ -117,7 +154,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
   };
 
   const handleStart = () => {
-    const validMatches = matches.filter(m => m.status === 'matched');
+    const validMatches = matches.filter(m => m.photos.length > 0);
     
     if (validMatches.length === 0) {
       toast({
@@ -128,24 +165,16 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
       return;
     }
 
-    // Aplicar fecha manual a matches sin fecha
-    const matchesWithDates = validMatches.map(m => ({
-      ...m,
-      captureDate: m.captureDate || (manualDate ? format(manualDate, 'yyyy-MM-dd') : null)
-    }));
-
-    onStartPlacement(matchesWithDates);
+    onStartPlacement(validMatches);
   };
 
   const handleClose = () => {
-    // Cleanup previews
     if (matches.length > 0) {
       cleanupPreviews(matches);
     }
     
-    // Reset state
     setListFile(null);
-    setPhotoFiles([]);
+    setPhotoGroups([{ id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }]);
     setNames([]);
     setMatches([]);
     setPlacementMethod('manual');
@@ -153,16 +182,16 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     onOpenChange(false);
   };
 
-  const matchedCount = matches.filter(m => m.status === 'matched').length;
-  const missingCount = matches.filter(m => m.status === 'missing').length;
+  const pointsWithPhotos = matches.filter(m => m.photos.length > 0).length;
+  const totalPhotos = matches.reduce((sum, m) => sum + m.photos.length, 0);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Importación Automática de Puntos</DialogTitle>
           <DialogDescription>
-            Carga tu archivo list.txt y las fotos panorámicas para crear puntos automáticamente
+            Carga tu archivo list.txt y organiza tus fotos en grupos por fecha
           </DialogDescription>
         </DialogHeader>
 
@@ -192,34 +221,105 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
             </Button>
           </Card>
 
-          {/* Sección fotos */}
+          {/* Sección grupos de fotos */}
           <Card className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Image className="w-5 h-5 text-muted-foreground" />
-              <h3 className="font-semibold">Fotos panorámicas</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Image className="w-5 h-5 text-muted-foreground" />
+                <h3 className="font-semibold">Grupos de fotos</h3>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={addPhotoGroup}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Agregar grupo
+              </Button>
             </div>
-            
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept=".jpg,.jpeg,.JPG,.JPEG"
-              multiple
-              onChange={handlePhotoFilesChange}
-              className="hidden"
-            />
-            
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => photoInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {photoFiles.length > 0 ? `✓ ${photoFiles.length} fotos seleccionadas` : 'Seleccionar fotos JPG'}
-            </Button>
+
+            <div className="space-y-3">
+              {photoGroups.map((group, idx) => (
+                <Card key={group.id} className="p-3 border-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <Badge variant="secondary">#{idx + 1}</Badge>
+                      <Input
+                        value={group.name}
+                        onChange={(e) => updateGroupName(group.id, e.target.value)}
+                        className="h-8"
+                        placeholder="Nombre del grupo"
+                      />
+                    </div>
+                    {photoGroups.length > 1 && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removePhotoGroup(group.id)}
+                        className="h-8 w-8 ml-2"
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <input
+                      id={`file-${group.id}`}
+                      type="file"
+                      multiple
+                      accept=".jpg,.jpeg,.JPG,.JPEG"
+                      className="hidden"
+                      onChange={(e) => handleGroupFilesChange(group.id, e)}
+                    />
+                    
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => document.getElementById(`file-${group.id}`)?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {group.photos.length === 0
+                        ? "Seleccionar fotos JPG"
+                        : `✓ ${group.photos.length} fotos cargadas`}
+                    </Button>
+
+                    {group.photos.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">
+                          Fecha de captura (opcional si las fotos tienen fecha en nombre)
+                        </Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              className="w-full justify-start h-9 text-sm"
+                            >
+                              <CalendarIcon className="mr-2 h-3 w-3" />
+                              {group.manualDate
+                                ? format(group.manualDate, "PPP", { locale: es })
+                                : "Detectar del nombre o seleccionar"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={group.manualDate || undefined}
+                              onSelect={(date) => updateGroupDate(group.id, date)}
+                              disabled={(date) => date > new Date()}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
           </Card>
 
           {/* Botón analizar */}
-          {names.length > 0 && photoFiles.length > 0 && matches.length === 0 && (
+          {names.length > 0 && photoGroups.some(g => g.photos.length > 0) && matches.length === 0 && (
             <Button 
               className="w-full" 
               onClick={handleAnalyze}
@@ -239,96 +339,77 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
           {/* Preview de matches */}
           {matches.length > 0 && (
             <Card className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold">Resultados del matching</h3>
-                <div className="flex gap-4 text-sm">
-                  <span className="flex items-center gap-1 text-green-600">
-                    <CheckCircle2 className="w-4 h-4" />
-                    {matchedCount} matches
-                  </span>
-                  {missingCount > 0 && (
-                    <span className="flex items-center gap-1 text-destructive">
-                      <XCircle className="w-4 h-4" />
-                      {missingCount} sin foto
-                    </span>
-                  )}
+              <div className="flex items-center justify-between mb-3 p-3 bg-primary/5 rounded-lg">
+                <div>
+                  <h3 className="font-semibold">✅ Análisis completado</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {pointsWithPhotos} puntos con fotos
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">{totalPhotos}</p>
+                  <p className="text-xs text-muted-foreground">fotos totales</p>
                 </div>
               </div>
 
-              {/* Alerta de fotos sin fecha */}
-              {matches.some(m => m.photo && m.captureDate === null) && (
-                <Alert className="mb-4 border-yellow-500 bg-yellow-50">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <AlertTitle className="text-yellow-900">Fecha no detectada</AlertTitle>
-                  <AlertDescription className="text-yellow-800">
-                    {matches.filter(m => m.photo && m.captureDate === null).length} fotos no tienen fecha en su nombre.
-                    Selecciona una fecha de captura para estas fotos:
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full mt-2 justify-start text-left font-normal",
-                            !manualDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {manualDate ? format(manualDate, "PPP", { locale: es }) : "Selecciona fecha"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={manualDate}
-                          onSelect={setManualDate}
-                          disabled={(date) => date > new Date()}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <ScrollArea className="h-48 border rounded-lg">
-                <div className="p-2 space-y-1">
+              <ScrollArea className="h-[300px] border rounded-lg">
+                <div className="p-2 space-y-2">
                   {matches.map((match, idx) => (
-                    <div
+                    <Card
                       key={idx}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-muted/50"
+                      className={cn(
+                        "p-3",
+                        match.photos.length === 0 && "border-destructive/50 bg-destructive/5"
+                      )}
                     >
-                      <span className="text-xs text-muted-foreground w-8">#{idx + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-sm">{match.name}</div>
-                        {match.photo && match.captureDate && (
-                          <div className="flex items-center gap-1 text-xs text-blue-600 mt-0.5">
-                            <CalendarIcon className="w-3 h-3" />
-                            {format(parseISO(match.captureDate), "dd/MM/yyyy")}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">#{idx + 1}</span>
+                            <h4 className="font-semibold font-mono text-sm">{match.name}</h4>
                           </div>
-                        )}
-                        {match.photo && !match.captureDate && (
-                          <div className="text-xs text-yellow-600 mt-0.5">⚠️ Sin fecha</div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {match.photos.length} foto(s) encontrada(s)
+                          </p>
+                        </div>
+                        {match.photos.length > 0 ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />
                         )}
                       </div>
-                      {match.status === 'matched' ? (
-                        <>
-                          {match.photoPreview && (
-                            <img 
-                              src={match.photoPreview} 
-                              alt={match.name}
-                              className="w-10 h-10 rounded object-cover flex-shrink-0"
-                            />
-                          )}
-                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-xs text-destructive">Sin foto</span>
-                          <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                        </>
+
+                      {match.photos.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {match.photos.map((photo, pIdx) => (
+                            <div
+                              key={pIdx}
+                              className="flex items-center gap-2 p-2 bg-card rounded border"
+                            >
+                              <img
+                                src={photo.preview}
+                                className="w-10 h-10 rounded object-cover flex-shrink-0"
+                                alt=""
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate">
+                                  {photo.groupName}
+                                </p>
+                                {photo.captureDate ? (
+                                  <p className="text-xs text-primary">
+                                    📅 {format(parseISO(photo.captureDate), "dd/MM/yyyy")}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-yellow-600">
+                                    ⚠️ Sin fecha
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </ScrollArea>
@@ -342,16 +423,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                     <Label htmlFor="manual" className="flex-1 cursor-pointer">
                       <div className="font-medium">Colocación manual guiada</div>
                       <div className="text-xs text-muted-foreground">
-                        Haz click en el plano {matchedCount} veces para colocar cada punto en orden
-                      </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 opacity-50 cursor-not-allowed">
-                    <RadioGroupItem value="auto" id="auto" disabled />
-                    <Label htmlFor="auto" className="flex-1">
-                      <div className="font-medium">Distribución automática en grid</div>
-                      <div className="text-xs text-muted-foreground">
-                        (Próximamente)
+                        Haz click en el plano {pointsWithPhotos} veces para colocar cada punto
                       </div>
                     </Label>
                   </div>
@@ -367,9 +439,9 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
           </Button>
           <Button 
             onClick={handleStart}
-            disabled={matchedCount === 0}
+            disabled={pointsWithPhotos === 0}
           >
-            Comenzar Colocación ({matchedCount} puntos)
+            Comenzar Colocación ({pointsWithPhotos} puntos, {totalPhotos} fotos)
           </Button>
         </div>
       </DialogContent>

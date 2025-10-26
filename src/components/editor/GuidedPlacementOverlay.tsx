@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { X, SkipForward, Undo2, Calendar as CalendarIcon } from 'lucide-react';
 import type { Match } from '@/utils/photoMatcher';
@@ -28,17 +29,27 @@ export const GuidedPlacementOverlay = ({
   const progress = ((currentIndex) / matches.length) * 100;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4">
       <Card className="p-4 shadow-2xl border-2 border-primary bg-card">
         <div className="flex items-start gap-4">
-          {/* Preview de foto */}
-          {currentMatch.photoPreview && (
-            <img
-              src={currentMatch.photoPreview}
-              alt={currentMatch.name}
-              className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border-2 border-primary"
-            />
-          )}
+          {/* Preview de fotos */}
+          <div className="flex gap-2 flex-shrink-0">
+            {currentMatch.photos.slice(0, 3).map((photo, idx) => (
+              <img
+                key={idx}
+                src={photo.preview}
+                alt={currentMatch.name}
+                className="w-16 h-16 rounded-lg object-cover border-2 border-primary"
+              />
+            ))}
+            {currentMatch.photos.length > 3 && (
+              <div className="w-16 h-16 rounded-lg border-2 border-primary bg-muted flex items-center justify-center">
+                <span className="text-xs font-semibold">
+                  +{currentMatch.photos.length - 3}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Info del punto */}
           <div className="flex-1 min-w-0">
@@ -58,10 +69,21 @@ export const GuidedPlacementOverlay = ({
               Coloca el punto {currentIndex + 1} de {matches.length}
             </p>
 
-            {currentMatch.captureDate && (
-              <div className="flex items-center gap-1 text-xs text-blue-600 mb-2">
-                <CalendarIcon className="w-3 h-3" />
-                {format(parseISO(currentMatch.captureDate), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+            <p className="text-xs text-primary font-medium mb-2">
+              📷 {currentMatch.photos.length} foto(s) se agregarán a este punto
+            </p>
+
+            {/* Mostrar fechas de las fotos */}
+            {currentMatch.photos.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-3">
+                {currentMatch.photos.map((photo, idx) => (
+                  photo.captureDate && (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      <CalendarIcon className="w-3 h-3 mr-1" />
+                      {format(parseISO(photo.captureDate), "dd/MM/yyyy")}
+                    </Badge>
+                  )
+                ))}
               </div>
             )}
             

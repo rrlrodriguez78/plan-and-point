@@ -1,9 +1,25 @@
+export interface MatchedPhoto {
+  file: File;
+  preview: string;
+  captureDate: string | null;
+  groupName: string;
+}
+
+export interface PhotoGroup {
+  id: string;
+  name: string;
+  photos: File[];
+  manualDate: Date | null;
+}
+
 export interface Match {
   name: string;
-  photo: File | null;
-  photoPreview: string;
-  captureDate: string | null;
+  photos: MatchedPhoto[];
   status: 'matched' | 'missing';
+  // Legacy support
+  photo?: File | null;
+  photoPreview?: string;
+  captureDate?: string | null;
 }
 
 /**
@@ -40,43 +56,89 @@ export const extractDateFromFilename = (filename: string): string | null => {
  *   no encuentra: "B-0-1-10-21-2025.JPG"
  */
 export const matchPhotosToNames = async (
-  names: string[], 
-  photos: File[]
+  names: string[],
+  photos: File[],
+  photoGroups?: PhotoGroup[]
 ): Promise<Match[]> => {
   const matches: Match[] = [];
-  
-  for (const name of names) {
-    // Buscar foto que empiece exactamente con el nombre
-    // y termine con .JPG (case insensitive)
-    const photo = photos.find(p => {
-      const fileName = p.name.toLowerCase();
-      const searchName = name.toLowerCase();
-      
-      // Verificar que empiece con el nombre exacto y tenga un delimitador después (-, ., o extensión)
-      return (fileName.startsWith(searchName + '-') || 
-              fileName.startsWith(searchName + '.')) && 
-             (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'));
-    });
-    
-    let photoPreview = '';
-    let captureDate: string | null = null;
-    
-    if (photo) {
-      // Crear URL de preview
-      photoPreview = URL.createObjectURL(photo);
-      // Extraer fecha del nombre
-      captureDate = extractDateFromFilename(photo.name);
+
+  // Si hay grupos, usar lógica multi-grupo
+  if (photoGroups && photoGroups.length > 0) {
+    for (const name of names) {
+      const matchingPhotos: MatchedPhoto[] = [];
+
+      photoGroups.forEach((group) => {
+        group.photos.forEach((photo) => {
+          const fileName = photo.name.toLowerCase();
+          const searchName = name.toLowerCase();
+
+          if (
+            (fileName.startsWith(searchName + '-') ||
+              fileName.startsWith(searchName + '.')) &&
+            (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
+          ) {
+            let captureDate = extractDateFromFilename(photo.name);
+
+            if (!captureDate && group.manualDate) {
+              captureDate = group.manualDate.toISOString().split('T')[0];
+            }
+
+            matchingPhotos.push({
+              file: photo,
+              preview: URL.createObjectURL(photo),
+              captureDate,
+              groupName: group.name,
+            });
+          }
+        });
+      });
+
+      const firstPhoto = matchingPhotos[0];
+      matches.push({
+        name,
+        photos: matchingPhotos,
+        status: matchingPhotos.length > 0 ? 'matched' : 'missing',
+        // Legacy support
+        photo: firstPhoto?.file || null,
+        photoPreview: firstPhoto?.preview || '',
+        captureDate: firstPhoto?.captureDate || null,
+      });
     }
-    
-    matches.push({
-      name,
-      photo: photo || null,
-      photoPreview,
-      captureDate,
-      status: photo ? 'matched' : 'missing'
-    });
+  } else {
+    // Lógica original para compatibilidad
+    for (const name of names) {
+      let matchedPhoto: File | null = null;
+      let photoPreview = '';
+      let captureDate: string | null = null;
+
+      for (const photo of photos) {
+        const fileName = photo.name.toLowerCase();
+        const searchName = name.toLowerCase();
+
+        if (
+          (fileName.startsWith(searchName + '-') ||
+            fileName.startsWith(searchName + '.')) &&
+          (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
+        ) {
+          matchedPhoto = photo;
+          photoPreview = URL.createObjectURL(photo);
+          captureDate = extractDateFromFilename(photo.name);
+          break;
+        }
+      }
+
+      matches.push({
+        name,
+        photos: matchedPhoto ? [{ file: matchedPhoto, preview: photoPreview, captureDate, groupName: 'Grupo 1' }] : [],
+        status: matchedPhoto ? 'matched' : 'missing',
+        // Legacy support
+        photo: matchedPhoto,
+        photoPreview,
+        captureDate,
+      });
+    }
   }
-  
+
   return matches;
 };
 
@@ -88,5 +150,10 @@ export const cleanupPreviews = (matches: Match[]) => {
     if (match.photoPreview) {
       URL.revokeObjectURL(match.photoPreview);
     }
+    match.photos.forEach(photo => {
+      if (photo.preview) {
+        URL.revokeObjectURL(photo.preview);
+      }
+    });
   });
 };

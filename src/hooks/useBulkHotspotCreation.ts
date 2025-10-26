@@ -3,10 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface CreateHotspotParams {
   name: string;
-  photo: File;
+  photos: Array<{
+    file: File;
+    captureDate: string | null;
+  }>;
   position: { x: number; y: number };
   displayOrder: number;
-  captureDate: string | null;
 }
 
 export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
@@ -16,23 +18,7 @@ export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
     setIsCreating(true);
     
     try {
-      // 1. Subir foto a Storage
-      const fileName = `${tourId}/${floorPlanId}/${params.name}-${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tour-images')
-        .upload(fileName, params.photo, {
-          contentType: 'image/jpeg',
-          upsert: false
-        });
-      
-      if (uploadError) throw uploadError;
-      
-      // 2. Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('tour-images')
-        .getPublicUrl(fileName);
-      
-      // 3. Crear hotspot
+      // 1. Crear el hotspot primero
       const { data: hotspot, error: hotspotError } = await supabase
         .from('hotspots')
         .insert({
@@ -41,29 +27,57 @@ export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
           x_position: params.position.x,
           y_position: params.position.y,
           display_order: params.displayOrder,
-          has_panorama: true,
-          panorama_count: 1
+          has_panorama: params.photos.length > 0,
+          panorama_count: params.photos.length
         })
         .select()
         .single();
       
       if (hotspotError) throw hotspotError;
-      
-      // 4. Crear panorama_photo asociada
-      const finalCaptureDate = params.captureDate || new Date().toISOString().split('T')[0];
-      
-      const { error: panoramaError } = await supabase
-        .from('panorama_photos')
-        .insert({
-          hotspot_id: hotspot.id,
-          photo_url: publicUrl,
-          display_order: 0,
-          description: `Foto panorámica de ${params.name}`,
-          capture_date: finalCaptureDate,
-          original_filename: params.photo.name
-        });
-      
-      if (panoramaError) throw panoramaError;
+
+      // 2. Ordenar fotos por fecha antes de subir
+      const sortedPhotos = [...params.photos].sort((a, b) => {
+        if (!a.captureDate) return 1;
+        if (!b.captureDate) return -1;
+        return a.captureDate.localeCompare(b.captureDate);
+      });
+
+      // 3. Subir todas las fotos de este hotspot
+      for (let i = 0; i < sortedPhotos.length; i++) {
+        const photoData = sortedPhotos[i];
+        const fileName = `${tourId}/${floorPlanId}/${params.name}-${i}-${Date.now()}.jpg`;
+
+        // Subir foto
+        const { error: uploadError } = await supabase.storage
+          .from('tour-images')
+          .upload(fileName, photoData.file, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Obtener URL pública
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('tour-images').getPublicUrl(fileName);
+
+        // Crear panorama_photo
+        const finalCaptureDate = photoData.captureDate || new Date().toISOString().split('T')[0];
+        
+        const { error: panoramaError } = await supabase
+          .from('panorama_photos')
+          .insert({
+            hotspot_id: hotspot.id,
+            photo_url: publicUrl,
+            display_order: i,
+            original_filename: photoData.file.name,
+            capture_date: finalCaptureDate,
+            description: `Foto panorámica de ${params.name}`,
+          });
+
+        if (panoramaError) throw panoramaError;
+      }
       
       return hotspot;
     } finally {

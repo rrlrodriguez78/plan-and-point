@@ -197,21 +197,32 @@ const Editor = () => {
     if (guidedMode && currentGuidedIndex < guidedMatches.length) {
       const currentMatch = guidedMatches[currentGuidedIndex];
       
-      if (!currentMatch.photo) {
-        toast.error('Este punto no tiene foto asociada, se omitirá');
+      if (currentMatch.photos.length === 0) {
+        toast.error('Este punto no tiene fotos asociadas, se omitirá');
         setCurrentGuidedIndex(prev => prev + 1);
         return;
       }
       
       try {
-        // Crear hotspot con foto
-      const hotspot = await createHotspot({
-        name: currentMatch.name,
-        photo: currentMatch.photo,
-        position: { x, y },
-        displayOrder: currentGuidedIndex + 1,
-        captureDate: currentMatch.captureDate
-      });
+        // Ordenar fotos por fecha antes de crear
+        const sortedPhotos = currentMatch.photos
+          .sort((a, b) => {
+            if (!a.captureDate) return 1;
+            if (!b.captureDate) return -1;
+            return a.captureDate.localeCompare(b.captureDate);
+          })
+          .map((photo) => ({
+            file: photo.file,
+            captureDate: photo.captureDate,
+          }));
+
+        // Crear hotspot con todas sus fotos
+        const hotspot = await createHotspot({
+          name: currentMatch.name,
+          photos: sortedPhotos,
+          position: { x, y },
+          displayOrder: currentGuidedIndex + 1,
+        });
         
         // Guardar ID del hotspot creado
         setPlacedHotspotIds(prev => [...prev, hotspot.id]);
