@@ -59,8 +59,10 @@ const Auth = () => {
             toast.error(error.message || t('auth.errorSignup'));
           }
         } else {
-          toast.success(t('auth.accountCreated'));
-          navigate('/app/tours');
+          toast.success('Cuenta creada exitosamente. Tu solicitud está pendiente de aprobación por el administrador. Te notificaremos cuando sea aprobada.', {
+            duration: 6000,
+          });
+          navigate('/login');
         }
       }
     } catch (error) {

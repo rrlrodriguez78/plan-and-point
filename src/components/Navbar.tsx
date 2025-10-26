@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard, Plus, Building2, Users } from 'lucide-react';
+import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard, Plus, Building2, Users, UserCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -107,6 +107,12 @@ export const Navbar = () => {
                         <Link to="/app/super-admin" className="flex items-center cursor-pointer">
                           <Building2 className="w-4 h-4 mr-2" />
                           Gestionar Tenants
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/app/user-approvals" className="flex items-center cursor-pointer">
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Aprobar Usuarios
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>

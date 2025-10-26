@@ -41,11 +41,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      return { error };
+
+      if (error) return { error };
+
+      // Check account status
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('account_status')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error checking account status:', profileError);
+          return { error: profileError };
+        }
+
+        if (profile?.account_status === 'pending') {
+          await supabase.auth.signOut();
+          return { 
+            error: new Error('Tu cuenta está pendiente de aprobación por el administrador. Te notificaremos cuando sea aprobada.') as any 
+          };
+        }
+
+        if (profile?.account_status === 'rejected') {
+          await supabase.auth.signOut();
+          return { 
+            error: new Error('Tu solicitud de registro ha sido rechazada. Contacta al administrador si crees que esto es un error.') as any 
+          };
+        }
+      }
+
+      return { error: null };
     } catch (error) {
       return { error: error as Error };
     }

@@ -20,6 +20,7 @@ import UserSettings from "./pages/UserSettings";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import TenantAdmin from "./pages/TenantAdmin";
 import TenantMembers from "./pages/TenantMembers";
+import UserApprovals from "./pages/UserApprovals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/app/settings" element={<Settings />} />
               <Route path="/app/user-settings" element={<UserSettings />} />
               <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
+              <Route path="/app/user-approvals" element={<UserApprovals />} />
               <Route path="/app/tenant-admin" element={<TenantAdmin />} />
               <Route path="/app/tenant-members" element={<TenantMembers />} />
               <Route path="/viewer/:id" element={<Viewer />} />

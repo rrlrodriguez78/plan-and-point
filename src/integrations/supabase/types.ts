@@ -420,6 +420,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string | null
           created_at: string
           email: string
           full_name: string | null
@@ -427,6 +428,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_status?: string | null
           created_at?: string
           email: string
           full_name?: string | null
@@ -434,6 +436,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_status?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
@@ -727,6 +730,54 @@ export type Database = {
           },
         ]
       }
+      user_approval_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          requested_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          requested_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          requested_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_approval_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_approval_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -932,6 +983,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_user: {
+        Args: { _approved_by: string; _notes?: string; _user_id: string }
+        Returns: undefined
+      }
       belongs_to_tenant: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -956,6 +1011,10 @@ export type Database = {
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
+      }
+      reject_user: {
+        Args: { _notes?: string; _rejected_by: string; _user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
