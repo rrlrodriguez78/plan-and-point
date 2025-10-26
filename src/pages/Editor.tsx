@@ -648,7 +648,7 @@ const Editor = () => {
                         )}
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Auto avance
+                        Import & Create Points
                       </Button>
                       <Button 
                         onClick={() => setPhotoGroupDialogOpen(true)}
@@ -662,7 +662,7 @@ const Editor = () => {
                         )}
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Grupo P F
+                        Add Photos to Points
                       </Button>
                     </div>
                   </div>
