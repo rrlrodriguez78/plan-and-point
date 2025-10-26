@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Image, CheckCircle2, XCircle, Loader2, Calendar as CalendarIcon, AlertCircle, Plus, Trash2, ChevronDown } from 'lucide-react';
-import { matchPhotosToExistingHotspots, cleanupPreviews, type PhotoGroup, type HotspotPhotoMatch } from '@/utils/photoMatcher';
+import { matchPhotosToExistingHotspots, cleanupPreviews, type PhotoGroup, type HotspotPhotoMatch, type OptimizedPhotoGroup } from '@/utils/photoMatcher';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
@@ -19,6 +19,8 @@ import { es, enUS, fr, de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Hotspot } from '@/types/tour';
 import { useAddPhotosToHotspot } from '@/hooks/useAddPhotosToHotspot';
+import { Progress } from '@/components/ui/progress';
+import { optimizeImage } from '@/utils/imageOptimization';
 
 interface PhotoGroupDialogProps {
   open: boolean;
@@ -50,8 +52,8 @@ export const PhotoGroupDialog = ({
     }
   };
   
-  const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([
-    { id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }
+  const [photoGroups, setPhotoGroups] = useState<OptimizedPhotoGroup[]>([
+    { id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null, optimizedPhotos: [], isOptimizing: false, optimizationProgress: 0 }
   ]);
   const [matches, setMatches] = useState<HotspotPhotoMatch[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -73,7 +75,7 @@ export const PhotoGroupDialog = ({
         return [];
       });
       
-      setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }]);
+      setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null, optimizedPhotos: [], isOptimizing: false, optimizationProgress: 0 }]);
       setValidPhotos(0);
       setIgnoredPhotos(0);
     }
@@ -82,7 +84,7 @@ export const PhotoGroupDialog = ({
   const addPhotoGroup = () => {
     setPhotoGroups(prev => [
       ...prev,
-      { id: crypto.randomUUID(), name: `${t('photoImport.groupName')} ${prev.length + 1}`, photos: [], manualDate: null }
+      { id: crypto.randomUUID(), name: `${t('photoImport.groupName')} ${prev.length + 1}`, photos: [], manualDate: null, optimizedPhotos: [], isOptimizing: false, optimizationProgress: 0 }
     ]);
   };
 
@@ -100,10 +102,12 @@ export const PhotoGroupDialog = ({
     setPhotoGroups(prev => prev.map(g => g.id === id ? { ...g, manualDate: date || null } : g));
   };
 
-  const handleGroupFilesChange = (groupId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGroupFilesChange = async (groupId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    
+    // Immediate placeholder update
     setPhotoGroups(prev => prev.map(g => 
-      g.id === groupId ? { ...g, photos: files } : g
+      g.id === groupId ? { ...g, photos: files, isOptimizing: true, optimizationProgress: 0, optimizedPhotos: [] } : g
     ));
     setMatches([]);
     
@@ -111,8 +115,71 @@ export const PhotoGroupDialog = ({
       const group = photoGroups.find(g => g.id === groupId);
       toast({
         title: `${group?.name} ${t('photoImport.groupUpdated')}`,
-        description: `${files.length} ${t('photoImport.photosLoaded')}`
+        description: `${files.length} photos - Optimizing in background...`
       });
+      
+      // Background optimization
+      try {
+        const optimizedPhotos: Array<{ file: File; blob: Blob; originalSize: number; optimizedSize: number }> = [];
+        
+        // Parallelize optimization
+        await Promise.all(
+          files.map(async (file, index) => {
+            try {
+              const result = await optimizeImage(file, {
+                maxWidth: 4000,
+                quality: 0.85,
+                format: 'webp',
+                maxSizeMB: 10
+              });
+              
+              optimizedPhotos[index] = {
+                file,
+                blob: result.blob,
+                originalSize: result.originalSize,
+                optimizedSize: result.optimizedSize
+              };
+              
+              // Update progress
+              setPhotoGroups(prev => prev.map(g => 
+                g.id === groupId ? { ...g, optimizationProgress: Math.round(((index + 1) / files.length) * 100) } : g
+              ));
+            } catch (error) {
+              console.error('Error optimizing photo:', file.name, error);
+              // Keep original if optimization fails
+              optimizedPhotos[index] = {
+                file,
+                blob: file,
+                originalSize: file.size,
+                optimizedSize: file.size
+              };
+            }
+          })
+        );
+        
+        // Update with optimized photos
+        setPhotoGroups(prev => prev.map(g => 
+          g.id === groupId ? { ...g, optimizedPhotos, isOptimizing: false, optimizationProgress: 100 } : g
+        ));
+        
+        const totalSaved = optimizedPhotos.reduce((sum, p) => sum + (p.originalSize - p.optimizedSize), 0);
+        const savingsPercent = Math.round((totalSaved / optimizedPhotos.reduce((sum, p) => sum + p.originalSize, 0)) * 100);
+        
+        toast({
+          title: "Optimization complete!",
+          description: `${files.length} photos ready. Saved ${savingsPercent}% (${(totalSaved / 1024 / 1024).toFixed(1)}MB)`
+        });
+      } catch (error) {
+        console.error('Error in batch optimization:', error);
+        setPhotoGroups(prev => prev.map(g => 
+          g.id === groupId ? { ...g, isOptimizing: false } : g
+        ));
+        toast({
+          title: "Optimization failed",
+          description: "Using original photos",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -176,23 +243,34 @@ export const PhotoGroupDialog = ({
     }
 
     try {
-      let totalAdded = 0;
-      
-      for (const match of validMatches) {
-        await addPhotos({
-          hotspotId: match.hotspot.id,
-          photos: match.photos.map(p => ({
+      // Parallelize uploads across all hotspots
+      const uploadPromises = validMatches.map(async (match) => {
+        // Get optimized photos for this match
+        const photosWithOptimized = match.photos.map(p => {
+          const group = photoGroups.find(g => g.name === p.groupName);
+          const optimized = group?.optimizedPhotos?.find(opt => opt.file === p.file);
+          
+          return {
             file: p.file,
+            optimizedBlob: optimized?.blob || p.file,
             captureDate: p.captureDate,
             groupName: p.groupName
-          })),
+          };
+        });
+        
+        await addPhotos({
+          hotspotId: match.hotspot.id,
+          photos: photosWithOptimized,
           tourId,
           floorPlanId,
           hotspotTitle: match.hotspot.title
         });
         
-        totalAdded += match.photos.length;
-      }
+        return match.photos.length;
+      });
+      
+      const results = await Promise.all(uploadPromises);
+      const totalAdded = results.reduce((sum, count) => sum + count, 0);
       
       toast({
         title: t('photoImport.photosAddedSuccess'),
@@ -222,7 +300,7 @@ export const PhotoGroupDialog = ({
       });
     }
     
-    setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }]);
+    setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null, optimizedPhotos: [], isOptimizing: false, optimizationProgress: 0 }]);
     setMatches([]);
     setValidPhotos(0);
     setIgnoredPhotos(0);
@@ -360,33 +438,52 @@ export const PhotoGroupDialog = ({
                     </Button>
 
                     {group.photos.length > 0 && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1 block">
-                          {t('photoImport.captureDate')}
-                        </Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              className="w-full justify-start h-9 text-sm"
-                            >
-                              <CalendarIcon className="mr-2 h-3 w-3" />
-                              {group.manualDate
-                                ? format(group.manualDate, "PPP", { locale: getDateLocale() })
-                                : t('photoImport.detectOrSelect')}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={group.manualDate || undefined}
-                              onSelect={(date) => updateGroupDate(group.id, date)}
-                              disabled={(date) => date > new Date()}
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                      <>
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1 block">
+                            {t('photoImport.captureDate')}
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                className="w-full justify-start h-9 text-sm"
+                              >
+                                <CalendarIcon className="mr-2 h-3 w-3" />
+                                {group.manualDate
+                                  ? format(group.manualDate, "PPP", { locale: getDateLocale() })
+                                  : t('photoImport.detectOrSelect')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={group.manualDate || undefined}
+                                onSelect={(date) => updateGroupDate(group.id, date)}
+                                disabled={(date) => date > new Date()}
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
+                        {group.isOptimizing && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Optimizing...</span>
+                              <span className="text-primary font-medium">{group.optimizationProgress}%</span>
+                            </div>
+                            <Progress value={group.optimizationProgress} className="h-1.5" />
+                          </div>
+                        )}
+                        
+                        {!group.isOptimizing && group.optimizedPhotos.length > 0 && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-green-600" />
+                            <span>Optimized and ready</span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </Card>

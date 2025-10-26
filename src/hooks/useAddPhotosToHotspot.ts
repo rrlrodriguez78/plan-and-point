@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { createImageVersions } from '@/utils/imageOptimization';
 
 interface AddPhotosParams {
   hotspotId: string;
   photos: Array<{
     file: File;
+    optimizedBlob?: Blob;
     captureDate: string | null;
     groupName: string;
   }>;
@@ -38,63 +38,57 @@ export const useAddPhotosToHotspot = () => {
         return a.captureDate.localeCompare(b.captureDate);
       });
 
-      // 3. Subir y crear registros con optimización
-      for (let i = 0; i < sortedPhotos.length; i++) {
-        const photoData = sortedPhotos[i];
+      // 3. Subir y crear registros - parallelizar uploads
+      const uploadPromises = sortedPhotos.map(async (photoData, i) => {
         const timestamp = Date.now() + i;
         const safeFileName = photoData.file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-
-        // Create optimized versions
-        const versions = await createImageVersions(photoData.file, [
-          { name: 'original', options: { maxWidth: 4000, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
-          { name: 'mobile', options: { maxWidth: 1920, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
-          { name: 'thumbnail', options: { maxWidth: 400, quality: 0.8, format: 'webp', maxSizeMB: 10 } }
-        ]);
-
-        // Upload all versions
         const baseFileName = `panoramas/${params.hotspotId}/${timestamp}_${safeFileName}`;
-        const uploadPromises = [
-          supabase.storage.from('tour-images').upload(`${baseFileName}.${versions.original.format}`, versions.original.blob),
-          supabase.storage.from('tour-images').upload(`${baseFileName}_mobile.${versions.mobile.format}`, versions.mobile.blob),
-          supabase.storage.from('tour-images').upload(`${baseFileName}_thumb.${versions.thumbnail.format}`, versions.thumbnail.blob)
-        ];
 
-        const uploadResults = await Promise.all(uploadPromises);
+        // Use pre-optimized blob if available
+        const blobToUpload = photoData.optimizedBlob || photoData.file;
+        const extension = blobToUpload instanceof Blob && blobToUpload.type === 'image/webp' ? 'webp' : 'jpg';
+
+        // Upload single optimized version (already compressed to target size)
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('tour-images')
+          .upload(`${baseFileName}.${extension}`, blobToUpload);
         
-        if (uploadResults.some(r => r.error)) {
-          console.error('Error uploading photo versions');
-          continue;
+        if (uploadError) {
+          console.error('Error uploading photo:', uploadError);
+          return null;
         }
 
-        // Get public URLs
-        const { data: { publicUrl: originalUrl } } = supabase.storage
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
           .from('tour-images')
-          .getPublicUrl(uploadResults[0].data!.path);
-        const { data: { publicUrl: mobileUrl } } = supabase.storage
-          .from('tour-images')
-          .getPublicUrl(uploadResults[1].data!.path);
-        const { data: { publicUrl: thumbUrl } } = supabase.storage
-          .from('tour-images')
-          .getPublicUrl(uploadResults[2].data!.path);
+          .getPublicUrl(uploadData.path);
 
-        // Crear panorama_photo
+        // Create panorama_photo record
         const finalCaptureDate = photoData.captureDate || new Date().toISOString().split('T')[0];
         
         const { error: panoramaError } = await supabase
           .from('panorama_photos')
           .insert({
             hotspot_id: params.hotspotId,
-            photo_url: originalUrl,
-            photo_url_mobile: mobileUrl,
-            photo_url_thumbnail: thumbUrl,
+            photo_url: publicUrl,
+            photo_url_mobile: publicUrl, // Same optimized version for mobile
+            photo_url_thumbnail: publicUrl, // Same optimized version for thumbnail
             display_order: startOrder + i + 1,
             original_filename: photoData.file.name,
             capture_date: finalCaptureDate,
             description: `${photoData.groupName} - ${params.hotspotTitle}`,
           });
 
-        if (panoramaError) throw panoramaError;
-      }
+        if (panoramaError) {
+          console.error('Error creating panorama record:', panoramaError);
+          return null;
+        }
+
+        return photoData.file.name;
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const successCount = results.filter(r => r !== null).length;
       
       // 4. Actualizar contador de panoramas en el hotspot
       const { data: totalPhotos } = await supabase
@@ -110,7 +104,7 @@ export const useAddPhotosToHotspot = () => {
         })
         .eq('id', params.hotspotId);
       
-      return { success: true, photosAdded: sortedPhotos.length };
+      return { success: true, photosAdded: successCount };
     } catch (error) {
       console.error('Error adding photos:', error);
       throw error;

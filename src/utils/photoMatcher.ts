@@ -12,6 +12,17 @@ export interface PhotoGroup {
   manualDate: Date | null;
 }
 
+export interface OptimizedPhotoGroup extends PhotoGroup {
+  optimizedPhotos: Array<{
+    file: File;
+    blob: Blob;
+    originalSize: number;
+    optimizedSize: number;
+  }>;
+  isOptimizing: boolean;
+  optimizationProgress: number;
+}
+
 export interface Match {
   name: string;
   photos: MatchedPhoto[];
