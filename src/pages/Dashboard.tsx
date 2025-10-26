@@ -63,21 +63,25 @@ const Dashboard = () => {
         .eq('owner_id', user!.id)
         .single();
 
+      let currentOrg: Organization;
       if (!orgs) {
         const { data: newOrg } = await supabase
           .from('organizations')
           .insert({ name: 'Mi Organización', owner_id: user!.id })
           .select()
           .single();
+        currentOrg = newOrg!;
         setOrganization(newOrg);
       } else {
+        currentOrg = orgs;
         setOrganization(orgs);
       }
 
-      // Load tours
+      // Load tours - ONLY from user's organization
       const { data: toursData } = await supabase
         .from('virtual_tours')
         .select('*')
+        .eq('organization_id', currentOrg.id)
         .order('created_at', { ascending: false });
 
       if (toursData) {
