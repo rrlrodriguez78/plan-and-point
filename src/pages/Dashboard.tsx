@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield, Share2 } from 'lucide-react';
+import ShareTourDialog from '@/components/share/ShareTourDialog';
 import TourSetupModal from '@/components/editor/TourSetupModal';
 import { useTranslation } from 'react-i18next';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -42,6 +43,8 @@ const Dashboard = () => {
   const [tourToDelete, setTourToDelete] = useState<string | null>(null);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [selectedTourForPassword, setSelectedTourForPassword] = useState<Tour | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedTourForShare, setSelectedTourForShare] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -382,30 +385,53 @@ const Dashboard = () => {
                      </TooltipProvider>
                     
                     {tour.is_published && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedTourForPassword(tour);
-                                setPasswordDialogOpen(true);
-                              }}
-                              className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-purple-600/60 transition-all border border-white/20"
-                            >
-                              {tour.password_protected ? (
-                                <Shield className="w-3.5 h-3.5 text-yellow-300" />
-                              ) : (
-                                <Lock className="w-3.5 h-3.5" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{tour.password_protected ? t('tourPassword.protected') : t('tourPassword.title')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedTourForPassword(tour);
+                                  setPasswordDialogOpen(true);
+                                }}
+                                className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-purple-600/60 transition-all border border-white/20"
+                              >
+                                {tour.password_protected ? (
+                                  <Shield className="w-3.5 h-3.5 text-yellow-300" />
+                                ) : (
+                                  <Lock className="w-3.5 h-3.5" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{tour.password_protected ? t('tourPassword.protected') : t('tourPassword.title')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedTourForShare({ id: tour.id, title: tour.title });
+                                  setShareDialogOpen(true);
+                                }}
+                                className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-green-600/60 transition-all border border-white/20"
+                              >
+                                <Share2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{t('dashboard.share')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </>
                     )}
                   </div>
                   
@@ -464,6 +490,15 @@ const Dashboard = () => {
           onSuccess={() => {
             loadData(); // Recargar tours para actualizar el estado de protección
           }}
+        />
+      )}
+
+      {selectedTourForShare && (
+        <ShareTourDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          tourId={selectedTourForShare.id}
+          tourTitle={selectedTourForShare.title}
         />
       )}
     </div>

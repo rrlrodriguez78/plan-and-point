@@ -15,6 +15,7 @@ import PublicTours from "./pages/PublicTours";
 import CreateTour from "./pages/CreateTour";
 import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
+import SharedTour from "./pages/SharedTour";
 import Settings from "./pages/Settings";
 import UserSettings from "./pages/UserSettings";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
               <Route path="/app/tenant-admin" element={<TenantAdmin />} />
               <Route path="/viewer/:id" element={<Viewer />} />
+              <Route path="/share/:token" element={<SharedTour />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
                 </Routes>

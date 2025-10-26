@@ -633,6 +633,56 @@ export type Database = {
           },
         ]
       }
+      tour_shares: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_views: number | null
+          permission_level: Database["public"]["Enums"]["share_permission"]
+          share_token: string
+          tour_id: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_views?: number | null
+          permission_level?: Database["public"]["Enums"]["share_permission"]
+          share_token: string
+          tour_id: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_views?: number | null
+          permission_level?: Database["public"]["Enums"]["share_permission"]
+          share_token?: string
+          tour_id?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_shares_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_views: {
         Row: {
           created_at: string
@@ -831,6 +881,8 @@ export type Database = {
           password_hash: string | null
           password_protected: boolean | null
           password_updated_at: string | null
+          share_description: string | null
+          share_image_url: string | null
           tenant_id: string
           title: string
           updated_at: string
@@ -844,6 +896,8 @@ export type Database = {
           password_hash?: string | null
           password_protected?: boolean | null
           password_updated_at?: string | null
+          share_description?: string | null
+          share_image_url?: string | null
           tenant_id: string
           title: string
           updated_at?: string
@@ -857,6 +911,8 @@ export type Database = {
           password_hash?: string | null
           password_protected?: boolean | null
           password_updated_at?: string | null
+          share_description?: string | null
+          share_image_url?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string
@@ -880,6 +936,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      generate_share_token: { Args: never; Returns: string }
       get_user_tenants: {
         Args: { _user_id: string }
         Returns: {
@@ -903,6 +960,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      share_permission: "view" | "comment" | "edit"
       tenant_role: "tenant_admin" | "member"
     }
     CompositeTypes: {
@@ -1032,6 +1090,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      share_permission: ["view", "comment", "edit"],
       tenant_role: ["tenant_admin", "member"],
     },
   },
