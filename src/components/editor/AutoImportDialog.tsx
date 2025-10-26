@@ -302,12 +302,13 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={group.manualDate || undefined}
-                              onSelect={(date) => updateGroupDate(group.id, date)}
-                              disabled={(date) => date > new Date()}
-                            />
+                  <Calendar
+                    mode="single"
+                    selected={group.manualDate || undefined}
+                    onSelect={(date) => updateGroupDate(group.id, date)}
+                    disabled={(date) => date > new Date()}
+                    className="pointer-events-auto"
+                  />
                           </PopoverContent>
                         </Popover>
                       </div>
