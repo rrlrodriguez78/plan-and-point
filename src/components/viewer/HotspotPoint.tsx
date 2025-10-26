@@ -40,7 +40,7 @@ export const HotspotPoint = ({
   
   const baseColor = style?.color || '#4285F4';
   const color = isSelected ? '#10b981' : baseColor;
-  const baseSize = isMobile ? 48 : (style?.size || 40);
+  const baseSize = isMobile ? 48 : (style?.size || 32);
   const size = baseSize;
 
   return (

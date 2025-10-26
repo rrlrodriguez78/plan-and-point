@@ -4,8 +4,8 @@ import { useDeviceDetection } from './useDeviceDetection';
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 0.15;
-const MOBILE_INITIAL_SCALE = 1.0; // 100% para móviles
-const TABLET_INITIAL_SCALE = 0.7; // 70% para tablets
+const MOBILE_INITIAL_SCALE = 1.2; // 120% para móviles - mejor aprovechamiento del espacio
+const TABLET_INITIAL_SCALE = 0.9; // 90% para tablets - mejor aprovechamiento del espacio
 const DESKTOP_INITIAL_SCALE = 1.0; // 100% para desktop
 
 interface Transform {

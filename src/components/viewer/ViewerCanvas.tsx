@@ -69,7 +69,7 @@ export const ViewerCanvas = ({
           <img
             src={imageUrl}
             alt="Floor plan"
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none"
+            className="w-full h-full object-contain rounded-lg shadow-2xl select-none"
             draggable={false}
           />
           {hotspots.map((hotspot, index) => (
