@@ -663,7 +663,7 @@ const Editor = () => {
                         )}
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Add Photos to Points
+                        Grupo FP
                       </Button>
                     </div>
                   </div>
