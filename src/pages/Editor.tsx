@@ -24,6 +24,8 @@ import {
   Move,
   Hand,
   Trash,
+  X,
+  MousePointer,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -627,6 +629,39 @@ const Editor = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      {/* Active Mode Indicators - Visible badges for active modes */}
+                      {moveMode && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setMoveMode(false);
+                            toast.info('Modo Mover desactivado');
+                          }}
+                          className="gap-2 animate-pulse"
+                        >
+                          <Move className="h-4 w-4" />
+                          Modo Mover
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {selectMode && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setSelectMode(false);
+                            setSelectedHotspotIds([]);
+                            toast.info('Modo Seleccionar desactivado');
+                          }}
+                          className="gap-2 animate-pulse"
+                        >
+                          <MousePointer className="h-4 w-4" />
+                          Modo Seleccionar
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                      
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button 
