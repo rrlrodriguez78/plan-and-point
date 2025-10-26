@@ -179,8 +179,9 @@ export const PrivacySecuritySettings = ({ settings, onUpdate }: PrivacySecurityS
         </div>
 
         <Separator />
+        
         <div>
-          <Label htmlFor="profile_visibility">Profile Visibility</Label>
+          <Label htmlFor="profile_visibility">Visibilidad del Perfil</Label>
           <Select 
             value={settings.profile_visibility} 
             onValueChange={(value) => onUpdate({ profile_visibility: value as any })}
@@ -189,39 +190,26 @@ export const PrivacySecuritySettings = ({ settings, onUpdate }: PrivacySecurityS
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="public">Public</SelectItem>
-              <SelectItem value="private">Private</SelectItem>
-              <SelectItem value="friends">Friends Only</SelectItem>
+              <SelectItem value="public">Público</SelectItem>
+              <SelectItem value="private">Privado</SelectItem>
+              <SelectItem value="friends">Solo Amigos</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">
-            Control who can see your profile
+            Controla quién puede ver tu perfil
           </p>
         </div>
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label>Data Sharing</Label>
+            <Label>Compartir Datos</Label>
             <p className="text-xs text-muted-foreground">
-              Share anonymous data to improve the service
+              Compartir datos anónimos para mejorar el servicio
             </p>
           </div>
           <Switch
             checked={settings.data_sharing}
             onCheckedChange={(checked) => onUpdate({ data_sharing: checked })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Two-Factor Authentication</Label>
-            <p className="text-xs text-muted-foreground">
-              Add an extra layer of security
-            </p>
-          </div>
-          <Switch
-            checked={settings.two_factor_enabled}
-            onCheckedChange={(checked) => onUpdate({ two_factor_enabled: checked })}
           />
         </div>
       </CardContent>
