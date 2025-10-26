@@ -22,6 +22,12 @@ export interface Match {
   captureDate?: string | null;
 }
 
+export interface HotspotPhotoMatch {
+  hotspot: { id: string; title: string };
+  photos: MatchedPhoto[];
+  status: 'matched' | 'no-match';
+}
+
 /**
  * Extrae fecha del formato: nombre-MM-DD-YYYY.JPG
  * Ejemplo: "B-0-0-10-21-2025.JPG" → "2025-10-21"
@@ -140,6 +146,65 @@ export const matchPhotosToNames = async (
   }
 
   return matches;
+};
+
+/**
+ * Matchea fotos con hotspots existentes basándose en prefijo del filename
+ */
+export const matchPhotosToExistingHotspots = async (
+  existingHotspots: Array<{ id: string; title: string }>,
+  photoGroups: PhotoGroup[]
+): Promise<{
+  matches: HotspotPhotoMatch[];
+  validPhotos: number;
+  ignoredPhotos: number;
+}> => {
+  const matches: HotspotPhotoMatch[] = [];
+  let validPhotos = 0;
+  const allPhotos = photoGroups.reduce((sum, g) => sum + g.photos.length, 0);
+
+  for (const hotspot of existingHotspots) {
+    const matchingPhotos: MatchedPhoto[] = [];
+
+    photoGroups.forEach((group) => {
+      group.photos.forEach((photo) => {
+        const fileName = photo.name.toLowerCase();
+        const hotspotName = hotspot.title.toLowerCase();
+
+        // Match si el nombre de la foto comienza con el título del hotspot
+        if (
+          (fileName.startsWith(hotspotName + '-') ||
+            fileName.startsWith(hotspotName + '.')) &&
+          (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
+        ) {
+          let captureDate = extractDateFromFilename(photo.name);
+
+          if (!captureDate && group.manualDate) {
+            captureDate = group.manualDate.toISOString().split('T')[0];
+          }
+
+          matchingPhotos.push({
+            file: photo,
+            preview: URL.createObjectURL(photo),
+            captureDate,
+            groupName: group.name,
+          });
+          
+          validPhotos++;
+        }
+      });
+    });
+
+    matches.push({
+      hotspot: { id: hotspot.id, title: hotspot.title },
+      photos: matchingPhotos,
+      status: matchingPhotos.length > 0 ? 'matched' : 'no-match',
+    });
+  }
+
+  const ignoredPhotos = allPhotos - validPhotos;
+
+  return { matches, validPhotos, ignoredPhotos };
 };
 
 /**

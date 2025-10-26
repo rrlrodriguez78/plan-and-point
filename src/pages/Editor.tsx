@@ -29,6 +29,7 @@ import HotspotEditor from '@/components/editor/HotspotEditor';
 import HotspotModal from '@/components/editor/HotspotModal';
 import HotspotListManager from '@/components/editor/HotspotListManager';
 import { AutoImportDialog } from '@/components/editor/AutoImportDialog';
+import { PhotoGroupDialog } from '@/components/editor/PhotoGroupDialog';
 import { GuidedPlacementOverlay } from '@/components/editor/GuidedPlacementOverlay';
 import { Badge } from '@/components/ui/badge';
 import { Tour, FloorPlan, Hotspot } from '@/types/tour';
@@ -74,7 +75,7 @@ const Editor = () => {
   const [placedHotspotIds, setPlacedHotspotIds] = useState<string[]>([]);
   
   // Grupo de Fotos por Plano
-  const [photoGroupMode, setPhotoGroupMode] = useState(false);
+  const [photoGroupDialogOpen, setPhotoGroupDialogOpen] = useState(false);
   
   // Hook for bulk creation
   const { createHotspot, isCreating } = useBulkHotspotCreation(
@@ -650,14 +651,14 @@ const Editor = () => {
                         Auto avance
                       </Button>
                       <Button 
-                        onClick={() => setPhotoGroupMode(!photoGroupMode)}
-                        disabled={!selectedFloorPlan}
+                        onClick={() => setPhotoGroupDialogOpen(true)}
+                        disabled={!selectedFloorPlan || hotspots.length === 0}
                         className={cn(
                           "transition-all duration-300",
-                          photoGroupMode
+                          photoGroupDialogOpen
                             ? "bg-secondary text-secondary-foreground animate-slow-pulse"
                             : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground",
-                          !selectedFloorPlan && "opacity-50 cursor-not-allowed"
+                          (!selectedFloorPlan || hotspots.length === 0) && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <Upload className="w-4 h-4 mr-2" />
@@ -842,6 +843,20 @@ const Editor = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onStartPlacement={handleStartGuidedPlacement}
+      />
+
+      {/* Photo Group Dialog */}
+      <PhotoGroupDialog
+        open={photoGroupDialogOpen}
+        onOpenChange={setPhotoGroupDialogOpen}
+        existingHotspots={hotspots}
+        floorPlanId={selectedFloorPlan?.id || ''}
+        tourId={tour?.id || ''}
+        onPhotosAdded={() => {
+          if (selectedFloorPlan) {
+            loadHotspots(selectedFloorPlan.id);
+          }
+        }}
       />
       
       {/* Guided Placement Overlay */}
