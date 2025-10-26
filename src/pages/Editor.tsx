@@ -73,6 +73,9 @@ const Editor = () => {
   const [currentGuidedIndex, setCurrentGuidedIndex] = useState(0);
   const [placedHotspotIds, setPlacedHotspotIds] = useState<string[]>([]);
   
+  // Grupo de Fotos por Plano
+  const [photoGroupMode, setPhotoGroupMode] = useState(false);
+  
   // Hook for bulk creation
   const { createHotspot, isCreating } = useBulkHotspotCreation(
     selectedFloorPlan?.id || '', 
@@ -645,6 +648,20 @@ const Editor = () => {
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         Auto avance
+                      </Button>
+                      <Button 
+                        onClick={() => setPhotoGroupMode(!photoGroupMode)}
+                        disabled={!selectedFloorPlan}
+                        className={cn(
+                          "transition-all duration-300",
+                          photoGroupMode
+                            ? "bg-secondary text-secondary-foreground animate-slow-pulse"
+                            : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground",
+                          !selectedFloorPlan && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Grupo P F
                       </Button>
                     </div>
                   </div>
