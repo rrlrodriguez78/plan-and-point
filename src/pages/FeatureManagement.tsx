@@ -126,7 +126,7 @@ export default function FeatureManagement() {
 
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Error al cargar datos');
+      toast.error('Error loading data');
     } finally {
       setLoading(false);
     }
@@ -151,7 +151,7 @@ export default function FeatureManagement() {
           rollout_percentage: 0
         }]);
 
-      toast.success('Feature creado exitosamente');
+      toast.success('Feature created successfully');
       setShowNewFeatureDialog(false);
       setNewFeature({
         feature_key: '',
@@ -164,7 +164,7 @@ export default function FeatureManagement() {
       loadData();
     } catch (error) {
       console.error('Error creating feature:', error);
-      toast.error('Error al crear feature');
+      toast.error('Error creating feature');
     }
   };
 
@@ -177,11 +177,11 @@ export default function FeatureManagement() {
 
       if (error) throw error;
 
-      toast.success('Configuración actualizada');
+      toast.success('Configuration updated');
       loadData();
     } catch (error) {
       console.error('Error updating config:', error);
-      toast.error('Error al actualizar configuración');
+      toast.error('Error updating configuration');
     }
   };
 
@@ -195,16 +195,16 @@ export default function FeatureManagement() {
 
       if (error) throw error;
 
-      toast.success('Feature actualizado para el tenant');
+      toast.success('Feature updated for tenant');
       loadData();
     } catch (error) {
       console.error('Error toggling tenant feature:', error);
-      toast.error('Error al actualizar feature del tenant');
+      toast.error('Error updating tenant feature');
     }
   };
 
   const deleteFeature = async (featureId: string) => {
-    if (!confirm('¿Estás seguro de eliminar este feature?')) return;
+    if (!confirm('Are you sure you want to delete this feature?')) return;
 
     try {
       const { error } = await supabase
@@ -214,11 +214,11 @@ export default function FeatureManagement() {
 
       if (error) throw error;
 
-      toast.success('Feature eliminado');
+      toast.success('Feature deleted');
       loadData();
     } catch (error) {
       console.error('Error deleting feature:', error);
-      toast.error('Error al eliminar feature');
+      toast.error('Error deleting feature');
     }
   };
 
@@ -241,7 +241,7 @@ export default function FeatureManagement() {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container mx-auto py-8">
-          <p>Cargando...</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
@@ -254,10 +254,10 @@ export default function FeatureManagement() {
         <div className="container mx-auto py-8">
           <Card>
             <CardHeader>
-              <CardTitle>Acceso Denegado</CardTitle>
+              <CardTitle>Access Denied</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>No tienes permisos para acceder a esta página.</p>
+              <p>You don't have permission to access this page.</p>
             </CardContent>
           </Card>
         </div>
@@ -271,21 +271,21 @@ export default function FeatureManagement() {
       <div className="container mx-auto pt-24 pb-8 px-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Gestión de Features</h1>
-            <p className="text-muted-foreground">Control de funcionalidades por tenant</p>
+            <h1 className="text-3xl font-bold">Feature Management</h1>
+            <p className="text-muted-foreground">Feature control per tenant</p>
           </div>
           <Dialog open={showNewFeatureDialog} onOpenChange={setShowNewFeatureDialog}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
-                Nuevo Feature
+                New Feature
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Crear Nuevo Feature</DialogTitle>
+                <DialogTitle>Create New Feature</DialogTitle>
                 <DialogDescription>
-                  Define un nuevo feature para controlar su disponibilidad
+                  Define a new feature to control its availability
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -298,30 +298,30 @@ export default function FeatureManagement() {
                   />
                 </div>
                 <div>
-                  <Label>Nombre *</Label>
+                  <Label>Name *</Label>
                   <Input
                     value={newFeature.feature_name}
                     onChange={(e) => setNewFeature({ ...newFeature, feature_name: e.target.value })}
-                    placeholder="Analytics Avanzado"
+                    placeholder="Advanced Analytics"
                   />
                 </div>
                 <div>
-                  <Label>Descripción</Label>
+                  <Label>Description</Label>
                   <Textarea
                     value={newFeature.description}
                     onChange={(e) => setNewFeature({ ...newFeature, description: e.target.value })}
-                    placeholder="Descripción del feature..."
+                    placeholder="Feature description..."
                   />
                 </div>
                 <div>
-                  <Label>Versión</Label>
+                  <Label>Version</Label>
                   <Input
                     value={newFeature.version}
                     onChange={(e) => setNewFeature({ ...newFeature, version: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>Tier Requerido</Label>
+                  <Label>Required Tier</Label>
                   <Select
                     value={newFeature.requires_subscription_tier}
                     onValueChange={(value) => setNewFeature({ ...newFeature, requires_subscription_tier: value })}
@@ -341,14 +341,14 @@ export default function FeatureManagement() {
                     checked={newFeature.is_beta}
                     onCheckedChange={(checked) => setNewFeature({ ...newFeature, is_beta: checked })}
                   />
-                  <Label>Feature Beta</Label>
+                  <Label>Beta Feature</Label>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowNewFeatureDialog(false)}>
-                  Cancelar
+                  Cancel
                 </Button>
-                <Button onClick={createFeature}>Crear</Button>
+                <Button onClick={createFeature}>Create</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -362,11 +362,11 @@ export default function FeatureManagement() {
             </TabsTrigger>
             <TabsTrigger value="global">
               <Globe className="w-4 h-4 mr-2" />
-              Config Global
+              Global Config
             </TabsTrigger>
             <TabsTrigger value="tenants">
               <Users className="w-4 h-4 mr-2" />
-              Por Tenant
+              By Tenant
             </TabsTrigger>
           </TabsList>
 
@@ -402,10 +402,10 @@ export default function FeatureManagement() {
                   <CardContent>
                     <div className="flex items-center gap-4">
                       <div className="flex-1">
-                        <div className="text-sm font-medium">Adopción</div>
+                        <div className="text-sm font-medium">Adoption</div>
                         <div className="text-2xl font-bold">{stats.percentage}%</div>
                         <div className="text-xs text-muted-foreground">
-                          {stats.enabled} de {stats.total} tenants
+                          {stats.enabled} of {stats.total} tenants
                         </div>
                       </div>
                     </div>
@@ -424,14 +424,14 @@ export default function FeatureManagement() {
                 <Card key={feature.id}>
                   <CardHeader>
                     <CardTitle>{feature.feature_name}</CardTitle>
-                    <CardDescription>Configuración para nuevos tenants</CardDescription>
+                    <CardDescription>Configuration for new tenants</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label>Habilitado por defecto</Label>
+                        <Label>Enabled by default</Label>
                         <p className="text-xs text-muted-foreground">
-                          Nuevos tenants tendrán este feature activo
+                          New tenants will have this feature active
                         </p>
                       </div>
                       <Switch
@@ -442,9 +442,9 @@ export default function FeatureManagement() {
                       />
                     </div>
                     <div>
-                      <Label>Porcentaje de Rollout: {config.rollout_percentage}%</Label>
+                      <Label>Rollout Percentage: {config.rollout_percentage}%</Label>
                       <p className="text-xs text-muted-foreground mb-2">
-                        Probabilidad de activación para nuevos tenants
+                        Activation probability for new tenants
                       </p>
                       <Slider
                         value={[config.rollout_percentage]}
