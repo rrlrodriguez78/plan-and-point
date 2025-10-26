@@ -8,8 +8,10 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell, ListChecks } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell, ListChecks, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +58,7 @@ interface Page {
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isSuperAdmin, loading: superAdminLoading } = useIsSuperAdmin();
   const { t } = useTranslation();
   const [rules, setRules] = useState<GoldenRule[]>([]);
   const [commands, setCommands] = useState<Command[]>([]);
@@ -87,16 +90,23 @@ const Settings = () => {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/login');
+      return;
     }
-  }, [user, authLoading, navigate]);
+
+    // Redirect if not super admin
+    if (!authLoading && !superAdminLoading && user && !isSuperAdmin) {
+      toast.error('Access denied. This page is only accessible to super admins.');
+      navigate('/app/tours');
+    }
+  }, [user, authLoading, isSuperAdmin, superAdminLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && isSuperAdmin) {
       loadRules();
       loadCommands();
       loadPages();
     }
-  }, [user]);
+  }, [user, isSuperAdmin]);
 
   const loadRules = async () => {
     try {
@@ -413,12 +423,38 @@ const Settings = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || superAdminLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if not super admin
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 pt-24 pb-12 max-w-2xl">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You don't have permission to access this page. Only super administrators can access settings.
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/app/tours')}
+            className="mt-6"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );

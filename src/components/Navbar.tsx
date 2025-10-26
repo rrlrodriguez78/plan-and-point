@@ -4,6 +4,7 @@ import { MapPin, LogOut, Settings, Menu, Home, Globe, User } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import {
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
+  const { isSuperAdmin } = useIsSuperAdmin();
 
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -61,12 +63,14 @@ export const Navbar = () => {
                       My Settings
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/app/settings" className="flex items-center cursor-pointer">
-                      <Settings className="w-4 h-4 mr-2" />
-                      {t('nav.settings')}
-                    </Link>
-                  </DropdownMenuItem>
+                  {isSuperAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/app/settings" className="flex items-center cursor-pointer">
+                        <Settings className="w-4 h-4 mr-2" />
+                        {t('nav.settings')}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button 
