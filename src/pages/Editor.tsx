@@ -216,6 +216,14 @@ const Editor = () => {
   };
 
   const handleCanvasClick = async (x: number, y: number) => {
+    // Bloquear clicks si ya está procesando un punto
+    if (isPlacingPoint) {
+      toast.warning('⏳ Espera a que termine de procesar el punto actual', {
+        description: 'El sistema está guardando el punto anterior'
+      });
+      return;
+    }
+    
     // Modo guiado tiene prioridad
     if (guidedMode && currentGuidedIndex < guidedMatches.length) {
       const currentMatch = guidedMatches[currentGuidedIndex];
@@ -830,6 +838,10 @@ const Editor = () => {
                         readOnly={!addPointMode && !moveMode}
                         selectMode={selectMode}
                         moveMode={moveMode}
+                        isPlacingPoint={isPlacingPoint}
+                        placementProgress={placementProgress}
+                        currentPointIndex={currentGuidedIndex}
+                        totalPoints={guidedMatches.length}
                       />
                     </TabsContent>
                   ))}

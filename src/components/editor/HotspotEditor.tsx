@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Hotspot } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 import { supabase } from '@/integrations/supabase/client';
+import { PlacementLoadingOverlay } from './PlacementLoadingOverlay';
 
 // Helper function to extract filename from URL
 const extractFilename = (url: string): string => {
@@ -28,6 +29,10 @@ interface HotspotEditorProps {
   readOnly?: boolean;
   selectMode?: boolean;
   moveMode?: boolean;
+  isPlacingPoint?: boolean;
+  placementProgress?: number;
+  currentPointIndex?: number;
+  totalPoints?: number;
 }
 
 export default function HotspotEditor({
@@ -40,6 +45,10 @@ export default function HotspotEditor({
   readOnly = false,
   selectMode = false,
   moveMode = false,
+  isPlacingPoint = false,
+  placementProgress = 0,
+  currentPointIndex = 0,
+  totalPoints = 0,
 }: HotspotEditorProps) {
   const { t } = useTranslation();
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
@@ -215,23 +224,24 @@ export default function HotspotEditor({
 
   return (
     <Card className="p-6 bg-[hsl(var(--accent)/0.3)]">
-      <div
-        ref={containerRef}
-        className={`relative bg-background rounded-lg overflow-hidden border-2 border-dashed border-border shadow-inner ${
-          readOnly 
-            ? 'cursor-default' 
-            : selectMode 
-              ? 'cursor-pointer' 
-              : moveMode 
-                ? 'cursor-move' 
-                : 'cursor-crosshair'
-        }`}
-        onClick={handleCanvasClick as any}
-        onTouchStart={handleCanvasClick as any}
-        onMouseMove={handleMouseMove as any}
-        onTouchMove={handleMouseMove as any}
-        style={{ maxHeight: '80vh' }}
-      >
+      <div className="relative">
+        <div
+          ref={containerRef}
+          className={`relative bg-background rounded-lg overflow-hidden border-2 border-dashed border-border shadow-inner ${
+            readOnly 
+              ? 'cursor-default' 
+              : selectMode 
+                ? 'cursor-pointer' 
+                : moveMode 
+                  ? 'cursor-move' 
+                  : 'cursor-crosshair'
+          }`}
+          onClick={handleCanvasClick as any}
+          onTouchStart={handleCanvasClick as any}
+          onMouseMove={handleMouseMove as any}
+          onTouchMove={handleMouseMove as any}
+          style={{ maxHeight: '80vh' }}
+        >
         <img
           ref={imageRef}
           src={imageUrl}
@@ -342,6 +352,15 @@ export default function HotspotEditor({
             </div>
           );
         })}
+        </div>
+
+        {/* Overlay de carga para colocación de puntos */}
+        <PlacementLoadingOverlay 
+          isVisible={isPlacingPoint}
+          progress={placementProgress}
+          currentPoint={currentPointIndex}
+          totalPoints={totalPoints}
+        />
       </div>
 
       <p className="text-xs text-muted-foreground mt-3 text-center">
