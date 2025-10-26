@@ -18,22 +18,40 @@ export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
     setIsCreating(true);
     
     try {
-      // 1. Crear el hotspot primero
-      const { data: hotspot, error: hotspotError } = await supabase
+      // 1. Check if hotspot already exists
+      const { data: existing, error: checkError } = await supabase
         .from('hotspots')
-        .insert({
-          floor_plan_id: floorPlanId,
-          title: params.name,
-          x_position: params.position.x,
-          y_position: params.position.y,
-          display_order: params.displayOrder,
-          has_panorama: params.photos.length > 0,
-          panorama_count: params.photos.length
-        })
-        .select()
-        .single();
+        .select('id, panorama_count')
+        .eq('floor_plan_id', floorPlanId)
+        .eq('title', params.name)
+        .maybeSingle();
       
-      if (hotspotError) throw hotspotError;
+      if (checkError) throw checkError;
+      
+      let hotspot;
+      
+      if (existing) {
+        // Hotspot exists, we'll add photos to it
+        hotspot = existing;
+      } else {
+        // Create new hotspot
+        const { data: newHotspot, error: hotspotError } = await supabase
+          .from('hotspots')
+          .insert({
+            floor_plan_id: floorPlanId,
+            title: params.name,
+            x_position: params.position.x,
+            y_position: params.position.y,
+            display_order: params.displayOrder,
+            has_panorama: params.photos.length > 0,
+            panorama_count: params.photos.length
+          })
+          .select()
+          .single();
+        
+        if (hotspotError) throw hotspotError;
+        hotspot = newHotspot;
+      }
 
       // 2. Ordenar fotos por fecha antes de subir
       const sortedPhotos = [...params.photos].sort((a, b) => {
@@ -42,7 +60,10 @@ export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
         return a.captureDate.localeCompare(b.captureDate);
       });
 
-      // 3. Subir todas las fotos de este hotspot
+      // 3. Get current photo count for proper ordering
+      const startOrder = existing ? existing.panorama_count : 0;
+
+      // 4. Subir todas las fotos de este hotspot
       for (let i = 0; i < sortedPhotos.length; i++) {
         const photoData = sortedPhotos[i];
         const fileName = `${tourId}/${floorPlanId}/${params.name}-${i}-${Date.now()}.jpg`;
@@ -70,14 +91,25 @@ export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
           .insert({
             hotspot_id: hotspot.id,
             photo_url: publicUrl,
-            display_order: i,
+            display_order: startOrder + i,
             original_filename: photoData.file.name,
             capture_date: finalCaptureDate,
-            description: `Foto panorámica de ${params.name}`,
+            description: `Panoramic photo of ${params.name}`,
           });
 
         if (panoramaError) throw panoramaError;
       }
+      
+      // 5. Update hotspot panorama count
+      const { error: updateError } = await supabase
+        .from('hotspots')
+        .update({
+          panorama_count: startOrder + sortedPhotos.length,
+          has_panorama: true
+        })
+        .eq('id', hotspot.id);
+      
+      if (updateError) throw updateError;
       
       return hotspot;
     } finally {

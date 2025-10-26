@@ -60,22 +60,24 @@ export const PhotoGroupDialog = ({
 
   useEffect(() => {
     if (!open) {
-      // Cleanup previews manually
-      if (matches.length > 0) {
-        matches.forEach(match => {
+      // Cleanup on close - using callback pattern to avoid dependency issues
+      setMatches(prevMatches => {
+        // Cleanup previews
+        prevMatches.forEach(match => {
           match.photos.forEach(photo => {
             if (photo.preview) {
               URL.revokeObjectURL(photo.preview);
             }
           });
         });
-      }
+        return [];
+      });
+      
       setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }]);
-      setMatches([]);
       setValidPhotos(0);
       setIgnoredPhotos(0);
     }
-  }, [open, matches, t]);
+  }, [open, t]);
 
   const addPhotoGroup = () => {
     setPhotoGroups(prev => [
