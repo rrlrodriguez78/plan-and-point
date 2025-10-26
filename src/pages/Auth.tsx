@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { MapPin, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { passwordSchema } from '@/lib/passwordValidation';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,10 +20,12 @@ const Auth = () => {
 
   const loginSchema = z.object({
     email: z.string().email({ message: t('auth.invalidEmail') }),
-    password: z.string().min(6, { message: t('auth.passwordMinLength') }),
+    password: z.string().min(1, { message: 'La contraseña es requerida' }),
   });
 
-  const signupSchema = loginSchema.extend({
+  const signupSchema = z.object({
+    email: z.string().email({ message: t('auth.invalidEmail') }),
+    password: passwordSchema,
     fullName: z.string().min(2, { message: t('auth.nameMinLength') }).max(100),
   });
 

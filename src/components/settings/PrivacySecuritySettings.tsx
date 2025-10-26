@@ -5,11 +5,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shield, Key, Smartphone, Save } from 'lucide-react';
+import { Shield, Key, Smartphone, Save, Check, X } from 'lucide-react';
 import { UserSettings } from '@/hooks/useUserSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
+import { validatePassword, checkPasswordStrength } from '@/lib/passwordValidation';
 
 interface PrivacySecuritySettingsProps {
   settings: UserSettings;
@@ -34,8 +35,10 @@ export const PrivacySecuritySettings = ({ settings, onUpdate }: PrivacySecurityS
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres');
+    // Validate password strength
+    const validation = validatePassword(newPassword);
+    if (!validation.valid) {
+      toast.error(validation.errors[0]);
       return;
     }
 
@@ -132,9 +135,28 @@ export const PrivacySecuritySettings = ({ settings, onUpdate }: PrivacySecurityS
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 12 caracteres"
                 className="mt-1"
               />
+              
+              {/* Password strength indicator */}
+              {newPassword && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Requisitos de contraseña:</p>
+                  {checkPasswordStrength(newPassword).map((check, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs">
+                      {check.met ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-red-500" />
+                      )}
+                      <span className={check.met ? 'text-green-600' : 'text-muted-foreground'}>
+                        {check.requirement}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="confirm_password">Confirmar Contraseña</Label>
