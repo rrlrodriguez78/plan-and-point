@@ -1,11 +1,34 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Simple in-memory rate limiting (resets on function restart)
+const rateLimitMap = new Map<string, { attempts: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(tourId: string, ipAddress: string): boolean {
+  const key = `${tourId}:${ipAddress}`;
+  const now = Date.now();
+  const record = rateLimitMap.get(key);
+
+  if (!record || now > record.resetAt) {
+    rateLimitMap.set(key, { attempts: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (record.attempts >= MAX_ATTEMPTS) {
+    return false;
+  }
+
+  record.attempts++;
+  return true;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,12 +45,28 @@ serve(async (req) => {
       );
     }
 
+    // Get client IP for rate limiting
+    const ipAddress = req.headers.get('x-forwarded-for') || 
+                      req.headers.get('x-real-ip') || 
+                      'unknown';
+
+    // Check rate limit
+    if (!checkRateLimit(tour_id, ipAddress)) {
+      console.log(`Rate limit exceeded for tour ${tour_id} from IP ${ipAddress}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many attempts. Please try again in 15 minutes.' 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Obtener el tour con su password_hash
+    // Fetch tour with password_hash
     const { data: tour, error: tourError } = await supabaseClient
       .from('virtual_tours')
       .select('password_hash, password_updated_at, password_protected')
@@ -49,13 +88,8 @@ serve(async (req) => {
       );
     }
 
-    // Verificar la contraseña con SHA-256
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const inputHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const isValid = inputHash === tour.password_hash;
+    // Verify password with bcrypt
+    const isValid = await bcrypt.compare(password, tour.password_hash);
 
     if (!isValid) {
       return new Response(
@@ -64,7 +98,7 @@ serve(async (req) => {
       );
     }
 
-    // Retornar el timestamp de actualización para validar el token localmente
+    // Return timestamp for client-side token validation
     return new Response(
       JSON.stringify({ 
         success: true, 

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,7 +71,7 @@ serve(async (req) => {
     console.log('🔍 Fetching tour...');
     const { data: tour, error: tourError } = await supabaseClient
       .from('virtual_tours')
-      .select('organization_id')
+      .select('tenant_id')
       .eq('id', tour_id)
       .single();
 
@@ -92,25 +92,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('🔍 Fetching organization owner...');
-    const { data: org, error: orgError } = await supabaseAdmin
-      .from('organizations')
+    console.log('🔍 Fetching tenant owner...');
+    const { data: tenant, error: tenantError } = await supabaseAdmin
+      .from('tenants')
       .select('owner_id')
-      .eq('id', tour.organization_id)
+      .eq('id', tour.tenant_id)
       .single();
 
-    if (orgError || !org) {
-      console.error('❌ Error fetching organization:', orgError);
+    if (tenantError || !tenant) {
+      console.error('❌ Error fetching tenant:', tenantError);
       return new Response(
-        JSON.stringify({ error: 'Organization not found' }),
+        JSON.stringify({ error: 'Tenant not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('👤 Organization owner:', org.owner_id);
+    console.log('👤 Tenant owner:', tenant.owner_id);
 
-    if (org.owner_id !== user.id) {
-      console.error('❌ User is not owner. Owner:', org.owner_id, 'User:', user.id);
+    if (tenant.owner_id !== user.id) {
+      console.error('❌ User is not owner. Owner:', tenant.owner_id, 'User:', user.id);
       return new Response(
         JSON.stringify({ error: 'You are not the owner of this tour' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -122,21 +122,27 @@ serve(async (req) => {
     console.log('📝 Preparing update data:', { enabled });
 
     if (enabled && password) {
-      if (password.length < 6) {
+      // Server-side password validation
+      if (password.length < 8) {
         console.error('❌ Password too short');
         return new Response(
-          JSON.stringify({ error: 'Password must be at least 6 characters' }),
+          JSON.stringify({ error: 'Password must be at least 8 characters' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      console.log('🔐 Hashing password with SHA-256...');
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      if (password.length > 128) {
+        console.error('❌ Password too long');
+        return new Response(
+          JSON.stringify({ error: 'Password must be less than 128 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('🔐 Hashing password with bcrypt...');
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(password, salt);
       updateData.password_hash = hash;
-      console.log('✅ Password hashed');
+      console.log('✅ Password hashed securely');
     } else if (!enabled) {
       console.log('🔓 Removing password protection');
       updateData.password_hash = null;

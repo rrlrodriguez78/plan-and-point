@@ -3,7 +3,7 @@ export interface Tour {
   title: string;
   description?: string;
   is_published?: boolean;
-  organization_id?: string;
+  tenant_id?: string;
   created_at?: string;
   updated_at?: string;
 }

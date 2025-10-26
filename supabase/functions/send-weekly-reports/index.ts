@@ -14,6 +14,21 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Security: Only allow calls from service role (cron jobs or admin users)
+  const authHeader = req.headers.get('authorization');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!authHeader || !authHeader.includes(serviceRoleKey || '')) {
+    console.error('Unauthorized attempt to trigger weekly reports');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized - This endpoint requires admin privileges' }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
