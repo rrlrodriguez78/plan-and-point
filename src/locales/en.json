@@ -1,6 +1,7 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "createTours": "Create Tours",
     "tours": "Tours",
     "publicTours": "Public Tours",
     "settings": "Settings",

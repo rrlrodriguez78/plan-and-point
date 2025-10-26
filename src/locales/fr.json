@@ -1,6 +1,7 @@
 {
   "nav": {
     "dashboard": "Tableau de bord",
+    "createTours": "Créer Tours",
     "tours": "Visites",
     "publicTours": "Visites Publiques",
     "settings": "Paramètres",

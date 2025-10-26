@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
 import Dashboard from "./pages/Dashboard";
 import PublicTours from "./pages/PublicTours";
+import CreateTour from "./pages/CreateTour";
 import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
 import Settings from "./pages/Settings";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/login" element={<Auth />} />
               <Route path="/signup" element={<Auth />} />
               <Route path="/app/inicio" element={<Inicio />} />
+              <Route path="/app/crear-tour" element={<CreateTour />} />
               <Route path="/app/tours" element={<Dashboard />} />
               <Route path="/app/tours-publicos" element={<PublicTours />} />
               <Route path="/app/editor/:id" element={<Editor />} />
