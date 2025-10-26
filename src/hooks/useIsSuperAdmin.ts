@@ -21,6 +21,8 @@ export const useIsSuperAdmin = () => {
           _user_id: user.id
         });
 
+        console.log('Super admin check:', { userId: user.id, userEmail: user.email, data, error });
+
         if (error) {
           console.error('Error checking super admin status:', error);
           setIsSuperAdmin(false);
