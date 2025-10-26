@@ -62,6 +62,12 @@ export default function PanoramaViewer({
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   const { isMobile } = useDeviceDetection();
   
+  // Detectar si es PWA instalada
+  const isStandalone = 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    document.referrer.includes('android-app://');
+  
   // Helper function para obtener el número de hotspots por piso
   const getHotspotCount = useCallback((floorPlanId: string): number => {
     return hotspotsByFloor[floorPlanId]?.length || 0;
@@ -645,9 +651,12 @@ export default function PanoramaViewer({
                 <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full">
                   <Info className="w-5 h-5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 rounded-full">
-                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-                </Button>
+                {/* Ocultar botón de fullscreen en PWA */}
+                {!isStandalone && (
+                  <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 rounded-full">
+                    {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full">
                   <X className="w-6 h-6" />
                 </Button>

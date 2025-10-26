@@ -20,7 +20,7 @@ const Viewer = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  const { shouldShowOrientationWarning, lockLandscape, isMobile, isStandalone, isLandscape } = useDeviceOrientation();
+  const { shouldShowOrientationWarning, lockLandscape, unlockOrientation, isMobile, isStandalone, isLandscape } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
@@ -488,6 +488,7 @@ const Viewer = () => {
         tourTitle={tour.title}
         onToggleFullscreen={toggleFullscreen}
         isFullscreen={isFullscreen}
+        unlockOrientation={unlockOrientation}
       />
 
       {/* Solo renderizar el contenido del viewer si NO estamos mostrando password prompt */}

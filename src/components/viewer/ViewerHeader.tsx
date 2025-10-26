@@ -8,11 +8,18 @@ interface ViewerHeaderProps {
   tourTitle: string;
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
+  unlockOrientation?: () => void;
 }
 
-export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: ViewerHeaderProps) => {
+export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen, unlockOrientation }: ViewerHeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  
+  // Detectar si es PWA instalada
+  const isStandalone = 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    document.referrer.includes('android-app://');
   
   const handleShare = () => {
     const url = window.location.href;
@@ -25,6 +32,11 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
   };
 
   const handleBack = () => {
+    // Desbloquear orientación antes de navegar
+    if (unlockOrientation) {
+      console.log('🔄 Desbloqueando orientación desde Back button...');
+      unlockOrientation();
+    }
     navigate('/app/tours');
   };
 
@@ -47,10 +59,13 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen }: Vi
               <Share2 className="w-4 h-4 md:mr-2" />
               <span className="hidden md:inline">{t('viewer.share')}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={onToggleFullscreen} className="min-w-[44px] min-h-[44px]">
-              <Maximize2 className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">{isFullscreen ? t('viewer.exit') : t('viewer.fullscreen')}</span>
-            </Button>
+            {/* Ocultar botón de fullscreen en PWA */}
+            {!isStandalone && (
+              <Button variant="ghost" size="sm" onClick={onToggleFullscreen} className="min-w-[44px] min-h-[44px]">
+                <Maximize2 className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">{isFullscreen ? t('viewer.exit') : t('viewer.fullscreen')}</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
