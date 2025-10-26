@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, UserPlus, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/Navbar';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,15 @@ export default function TenantAdmin() {
   const [loading, setLoading] = useState(true);
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [userForm, setUserForm] = useState({ email: '', role: 'user' });
+
+  // Debug logs
+  console.log('TenantAdmin Debug:', {
+    currentTenant,
+    isTenantAdmin,
+    tenantLoading,
+    loading,
+    user: user?.id,
+  });
 
   useEffect(() => {
     if (!tenantLoading && !isTenantAdmin && user) {
@@ -207,11 +217,47 @@ export default function TenantAdmin() {
   };
 
   if (tenantLoading || loading) {
-    return <div className="p-8">Cargando...</div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentTenant) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto p-6">
+          <Alert variant="destructive">
+            <AlertTitle>No hay tenant seleccionado</AlertTitle>
+            <AlertDescription>
+              Por favor selecciona un tenant desde el menú superior.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
   }
 
   if (!isTenantAdmin) {
-    return null;
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto p-6">
+          <Alert variant="destructive">
+            <AlertTitle>Sin permisos de administrador</AlertTitle>
+            <AlertDescription>
+              No tienes permisos de administrador para este tenant.
+              Rol actual: {currentTenant?.user_role || 'desconocido'}
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
   }
 
   return (
