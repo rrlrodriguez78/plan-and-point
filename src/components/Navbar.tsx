@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard, Plus } from 'lucide-react';
+import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard, Plus, Building2, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
+import { useTenant } from '@/contexts/TenantContext';
+import TenantSwitcher from './TenantSwitcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +18,7 @@ export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
   const { isSuperAdmin } = useIsSuperAdmin();
+  const { isTenantAdmin } = useTenant();
 
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -28,7 +31,8 @@ export const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-4">
-          <LanguageSwitcher />
+            <TenantSwitcher />
+            <LanguageSwitcher />
           {user ? (
             <>
               <DropdownMenu>
@@ -75,13 +79,29 @@ export const Navbar = () => {
                       My Settings
                     </Link>
                   </DropdownMenuItem>
-                  {isSuperAdmin && (
+                  {isTenantAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link to="/app/settings" className="flex items-center cursor-pointer">
-                        <Settings className="w-4 h-4 mr-2" />
-                        {t('nav.settings')}
+                      <Link to="/app/tenant-admin" className="flex items-center cursor-pointer">
+                        <Users className="w-4 h-4 mr-2" />
+                        Gestionar Usuarios
                       </Link>
                     </DropdownMenuItem>
+                  )}
+                  {isSuperAdmin && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/app/super-admin" className="flex items-center cursor-pointer">
+                          <Building2 className="w-4 h-4 mr-2" />
+                          Super Admin
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/app/settings" className="flex items-center cursor-pointer">
+                          <Settings className="w-4 h-4 mr-2" />
+                          {t('nav.settings')}
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

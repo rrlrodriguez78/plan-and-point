@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/contexts/ThemeContext";
 import { UserSettingsProvider } from "./contexts/UserSettingsContext";
+import { TenantProvider } from "./contexts/TenantContext";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
@@ -16,6 +17,8 @@ import Editor from "./pages/Editor";
 import Viewer from "./pages/Viewer";
 import Settings from "./pages/Settings";
 import UserSettings from "./pages/UserSettings";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import TenantAdmin from "./pages/TenantAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,8 +31,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <UserSettingsProvider>
-              <Routes>
+            <TenantProvider>
+              <UserSettingsProvider>
+                <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Auth />} />
               <Route path="/signup" element={<Auth />} />
@@ -40,11 +44,14 @@ const App = () => (
               <Route path="/app/editor/:id" element={<Editor />} />
               <Route path="/app/settings" element={<Settings />} />
               <Route path="/app/user-settings" element={<UserSettings />} />
+              <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
+              <Route path="/app/tenant-admin" element={<TenantAdmin />} />
               <Route path="/viewer/:id" element={<Viewer />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
-              </Routes>
-            </UserSettingsProvider>
+                </Routes>
+              </UserSettingsProvider>
+            </TenantProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
