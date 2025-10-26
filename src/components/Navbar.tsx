@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard, Plus, Building2, Users, UserCheck } from 'lucide-react';
+import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard, Plus, Building2, Users, UserCheck, Database } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -77,6 +77,12 @@ export const Navbar = () => {
                     <Link to="/app/user-settings" className="flex items-center cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
                       My Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/backups" className="flex items-center cursor-pointer">
+                      <Database className="w-4 h-4 mr-2" />
+                      Backups
                     </Link>
                   </DropdownMenuItem>
                   

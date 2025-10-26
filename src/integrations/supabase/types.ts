@@ -55,6 +55,48 @@ export type Database = {
           },
         ]
       }
+      backup_logs: {
+        Row: {
+          action: string
+          backup_id: string | null
+          created_at: string | null
+          details: Json | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          backup_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          backup_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_logs_backup_id_fkey"
+            columns: ["backup_id"]
+            isOneToOne: false
+            referencedRelation: "tour_backups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backup_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commands: {
         Row: {
           command_number: number
@@ -595,6 +637,78 @@ export type Database = {
           },
         ]
       }
+      tour_backups: {
+        Row: {
+          backup_data: Json
+          backup_name: string
+          backup_status: string | null
+          backup_type: string
+          can_restore: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          included_files: string[] | null
+          media_files_count: number | null
+          notes: string | null
+          restore_expiry: string | null
+          tenant_id: string
+          total_size_bytes: number | null
+          tours_count: number | null
+          user_id: string
+        }
+        Insert: {
+          backup_data: Json
+          backup_name: string
+          backup_status?: string | null
+          backup_type: string
+          can_restore?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          included_files?: string[] | null
+          media_files_count?: number | null
+          notes?: string | null
+          restore_expiry?: string | null
+          tenant_id: string
+          total_size_bytes?: number | null
+          tours_count?: number | null
+          user_id: string
+        }
+        Update: {
+          backup_data?: Json
+          backup_name?: string
+          backup_status?: string | null
+          backup_type?: string
+          can_restore?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          included_files?: string[] | null
+          media_files_count?: number | null
+          notes?: string | null
+          restore_expiry?: string | null
+          tenant_id?: string
+          total_size_bytes?: number | null
+          tours_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_backups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_backups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_comments: {
         Row: {
           comment_text: string
@@ -991,6 +1105,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      cleanup_old_backups: { Args: never; Returns: undefined }
       generate_share_token: { Args: never; Returns: string }
       get_user_tenants: {
         Args: { _user_id: string }
