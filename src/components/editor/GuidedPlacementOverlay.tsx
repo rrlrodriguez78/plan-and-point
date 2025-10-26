@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { X, SkipForward, Undo2, Calendar as CalendarIcon } from 'lucide-react';
+import { X, SkipForward, Undo2, Calendar as CalendarIcon, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import type { Match } from '@/utils/photoMatcher';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -23,15 +24,35 @@ export const GuidedPlacementOverlay = ({
   onUndo,
   onCancel
 }: GuidedPlacementOverlayProps) => {
+  const [isMinimized, setIsMinimized] = useState(false);
+  
   if (currentIndex >= matches.length) return null;
 
   const currentMatch = matches[currentIndex];
   const progress = ((currentIndex) / matches.length) * 100;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4">
-      <Card className="p-4 shadow-2xl border-2 border-primary bg-card">
-        <div className="flex items-start gap-4">
+    <>
+      {/* Versión minimizada */}
+      {isMinimized && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Button
+            onClick={() => setIsMinimized(false)}
+            className="shadow-xl"
+            size="lg"
+          >
+            <MapPin className="w-4 h-4 mr-2" />
+            {currentIndex + 1}/{matches.length}
+            <ChevronUp className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      )}
+
+      {/* Versión completa */}
+      {!isMinimized && (
+        <div className="fixed bottom-4 right-4 z-50 w-full max-w-md px-4">
+          <Card className="p-4 shadow-2xl border-2 border-primary bg-card">
+            <div className="flex items-start gap-4">
           {/* Preview de fotos */}
           <div className="flex gap-2 flex-shrink-0">
             {currentMatch.photos.slice(0, 3).map((photo, idx) => (
@@ -55,14 +76,24 @@ export const GuidedPlacementOverlay = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-bold text-lg truncate">{currentMatch.name}</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onCancel}
-                className="flex-shrink-0 -mt-1 -mr-1"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-1 flex-shrink-0 -mt-1 -mr-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMinimized(true)}
+                  className="h-8 w-8"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCancel}
+                  className="h-8 w-8"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             
             <p className="text-sm text-muted-foreground mb-1">
@@ -136,7 +167,9 @@ export const GuidedPlacementOverlay = ({
             Cancelar
           </Button>
         </div>
-      </Card>
-    </div>
+          </Card>
+        </div>
+      )}
+    </>
   );
 };
