@@ -20,6 +20,7 @@ import {
   ChevronUp,
   Settings,
   MapPin,
+  Upload,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -27,8 +28,12 @@ import FloorPlanManager from '@/components/editor/FloorPlanManager';
 import HotspotEditor from '@/components/editor/HotspotEditor';
 import HotspotModal from '@/components/editor/HotspotModal';
 import HotspotListManager from '@/components/editor/HotspotListManager';
+import { AutoImportDialog } from '@/components/editor/AutoImportDialog';
+import { GuidedPlacementOverlay } from '@/components/editor/GuidedPlacementOverlay';
 import { Badge } from '@/components/ui/badge';
 import { Tour, FloorPlan, Hotspot } from '@/types/tour';
+import { useBulkHotspotCreation } from '@/hooks/useBulkHotspotCreation';
+import type { Match } from '@/utils/photoMatcher';
 
 const Editor = () => {
   const { id } = useParams();
@@ -59,6 +64,19 @@ const Editor = () => {
   
   // Auto-save
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Auto-import guided mode
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [guidedMode, setGuidedMode] = useState(false);
+  const [guidedMatches, setGuidedMatches] = useState<Match[]>([]);
+  const [currentGuidedIndex, setCurrentGuidedIndex] = useState(0);
+  const [placedHotspotIds, setPlacedHotspotIds] = useState<string[]>([]);
+  
+  // Hook for bulk creation
+  const { createHotspot, isCreating } = useBulkHotspotCreation(
+    selectedFloorPlan?.id || '', 
+    tour?.id || ''
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -174,7 +192,50 @@ const Editor = () => {
     }
   };
 
-  const handleCanvasClick = (x: number, y: number) => {
+  const handleCanvasClick = async (x: number, y: number) => {
+    // Modo guiado tiene prioridad
+    if (guidedMode && currentGuidedIndex < guidedMatches.length) {
+      const currentMatch = guidedMatches[currentGuidedIndex];
+      
+      if (!currentMatch.photo) {
+        toast.error('Este punto no tiene foto asociada, se omitirá');
+        setCurrentGuidedIndex(prev => prev + 1);
+        return;
+      }
+      
+      try {
+        // Crear hotspot con foto
+        const hotspot = await createHotspot({
+          name: currentMatch.name,
+          photo: currentMatch.photo,
+          position: { x, y },
+          displayOrder: currentGuidedIndex + 1
+        });
+        
+        // Guardar ID del hotspot creado
+        setPlacedHotspotIds(prev => [...prev, hotspot.id]);
+        
+        // Avanzar al siguiente o terminar
+        if (currentGuidedIndex < guidedMatches.length - 1) {
+          setCurrentGuidedIndex(prev => prev + 1);
+          toast.success(`${currentMatch.name} creado. Siguiente: ${guidedMatches[currentGuidedIndex + 1].name}`);
+        } else {
+          // Terminamos
+          setGuidedMode(false);
+          setCurrentGuidedIndex(0);
+          toast.success(`¡Completado! ${guidedMatches.length} puntos creados exitosamente`);
+          // Recargar hotspots
+          if (selectedFloorPlan) {
+            loadHotspots(selectedFloorPlan.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error creando hotspot:', error);
+        toast.error('No se pudo crear el punto. Intenta de nuevo.');
+      }
+      return;
+    }
+    
     // Protección contra clics duplicados
     if (!addPointMode || isProcessingClick || hotspotModalOpen) return;
     
@@ -403,6 +464,58 @@ const Editor = () => {
     }
   };
 
+  // Handlers para modo guiado
+  const handleStartGuidedPlacement = (matches: Match[]) => {
+    setGuidedMatches(matches);
+    setCurrentGuidedIndex(0);
+    setPlacedHotspotIds([]);
+    setGuidedMode(true);
+    setImportDialogOpen(false);
+    toast.success(`Modo guiado activado. Haz click en el plano para colocar ${matches.length} puntos en orden`);
+  };
+
+  const handleSkipPoint = () => {
+    if (currentGuidedIndex < guidedMatches.length - 1) {
+      setCurrentGuidedIndex(prev => prev + 1);
+      toast.info(`${guidedMatches[currentGuidedIndex].name} omitido`);
+    }
+  };
+
+  const handleUndoPoint = async () => {
+    if (placedHotspotIds.length === 0) return;
+    
+    const lastHotspotId = placedHotspotIds[placedHotspotIds.length - 1];
+    
+    try {
+      // Eliminar último hotspot creado de la BD
+      await supabase
+        .from('hotspots')
+        .delete()
+        .eq('id', lastHotspotId);
+      
+      setPlacedHotspotIds(prev => prev.slice(0, -1));
+      setCurrentGuidedIndex(prev => Math.max(0, prev - 1));
+      
+      // Recargar hotspots
+      if (selectedFloorPlan) {
+        loadHotspots(selectedFloorPlan.id);
+      }
+      
+      toast.success('Último punto eliminado');
+    } catch (error) {
+      console.error('Error undoing point:', error);
+      toast.error('No se pudo deshacer');
+    }
+  };
+
+  const handleCancelGuided = () => {
+    setGuidedMode(false);
+    setGuidedMatches([]);
+    setCurrentGuidedIndex(0);
+    setPlacedHotspotIds([]);
+    toast.info('Modo guiado cancelado');
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -500,7 +613,12 @@ const Editor = () => {
                         <Plus className="w-4 h-4 mr-2" />
                         {addPointMode ? t('editor.activeMode') : t('editor.addPoint')}
                       </Button>
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => setImportDialogOpen(true)}
+                        disabled={!selectedFloorPlan}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
                         Auto avance
                       </Button>
                     </div>
@@ -676,6 +794,25 @@ const Editor = () => {
           toast.info(`Enfocando: ${hotspot.title}`);
         }}
       />
+
+      {/* Auto Import Dialog */}
+      <AutoImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onStartPlacement={handleStartGuidedPlacement}
+      />
+      
+      {/* Guided Placement Overlay */}
+      {guidedMode && guidedMatches.length > 0 && (
+        <GuidedPlacementOverlay
+          matches={guidedMatches}
+          currentIndex={currentGuidedIndex}
+          onPointPlaced={() => {}} // Ya manejado en handleCanvasClick
+          onSkip={handleSkipPoint}
+          onUndo={handleUndoPoint}
+          onCancel={handleCancelGuided}
+        />
+      )}
     </div>
   );
 };
