@@ -227,6 +227,9 @@ const Editor = () => {
         // Guardar ID del hotspot creado
         setPlacedHotspotIds(prev => [...prev, hotspot.id]);
         
+        // Actualizar estado local inmediatamente para visualización en tiempo real
+        setHotspots(prev => [...prev, hotspot]);
+        
         // Avanzar al siguiente o terminar
         if (currentGuidedIndex < guidedMatches.length - 1) {
           setCurrentGuidedIndex(prev => prev + 1);
@@ -236,10 +239,6 @@ const Editor = () => {
           setGuidedMode(false);
           setCurrentGuidedIndex(0);
           toast.success(`¡Completado! ${guidedMatches.length} puntos creados exitosamente`);
-          // Recargar hotspots
-          if (selectedFloorPlan) {
-            loadHotspots(selectedFloorPlan.id);
-          }
         }
       } catch (error) {
         console.error('Error creando hotspot:', error);
@@ -508,10 +507,8 @@ const Editor = () => {
       setPlacedHotspotIds(prev => prev.slice(0, -1));
       setCurrentGuidedIndex(prev => Math.max(0, prev - 1));
       
-      // Recargar hotspots
-      if (selectedFloorPlan) {
-        loadHotspots(selectedFloorPlan.id);
-      }
+      // Remover del estado local inmediatamente para visualización en tiempo real
+      setHotspots(prev => prev.filter(h => h.id !== lastHotspotId));
       
       toast.success('Último punto eliminado');
     } catch (error) {
