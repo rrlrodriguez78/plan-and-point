@@ -218,6 +218,7 @@ const Editor = () => {
           })
           .map((photo) => ({
             file: photo.file,
+            optimizedBlob: photo.optimizedBlob,
             captureDate: photo.captureDate,
           }));
 

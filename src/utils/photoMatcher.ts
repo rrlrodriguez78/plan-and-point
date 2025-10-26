@@ -3,6 +3,9 @@ export interface MatchedPhoto {
   preview: string;
   captureDate: string | null;
   groupName: string;
+  optimizedBlob?: Blob;
+  originalSize?: number;
+  optimizedSize?: number;
 }
 
 export interface PhotoGroup {
@@ -75,7 +78,7 @@ export const extractDateFromFilename = (filename: string): string | null => {
 export const matchPhotosToNames = async (
   names: string[],
   photos: File[],
-  photoGroups?: PhotoGroup[]
+  photoGroups?: PhotoGroup[] | OptimizedPhotoGroup[]
 ): Promise<Match[]> => {
   const matches: Match[] = [];
 
@@ -100,11 +103,18 @@ export const matchPhotosToNames = async (
               captureDate = group.manualDate.toISOString().split('T')[0];
             }
 
+            // Buscar el blob optimizado si existe
+            const optimizedGroup = 'optimizedPhotos' in group ? group as OptimizedPhotoGroup : null;
+            const optimizedData = optimizedGroup?.optimizedPhotos?.find(opt => opt.file === photo);
+
             matchingPhotos.push({
               file: photo,
               preview: URL.createObjectURL(photo),
               captureDate,
               groupName: group.name,
+              optimizedBlob: optimizedData?.blob,
+              originalSize: optimizedData?.originalSize,
+              optimizedSize: optimizedData?.optimizedSize,
             });
           }
         });
@@ -164,7 +174,7 @@ export const matchPhotosToNames = async (
  */
 export const matchPhotosToExistingHotspots = async (
   existingHotspots: Array<{ id: string; title: string }>,
-  photoGroups: PhotoGroup[]
+  photoGroups: PhotoGroup[] | OptimizedPhotoGroup[]
 ): Promise<{
   matches: HotspotPhotoMatch[];
   validPhotos: number;
@@ -172,7 +182,7 @@ export const matchPhotosToExistingHotspots = async (
 }> => {
   const matches: HotspotPhotoMatch[] = [];
   let validPhotos = 0;
-  const allPhotos = photoGroups.reduce((sum, g) => sum + g.photos.length, 0);
+  const allPhotos = (photoGroups as PhotoGroup[]).reduce((sum, g) => sum + g.photos.length, 0);
 
   for (const hotspot of existingHotspots) {
     const matchingPhotos: MatchedPhoto[] = [];
@@ -194,11 +204,18 @@ export const matchPhotosToExistingHotspots = async (
             captureDate = group.manualDate.toISOString().split('T')[0];
           }
 
+          // Buscar el blob optimizado si existe
+          const optimizedGroup = 'optimizedPhotos' in group ? group as OptimizedPhotoGroup : null;
+          const optimizedData = optimizedGroup?.optimizedPhotos?.find(opt => opt.file === photo);
+
           matchingPhotos.push({
             file: photo,
             preview: URL.createObjectURL(photo),
             captureDate,
             groupName: group.name,
+            optimizedBlob: optimizedData?.blob,
+            originalSize: optimizedData?.originalSize,
+            optimizedSize: optimizedData?.optimizedSize,
           });
           
           validPhotos++;
