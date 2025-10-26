@@ -218,7 +218,7 @@ export default function TenantAdmin() {
 
   if (tenantLoading || loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pt-16">
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <p className="text-muted-foreground">Cargando...</p>
@@ -229,7 +229,7 @@ export default function TenantAdmin() {
 
   if (!currentTenant) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pt-16">
         <Navbar />
         <div className="container mx-auto p-6">
           <Alert variant="destructive">
@@ -245,7 +245,7 @@ export default function TenantAdmin() {
 
   if (!isTenantAdmin) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pt-16">
         <Navbar />
         <div className="container mx-auto p-6">
           <Alert variant="destructive">
@@ -261,7 +261,7 @@ export default function TenantAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-16">
       <Navbar />
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">

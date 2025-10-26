@@ -186,7 +186,7 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-16">
       <Navbar />
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
