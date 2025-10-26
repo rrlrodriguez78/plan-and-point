@@ -216,10 +216,10 @@ const Editor = () => {
   };
 
   const handleCanvasClick = async (x: number, y: number) => {
-    // Bloquear clicks si ya está procesando un punto
+    // Block clicks if already processing a point
     if (isPlacingPoint) {
-      toast.warning('⏳ Espera a que termine de procesar el punto actual', {
-        description: 'El sistema está guardando el punto anterior'
+      toast.warning("⏳ Wait for the current point to finish processing", {
+        description: "The system is saving the previous point"
       });
       return;
     }
