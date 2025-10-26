@@ -64,7 +64,7 @@ export const ViewerCanvas = ({
             transformOrigin: '0 0',
             transition: 'transform 0.1s ease-out',
           }}
-          className="relative inline-block"
+          className="relative w-full h-full max-w-full max-h-full"
         >
           <img
             src={imageUrl}
