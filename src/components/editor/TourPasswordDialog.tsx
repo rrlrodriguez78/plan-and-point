@@ -62,13 +62,11 @@ export const TourPasswordDialog = ({
     setLoading(true);
 
     try {
-      console.log('🔐 Invocando set-tour-password:', { tour_id: tourId, enabled, has_password: !!password });
+      // Security: Do not log password data
       
       const { data, error } = await supabase.functions.invoke('set-tour-password', {
         body: { tour_id: tourId, password, enabled },
       });
-
-      console.log('📡 Respuesta de set-tour-password:', { data, error });
 
       if (error) {
         console.error('❌ Error de la edge function:', error);

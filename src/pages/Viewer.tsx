@@ -243,10 +243,10 @@ const Viewer = () => {
             // Verificar si el token es para este tour y si la contraseña no ha cambiado
             if (tokenData.tour_id === id && tokenData.password_updated_at === tourData.password_updated_at) {
               // Token válido, continuar con la carga
-              console.log('✅ Token de acceso válido');
+              // Security: Do not log token data
             } else {
               // Token inválido o contraseña cambiada, solicitar nueva contraseña
-              console.log('⚠️ Token inválido o contraseña cambiada');
+              // Security: Do not log token validation
               setPasswordProtected(true);
               setPasswordUpdatedAt(tourData.password_updated_at);
               setShowPasswordPrompt(true);

@@ -76,7 +76,7 @@ export const PrivacySecuritySettings = ({ settings, onUpdate }: PrivacySecurityS
         if (data) {
           toast.success('Escanea el código QR con tu app de autenticación');
           // Here you would show a dialog with data.qr_code and data.secret
-          console.log('2FA Enrollment data:', data);
+          // Security: Do not log sensitive 2FA data
           
           // For now, we'll update the setting
           onUpdate({ two_factor_enabled: enabled });

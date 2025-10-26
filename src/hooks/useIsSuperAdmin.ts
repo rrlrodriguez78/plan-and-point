@@ -21,7 +21,7 @@ export const useIsSuperAdmin = () => {
           _user_id: user.id
         });
 
-        console.log('Super admin check:', { userId: user.id, userEmail: user.email, data, error });
+        // Security: Do not log user email or sensitive data
 
         if (error) {
           console.error('Error checking super admin status:', error);
