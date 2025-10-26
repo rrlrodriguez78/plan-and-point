@@ -12,6 +12,12 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
+import { 
+  createImageVersions, 
+  validateImageFile, 
+  formatFileSize, 
+  getCompressionStats 
+} from '@/utils/imageOptimization';
 
 interface PanoramaPhoto {
   id: string;
@@ -171,9 +177,10 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     let file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error(t('panorama.onlyImages'));
+    // Validate file
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error || t('panorama.onlyImages'));
       return;
     }
 
@@ -181,64 +188,41 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     setUploading(true);
     setUploadProgress({ progress: 10, status: t('panorama.creatingPreview') });
     
-    // Quick preview for immediate feedback
-    const previewUrl = await createThumbnail(file);
-    const tempId = `temp-${Date.now()}`;
-    
-    // Add temporary preview to show immediately
-    setPhotos((prev) => [...prev, {
-      id: tempId,
-      hotspot_id: hotspotId,
-      photo_url: previewUrl,
-      display_order: prev.length,
-      capture_date: format(uploadDate, 'yyyy-MM-dd'),
-    }]);
-    
-    setUploadProgress({ progress: 30, status: t('panorama.previewReady') });
-    
     try {
-      // Generate 3 versions: original, mobile, thumbnail
-      setUploadProgress({ progress: 40, status: t('panorama.optimizing') });
+      setUploadProgress({ progress: 30, status: t('panorama.optimizing') });
       
       const timestamp = Date.now();
       const baseFileName = `${hotspotId}/${timestamp}`;
       
-      // Generate all 3 versions
-      const [originalFile, mobileFile, thumbnailFile] = await Promise.all([
-        optimizeImage(file, imageVersions.original.maxWidth, imageVersions.original.quality, imageVersions.original.format),
-        optimizeImage(file, imageVersions.mobile.maxWidth, imageVersions.mobile.quality, imageVersions.mobile.format),
-        optimizeImage(file, imageVersions.thumbnail.maxWidth, imageVersions.thumbnail.quality, imageVersions.thumbnail.format),
+      // Create optimized versions using centralized utility
+      const versions = await createImageVersions(file, [
+        { name: 'original', options: { maxWidth: 4000, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
+        { name: 'mobile', options: { maxWidth: 1920, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
+        { name: 'thumbnail', options: { maxWidth: 400, quality: 0.8, format: 'webp', maxSizeMB: 10 } }
       ]);
       
-      // Calculate compression stats (based on original version)
-      const reduction = Math.round(((originalSize - originalFile.size) / originalSize) * 100);
+      // Calculate compression stats
+      const stats = getCompressionStats(originalSize, versions.original.optimizedSize);
       setCompressionStats({
         originalSize,
-        finalSize: originalFile.size,
-        reduction
+        finalSize: versions.original.optimizedSize,
+        reduction: stats.savingsPercent
       });
       
       setUploadProgress({ progress: 60, status: t('panorama.optimized') });
       
       toast.success(
-        `${t('panorama.optimized')}: ${(originalSize / (1024 * 1024)).toFixed(1)}MB → ${(originalFile.size / (1024 * 1024)).toFixed(1)}MB (-${reduction}%)`,
+        `${t('panorama.optimized')}: ${formatFileSize(originalSize)} → ${formatFileSize(versions.original.optimizedSize)} (-${stats.savingsPercent}%)`,
         { duration: 5000 }
       );
-
-      // Validate file size after optimization (max 10MB for original)
-      if (originalFile.size > 10 * 1024 * 1024) {
-        toast.error(t('panorama.imageTooLarge'));
-        setPhotos((prev) => prev.filter(p => p.id !== tempId));
-        return;
-      }
 
       // Upload all 3 versions to Supabase Storage
       setUploadProgress({ progress: 70, status: t('panorama.uploading') });
       
       const [originalUpload, mobileUpload, thumbnailUpload] = await Promise.all([
-        supabase.storage.from('tour-images').upload(`${baseFileName}.webp`, originalFile),
-        supabase.storage.from('tour-images').upload(`${baseFileName}_mobile.webp`, mobileFile),
-        supabase.storage.from('tour-images').upload(`${baseFileName}_thumb.webp`, thumbnailFile),
+        supabase.storage.from('tour-images').upload(`${baseFileName}.${versions.original.format}`, versions.original.blob),
+        supabase.storage.from('tour-images').upload(`${baseFileName}_mobile.${versions.mobile.format}`, versions.mobile.blob),
+        supabase.storage.from('tour-images').upload(`${baseFileName}_thumb.${versions.thumbnail.format}`, versions.thumbnail.blob),
       ]);
 
       if (originalUpload.error) throw originalUpload.error;
@@ -250,15 +234,15 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       // Get public URLs for all versions
       const { data: { publicUrl: originalUrl } } = supabase.storage
         .from('tour-images')
-        .getPublicUrl(`${baseFileName}.webp`);
+        .getPublicUrl(`${baseFileName}.${versions.original.format}`);
       
       const { data: { publicUrl: mobileUrl } } = supabase.storage
         .from('tour-images')
-        .getPublicUrl(`${baseFileName}_mobile.webp`);
+        .getPublicUrl(`${baseFileName}_mobile.${versions.mobile.format}`);
       
       const { data: { publicUrl: thumbnailUrl } } = supabase.storage
         .from('tour-images')
-        .getPublicUrl(`${baseFileName}_thumb.webp`);
+        .getPublicUrl(`${baseFileName}_thumb.${versions.thumbnail.format}`);
 
       // Save to database with all 3 URLs and original filename
       const { error: dbError } = await supabase
@@ -278,23 +262,14 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       setUploadProgress({ progress: 100, status: t('panorama.complete') });
       toast.success(t('panorama.uploadSuccess'));
       
-      // Guardar la fecha usada en localStorage para recordarla en el siguiente punto
       localStorage.setItem('lastUploadDate', format(uploadDate, 'yyyy-MM-dd'));
-      
-      // Revoke temporary preview URL
-      URL.revokeObjectURL(previewUrl);
-      
-      // Reload to get the real photo
       loadPhotos();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading photo:', error);
-      toast.error(t('panorama.errorUploading'));
-      // Remove temp preview on error
-      setPhotos((prev) => prev.filter(p => p.id !== tempId));
+      toast.error(error.message || t('panorama.errorUploading'));
     } finally {
       setUploading(false);
       setUploadProgress(null);
-      // Reset input
       e.target.value = '';
     }
   };

@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ImageEditor from "./ImageEditor";
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
+import { optimizeImage, validateImageFile, formatFileSize } from '@/utils/imageOptimization';
 
 const ProgressBar = ({ current, total }: { current: number; total: number }) => {
   const { t } = useTranslation();
@@ -133,18 +134,9 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      setErrors(prev => ({ ...prev, thumbnail_url: t('tourSetup.selectValidImage') }));
-      e.target.value = '';
-      return;
-    }
-
-    const maxSizeInMB = 5;
-    const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
-    
-    if (file.size > maxSizeInBytes) {
-      setPendingCoverFile(file);
-      setShowCoverSizeDialog(true);
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setErrors(prev => ({ ...prev, thumbnail_url: validation.error }));
       e.target.value = '';
       return;
     }
@@ -161,66 +153,34 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
     setIsEditingThumbnail(false);
     setSelectedThumbnailFile(null);
     try {
-      let fileToUpload = editedFile;
-      if (editedFile.size > 2 * 1024 * 1024) {
-        fileToUpload = await compressImageForUpload(editedFile);
-      }
+      // Optimize the edited image
+      const result = await optimizeImage(editedFile, {
+        maxWidth: 4000,
+        quality: 0.85,
+        format: 'webp',
+        maxSizeMB: 10
+      });
 
-      const file_url = await uploadFileWithRetry(fileToUpload);
-      setTourData(prev => ({ ...prev, thumbnail_url: file_url || '' }));
+      const timestamp = Date.now();
+      const fileName = `covers/${timestamp}_cover.${result.format}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('tour-images')
+        .upload(fileName, result.blob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('tour-images')
+        .getPublicUrl(fileName);
+
+      setTourData(prev => ({ ...prev, thumbnail_url: publicUrl }));
     } catch (err) {
       console.error("Error uploading edited thumbnail:", err);
       setErrors(prev => ({ ...prev, thumbnail_url: t('tourSetup.imageError') }));
     } finally {
       setIsUploadingCover(false);
     }
-  };
-
-  const compressImageForUpload = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-
-      img.onload = () => {
-        const maxDimension = 1200;
-        let { width, height } = img;
-
-        if (width > height) {
-          if (width > maxDimension) {
-            height = (height * maxDimension) / width;
-            width = maxDimension;
-          }
-        } else {
-          if (height > maxDimension) {
-            width = (width * maxDimension) / height;
-            height = maxDimension;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            } else {
-              resolve(file);
-            }
-          },
-          'image/jpeg',
-          0.85
-        );
-      };
-
-      img.src = URL.createObjectURL(file);
-    });
   };
 
   const handleFinalConfirm = () => {
@@ -253,8 +213,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
   const handleCoverSizeReductionConfirm = async () => {
     setShowCoverSizeDialog(false);
     if (pendingCoverFile) {
-      const compressedFile = await compressImageForUpload(pendingCoverFile);
-      setSelectedThumbnailFile(compressedFile);
+      setSelectedThumbnailFile(pendingCoverFile);
       setIsEditingThumbnail(true);
       setPendingCoverFile(null);
     }

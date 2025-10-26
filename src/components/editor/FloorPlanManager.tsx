@@ -35,6 +35,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { FloorPlan } from '@/types/tour';
+import { optimizeImage, validateImageFile, formatFileSize } from '@/utils/imageOptimization';
 
 const getFloorOptions = (t: any) => [
   { value: 'basement', label: t('floorPlan.floors.basement') },
@@ -170,24 +171,32 @@ export default function FloorPlanManager({
     const file = e.target.files?.[0];
     if (!file || !editingFloorPlan) return;
 
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setErrors(prev => ({ ...prev, image_url: validation.error }));
+      e.target.value = '';
+      return;
+    }
+
     setIsUploading(true);
     setErrors(prev => ({ ...prev, image_url: '' }));
     
     try {
-      // Create an image to get dimensions
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = objectUrl;
+      // Optimize the image
+      const result = await optimizeImage(file, {
+        maxWidth: 4000,
+        quality: 0.85,
+        format: 'webp',
+        maxSizeMB: 10
       });
 
-      const fileName = `${tour.id}/${Date.now()}_${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const timestamp = Date.now();
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `floor-plans/${tour.id}/${timestamp}_${safeFileName}.${result.format}`;
+
+      const { error: uploadError } = await supabase.storage
         .from('tour-images')
-        .upload(fileName, file);
+        .upload(fileName, result.blob);
 
       if (uploadError) throw uploadError;
 
@@ -198,14 +207,12 @@ export default function FloorPlanManager({
       setEditingFloorPlan(prev => ({ 
         ...prev, 
         image_url: publicUrl,
-        width: img.naturalWidth,
-        height: img.naturalHeight
+        width: result.width,
+        height: result.height
       }));
-
-      URL.revokeObjectURL(objectUrl);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading floor plan file:', error);
-      alert(t('floorPlan.errorUploading'));
+      alert(error.message || t('floorPlan.errorUploading'));
       setErrors(prev => ({ ...prev, image_url: t('floorPlan.uploadError') }));
     } finally {
       setIsUploading(false);

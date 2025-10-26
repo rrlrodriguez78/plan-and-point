@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createImageVersions } from '@/utils/imageOptimization';
 
 interface AddPhotosParams {
   hotspotId: string;
@@ -37,25 +38,44 @@ export const useAddPhotosToHotspot = () => {
         return a.captureDate.localeCompare(b.captureDate);
       });
 
-      // 3. Subir y crear registros
+      // 3. Subir y crear registros con optimización
       for (let i = 0; i < sortedPhotos.length; i++) {
         const photoData = sortedPhotos[i];
-        const fileName = `${params.tourId}/${params.floorPlanId}/${params.hotspotTitle}-${Date.now()}-${i}.jpg`;
+        const timestamp = Date.now() + i;
+        const safeFileName = photoData.file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
 
-        // Subir foto
-        const { error: uploadError } = await supabase.storage
+        // Create optimized versions
+        const versions = await createImageVersions(photoData.file, [
+          { name: 'original', options: { maxWidth: 4000, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
+          { name: 'mobile', options: { maxWidth: 1920, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
+          { name: 'thumbnail', options: { maxWidth: 400, quality: 0.8, format: 'webp', maxSizeMB: 10 } }
+        ]);
+
+        // Upload all versions
+        const baseFileName = `panoramas/${params.hotspotId}/${timestamp}_${safeFileName}`;
+        const uploadPromises = [
+          supabase.storage.from('tour-images').upload(`${baseFileName}.${versions.original.format}`, versions.original.blob),
+          supabase.storage.from('tour-images').upload(`${baseFileName}_mobile.${versions.mobile.format}`, versions.mobile.blob),
+          supabase.storage.from('tour-images').upload(`${baseFileName}_thumb.${versions.thumbnail.format}`, versions.thumbnail.blob)
+        ];
+
+        const uploadResults = await Promise.all(uploadPromises);
+        
+        if (uploadResults.some(r => r.error)) {
+          console.error('Error uploading photo versions');
+          continue;
+        }
+
+        // Get public URLs
+        const { data: { publicUrl: originalUrl } } = supabase.storage
           .from('tour-images')
-          .upload(fileName, photoData.file, {
-            contentType: 'image/jpeg',
-            upsert: false,
-          });
-
-        if (uploadError) throw uploadError;
-
-        // Obtener URL pública
-        const { data: { publicUrl } } = supabase.storage
+          .getPublicUrl(uploadResults[0].data!.path);
+        const { data: { publicUrl: mobileUrl } } = supabase.storage
           .from('tour-images')
-          .getPublicUrl(fileName);
+          .getPublicUrl(uploadResults[1].data!.path);
+        const { data: { publicUrl: thumbUrl } } = supabase.storage
+          .from('tour-images')
+          .getPublicUrl(uploadResults[2].data!.path);
 
         // Crear panorama_photo
         const finalCaptureDate = photoData.captureDate || new Date().toISOString().split('T')[0];
@@ -64,7 +84,9 @@ export const useAddPhotosToHotspot = () => {
           .from('panorama_photos')
           .insert({
             hotspot_id: params.hotspotId,
-            photo_url: publicUrl,
+            photo_url: originalUrl,
+            photo_url_mobile: mobileUrl,
+            photo_url_thumbnail: thumbUrl,
             display_order: startOrder + i + 1,
             original_filename: photoData.file.name,
             capture_date: finalCaptureDate,
