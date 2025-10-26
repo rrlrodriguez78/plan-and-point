@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import { useBulkHotspotCreation } from '@/hooks/useBulkHotspotCreation';
 import type { Match } from '@/utils/photoMatcher';
+import { cn } from '@/lib/utils';
 
 const Editor = () => {
   const { id } = useParams();
@@ -608,24 +609,39 @@ const Editor = () => {
                     </div>
                     <div className="flex gap-2">
                       <Button 
-                        variant="outline" 
                         onClick={() => setManageHotspotsOpen(true)}
+                        className={cn(
+                          "transition-all duration-300",
+                          manageHotspotsOpen
+                            ? "bg-secondary text-secondary-foreground animate-slow-pulse"
+                            : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
+                        )}
                       >
                         <Settings className="w-4 h-4 mr-2" />
                         {t('editor.managePoints')}
                       </Button>
                       <Button 
                         onClick={() => setAddPointMode(!addPointMode)}
-                        style={{ backgroundColor: addPointMode ? '#4285F4' : undefined }}
-                        className={addPointMode ? 'text-white hover:opacity-90' : ''}
+                        className={cn(
+                          "transition-all duration-300",
+                          addPointMode
+                            ? "bg-secondary text-secondary-foreground animate-slow-pulse"
+                            : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
+                        )}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         {addPointMode ? t('editor.activeMode') : t('editor.addPoint')}
                       </Button>
                       <Button 
-                        variant="outline"
                         onClick={() => setImportDialogOpen(true)}
                         disabled={!selectedFloorPlan}
+                        className={cn(
+                          "transition-all duration-300",
+                          importDialogOpen
+                            ? "bg-secondary text-secondary-foreground animate-slow-pulse"
+                            : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground",
+                          !selectedFloorPlan && "opacity-50 cursor-not-allowed"
+                        )}
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         Auto avance
