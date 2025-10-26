@@ -56,32 +56,27 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      // Load or create organization
-      const { data: orgs } = await supabase
+      // Load user's organization (automatically created on signup)
+      const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('*')
         .eq('owner_id', user!.id)
         .single();
 
-      let currentOrg: Organization;
-      if (!orgs) {
-        const { data: newOrg } = await supabase
-          .from('organizations')
-          .insert({ name: 'Mi Organización', owner_id: user!.id })
-          .select()
-          .single();
-        currentOrg = newOrg!;
-        setOrganization(newOrg);
-      } else {
-        currentOrg = orgs;
-        setOrganization(orgs);
+      if (orgError || !org) {
+        console.error('Error loading organization:', orgError);
+        toast.error(t('dashboard.errorLoading'));
+        setLoading(false);
+        return;
       }
+
+      setOrganization(org);
 
       // Load tours - ONLY from user's organization
       const { data: toursData } = await supabase
         .from('virtual_tours')
         .select('*')
-        .eq('organization_id', currentOrg.id)
+        .eq('organization_id', org.id)
         .order('created_at', { ascending: false });
 
       if (toursData) {
