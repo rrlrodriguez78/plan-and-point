@@ -191,7 +191,10 @@ const Editor = () => {
   };
 
   const handleHotspotClick = (hotspotId: string, event: React.MouseEvent) => {
-    if (event.shiftKey) {
+    // Si estamos en modo seleccionar, permitir selección simple sin Shift
+    if (selectMode || event.shiftKey) {
+      event.stopPropagation();
+      event.preventDefault();
       // Multi-select
       setSelectedHotspotIds((prev) =>
         prev.includes(hotspotId)
@@ -199,7 +202,7 @@ const Editor = () => {
           : [...prev, hotspotId]
       );
     } else {
-      // Single select and open modal
+      // Single select and open modal (solo si NO estamos en selectMode)
       const hotspot = hotspots.find((h) => h.id === hotspotId);
       if (hotspot) {
         setEditingHotspot(hotspot);
@@ -641,12 +644,16 @@ const Editor = () => {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem 
                             onClick={() => {
-                              setMoveMode(!moveMode);
-                              setSelectMode(false);
-                              if (!moveMode) {
-                                toast.info('Modo mover activado - Arrastra los puntos');
+                              const newMoveMode = !moveMode;
+                              setMoveMode(newMoveMode);
+                              if (newMoveMode) {
+                                setSelectMode(false);
+                                setAddPointMode(false);
+                                toast.info('🔵 Modo Mover activado - Arrastra los puntos en el canvas', {
+                                  description: 'Los puntos ahora pueden ser reposicionados'
+                                });
                               } else {
-                                toast.info('Modo mover desactivado');
+                                toast.info('Modo Mover desactivado');
                               }
                             }}
                           >
@@ -655,12 +662,16 @@ const Editor = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => {
-                              setSelectMode(!selectMode);
-                              setMoveMode(false);
-                              if (!selectMode) {
-                                toast.info('Modo seleccionar activado - Click en puntos para seleccionar');
+                              const newSelectMode = !selectMode;
+                              setSelectMode(newSelectMode);
+                              if (newSelectMode) {
+                                setMoveMode(false);
+                                setAddPointMode(false);
+                                toast.info('🎯 Modo Seleccionar activado - Click en puntos para seleccionar', {
+                                  description: 'Usa clicks simples o Shift+Click para selección múltiple'
+                                });
                               } else {
-                                toast.info('Modo seleccionar desactivado');
+                                toast.info('Modo Seleccionar desactivado');
                                 setSelectedHotspotIds([]);
                               }
                             }}
@@ -747,6 +758,8 @@ const Editor = () => {
                         onHotspotDrag={handleHotspotDrag}
                         onCanvasClick={handleCanvasClick}
                         readOnly={!addPointMode && !moveMode}
+                        selectMode={selectMode}
+                        moveMode={moveMode}
                       />
                     </TabsContent>
                   ))}

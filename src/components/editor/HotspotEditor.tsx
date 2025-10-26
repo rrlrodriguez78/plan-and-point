@@ -26,6 +26,8 @@ interface HotspotEditorProps {
   onHotspotDrag: (id: string, x: number, y: number) => void;
   onCanvasClick: (x: number, y: number) => void;
   readOnly?: boolean;
+  selectMode?: boolean;
+  moveMode?: boolean;
 }
 
 export default function HotspotEditor({
@@ -36,6 +38,8 @@ export default function HotspotEditor({
   onHotspotDrag,
   onCanvasClick,
   readOnly = false,
+  selectMode = false,
+  moveMode = false,
 }: HotspotEditorProps) {
   const { t } = useTranslation();
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
@@ -214,7 +218,13 @@ export default function HotspotEditor({
       <div
         ref={containerRef}
         className={`relative bg-background rounded-lg overflow-hidden border-2 border-dashed border-border shadow-inner ${
-          readOnly ? 'cursor-default' : 'cursor-crosshair'
+          readOnly 
+            ? 'cursor-default' 
+            : selectMode 
+              ? 'cursor-pointer' 
+              : moveMode 
+                ? 'cursor-move' 
+                : 'cursor-crosshair'
         }`}
         onClick={handleCanvasClick as any}
         onTouchStart={handleCanvasClick as any}
@@ -277,7 +287,11 @@ export default function HotspotEditor({
               className={`group absolute ${
                 isDragging 
                   ? 'cursor-grabbing scale-125 shadow-2xl transition-transform duration-100' 
-                  : 'cursor-grab hover:scale-110 transition-all duration-200'
+                  : moveMode
+                    ? 'cursor-move hover:scale-110 transition-all duration-200'
+                    : selectMode
+                      ? 'cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary transition-all duration-200'
+                      : 'cursor-grab hover:scale-110 transition-all duration-200'
               } ${isSelected ? 'ring-4 ring-primary ring-opacity-50 rounded-full' : ''}`}
               style={{
                 left: position.left,
