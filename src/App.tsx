@@ -38,25 +38,29 @@ const App = () => (
             <TenantProvider>
               <UserSettingsProvider>
                 <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Auth />} />
-              <Route path="/signup" element={<Auth />} />
-              <Route path="/app/inicio" element={<Inicio />} />
-              <Route path="/app/tours" element={<Dashboard />} />
-              <Route path="/app/tours-publicos" element={<PublicTours />} />
-              <Route path="/app/editor/:id" element={<Editor />} />
-              <Route path="/app/settings" element={<Settings />} />
-              <Route path="/app/user-settings" element={<UserSettings />} />
-              <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
-              <Route path="/app/user-approvals" element={<UserApprovals />} />
-              <Route path="/app/backups" element={<Backups />} />
-              <Route path="/app/tenant-admin" element={<TenantAdmin />} />
-              <Route path="/app/tenant-members" element={<TenantMembers />} />
-              <Route path="/app/feature-management" element={<FeatureManagement />} />
-              <Route path="/viewer/:id" element={<Viewer />} />
-              <Route path="/share/:token" element={<SharedTour />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
+                  {/* Public routes */}
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Auth />} />
+                  <Route path="/signup" element={<Auth />} />
+                  <Route path="/share/:token" element={<SharedTour />} />
+                  <Route path="/viewer/:id" element={<Viewer />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/app/inicio" element={<Inicio />} />
+                  <Route path="/app/tours" element={<Dashboard />} />
+                  <Route path="/app/tours-publicos" element={<PublicTours />} />
+                  <Route path="/app/editor/:id" element={<Editor />} />
+                  <Route path="/app/settings" element={<Settings />} />
+                  <Route path="/app/user-settings" element={<UserSettings />} />
+                  <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
+                  <Route path="/app/user-approvals" element={<UserApprovals />} />
+                  <Route path="/app/backups" element={<Backups />} />
+                  <Route path="/app/tenant-admin" element={<TenantAdmin />} />
+                  <Route path="/app/tenant-members" element={<TenantMembers />} />
+                  <Route path="/app/feature-management" element={<FeatureManagement />} />
+                  
+                  {/* Catch-all route */}
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </UserSettingsProvider>
             </TenantProvider>
