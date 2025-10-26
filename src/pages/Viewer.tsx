@@ -195,7 +195,7 @@ const Viewer = () => {
           title, 
           description, 
           is_published,
-          organization_id,
+          tenant_id,
           password_protected,
           password_updated_at
         `)

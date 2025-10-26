@@ -135,6 +135,7 @@ export type Database = {
           id: string
           image_url: string
           name: string
+          tenant_id: string | null
           tour_id: string
           width: number
         }
@@ -145,6 +146,7 @@ export type Database = {
           id?: string
           image_url: string
           name: string
+          tenant_id?: string | null
           tour_id: string
           width: number
         }
@@ -155,10 +157,18 @@ export type Database = {
           id?: string
           image_url?: string
           name?: string
+          tenant_id?: string | null
           tour_id?: string
           width?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "floor_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "floor_plans_tour_id_fkey"
             columns: ["tour_id"]
@@ -331,38 +341,6 @@ export type Database = {
           },
         ]
       }
-      organizations: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          owner_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          owner_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          owner_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organizations_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       pages: {
         Row: {
           created_at: string
@@ -490,6 +468,82 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      tenant_users: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["tenant_role"]
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["tenant_role"]
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["tenant_role"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          settings: Json | null
+          status: string | null
+          subscription_tier: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          settings?: Json | null
+          status?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          settings?: Json | null
+          status?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tour_analytics: {
         Row: {
@@ -774,10 +828,10 @@ export type Database = {
           description: string | null
           id: string
           is_published: boolean
-          organization_id: string
           password_hash: string | null
           password_protected: boolean | null
           password_updated_at: string | null
+          tenant_id: string
           title: string
           updated_at: string
         }
@@ -787,10 +841,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean
-          organization_id: string
           password_hash?: string | null
           password_protected?: boolean | null
           password_updated_at?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
         }
@@ -800,19 +854,19 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean
-          organization_id?: string
           password_hash?: string | null
           password_protected?: boolean | null
           password_updated_at?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "virtual_tours_organization_id_fkey"
-            columns: ["organization_id"]
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -822,6 +876,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      belongs_to_tenant: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      get_user_tenants: {
+        Args: { _user_id: string }
+        Returns: {
+          tenant_id: string
+          tenant_name: string
+          user_role: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -830,9 +896,14 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_tenant_admin: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
+      tenant_role: "tenant_admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -961,6 +1032,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      tenant_role: ["tenant_admin", "member"],
     },
   },
 } as const
