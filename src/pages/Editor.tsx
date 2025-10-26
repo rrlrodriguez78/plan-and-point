@@ -648,7 +648,7 @@ const Editor = () => {
                         )}
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Import & Create Points
+                        Auto avance
                       </Button>
                       <Button 
                         onClick={() => setPhotoGroupDialogOpen(true)}
