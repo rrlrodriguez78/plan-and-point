@@ -21,9 +21,18 @@ import {
   Settings,
   MapPin,
   Upload,
+  Move,
+  Hand,
+  Trash,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import FloorPlanManager from '@/components/editor/FloorPlanManager';
 import HotspotEditor from '@/components/editor/HotspotEditor';
 import HotspotModal from '@/components/editor/HotspotModal';
@@ -61,7 +70,8 @@ const Editor = () => {
   const [hotspotsOpen, setHotspotsOpen] = useState(true);
   const [manageHotspotsOpen, setManageHotspotsOpen] = useState(false);
   const [addPointMode, setAddPointMode] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [moveMode, setMoveMode] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
   const [isProcessingClick, setIsProcessingClick] = useState(false);
   const [wasSaved, setWasSaved] = useState(false);
   
@@ -614,25 +624,60 @@ const Editor = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        onClick={() => {
-                          setEditMode(!editMode);
-                          if (editMode) {
-                            toast.info('Modo edición desactivado');
-                          } else {
-                            toast.info('Modo edición activado - Arrastra los puntos para moverlos');
-                          }
-                        }}
-                        className={cn(
-                          "transition-all duration-300",
-                          editMode
-                            ? "bg-secondary text-secondary-foreground animate-slow-pulse"
-                            : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
-                        )}
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        {t('editor.managePoints')}
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            className={cn(
+                              "transition-all duration-300",
+                              (moveMode || selectMode)
+                                ? "bg-secondary text-secondary-foreground animate-slow-pulse"
+                                : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
+                            )}
+                          >
+                            <Settings className="w-4 h-4 mr-2" />
+                            {t('editor.managePoints')}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setMoveMode(!moveMode);
+                              setSelectMode(false);
+                              if (!moveMode) {
+                                toast.info('Modo mover activado - Arrastra los puntos');
+                              } else {
+                                toast.info('Modo mover desactivado');
+                              }
+                            }}
+                          >
+                            <Move className="w-4 h-4 mr-2" />
+                            {moveMode ? 'Desactivar' : 'Activar'} Mover
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setSelectMode(!selectMode);
+                              setMoveMode(false);
+                              if (!selectMode) {
+                                toast.info('Modo seleccionar activado - Click en puntos para seleccionar');
+                              } else {
+                                toast.info('Modo seleccionar desactivado');
+                                setSelectedHotspotIds([]);
+                              }
+                            }}
+                          >
+                            <Hand className="w-4 h-4 mr-2" />
+                            {selectMode ? 'Desactivar' : 'Activar'} Seleccionar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={handleDeleteSelected}
+                            disabled={selectedHotspotIds.length === 0}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash className="w-4 h-4 mr-2" />
+                            Borrar Seleccionados ({selectedHotspotIds.length})
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Button 
                         onClick={() => setAddPointMode(!addPointMode)}
                         className={cn(
@@ -701,7 +746,7 @@ const Editor = () => {
                         onHotspotClick={handleHotspotClick}
                         onHotspotDrag={handleHotspotDrag}
                         onCanvasClick={handleCanvasClick}
-                        readOnly={!addPointMode && !editMode}
+                        readOnly={!addPointMode && !moveMode}
                       />
                     </TabsContent>
                   ))}
