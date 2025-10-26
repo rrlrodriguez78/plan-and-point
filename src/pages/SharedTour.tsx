@@ -49,6 +49,16 @@ export default function SharedTour() {
           return;
         }
 
+        // Increment view count
+        const { error: incrementError } = await supabase
+          .from('tour_shares')
+          .update({ view_count: share.view_count + 1 })
+          .eq('id', share.id);
+
+        if (incrementError) {
+          console.error('Error incrementing view count:', incrementError);
+        }
+
         // Redirect to viewer with share token
         const tourData = share.virtual_tours as any;
         navigate(`/viewer/${tourData.id}?share=${token}`);

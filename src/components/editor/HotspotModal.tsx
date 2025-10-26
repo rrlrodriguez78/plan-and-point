@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import PanoramaManager from './PanoramaManager';
 import { useTranslation } from 'react-i18next';
 import { Hotspot } from '@/types/tour';
+import { supabase } from '@/integrations/supabase/client';
 
 export type HotspotData = Omit<Hotspot, 'floor_plan_id' | 'created_at' | 'id'> & { id?: string };
 
@@ -95,7 +96,20 @@ export default function HotspotModal({
 
     setUploading(true);
     try {
-      // TODO: Implement actual upload to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `hotspots/${initialData?.id || 'temp'}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('tour-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('tour-images')
+        .getPublicUrl(fileName);
+
+      setFormData({ ...formData, media_url: publicUrl });
       toast.success(t('hotspot.imageUploaded'));
     } catch (error) {
       console.error('Error uploading media:', error);
