@@ -8,7 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell, ListChecks } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationsList } from '@/components/settings/NotificationsList';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { AnalyticsDashboard } from '@/components/settings/AnalyticsDashboard';
+import { ImplementationChecklist } from '@/components/settings/ImplementationChecklist';
 
 interface GoldenRule {
   id: string;
@@ -447,8 +448,12 @@ const Settings = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="rules" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+        <Tabs defaultValue="implementation" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
+            <TabsTrigger value="implementation">
+              <ListChecks className="w-4 h-4 mr-2" />
+              {t('settings.implementation')}
+            </TabsTrigger>
             <TabsTrigger value="rules">
               <Shield className="w-4 h-4 mr-2" />
               {t('settings.goldenRules')}
@@ -466,6 +471,10 @@ const Settings = () => {
               Notificaciones
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="implementation">
+            <ImplementationChecklist />
+          </TabsContent>
 
           <TabsContent value="rules">
             <Card>
