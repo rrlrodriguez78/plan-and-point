@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.send-weekly-reports]
 verify_jwt = false
+
+[functions.generate-tour-jwt]
+verify_jwt = true
+
+[functions.verify-tour-jwt]
+verify_jwt = false

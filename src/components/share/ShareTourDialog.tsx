@@ -33,31 +33,20 @@ export default function ShareTourDialog({ open, onOpenChange, tourId, tourTitle 
   const generateShareLink = async () => {
     setIsGenerating(true);
     try {
-      // Generate token
-      const { data: tokenData, error: tokenError } = await supabase.rpc('generate_share_token');
-      
-      if (tokenError) throw tokenError;
-      
-      // Create share record
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user');
-
-      const { error: shareError } = await supabase
-        .from('tour_shares')
-        .insert([{
+      // Generate signed JWT using edge function
+      const { data, error } = await supabase.functions.invoke('generate-tour-jwt', {
+        body: {
           tour_id: tourId,
-          share_token: tokenData,
-          created_by: user.id,
           permission_level: permissionLevel,
-          expires_at: expiresAt?.toISOString() || null,
+          expires_in_days: expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 7,
           max_views: maxViews ? parseInt(maxViews) : null,
-        }]);
+        }
+      });
 
-      if (shareError) throw shareError;
+      if (error) throw error;
 
-      const url = `${window.location.origin}/share/${tokenData}`;
-      setShareUrl(url);
-      toast.success("¡Link generado exitosamente!");
+      setShareUrl(data.share_url);
+      toast.success("¡Link seguro generado exitosamente!");
     } catch (error) {
       console.error('Error generating share link:', error);
       toast.error("Error al generar el link de compartir");

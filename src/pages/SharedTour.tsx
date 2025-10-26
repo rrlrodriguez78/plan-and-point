@@ -21,47 +21,27 @@ export default function SharedTour() {
       }
 
       try {
-        // Fetch share information
-        const { data: share, error: shareError } = await supabase
-          .from('tour_shares')
-          .select('*, virtual_tours(id, title, is_published)')
-          .eq('share_token', token)
-          .eq('is_active', true)
-          .single();
+        // Verify JWT using edge function
+        const { data, error } = await supabase.functions.invoke('verify-tour-jwt', {
+          body: { jwt: token }
+        });
 
-        if (shareError || !share) {
-          setError("Link de compartir inválido o expirado");
+        if (error || !data.valid) {
+          const errorMessage = data?.reason === 'expired' 
+            ? "Este link ha expirado"
+            : data?.reason === 'max_views_exceeded'
+            ? "Este link ha alcanzado su límite de vistas"
+            : data?.reason === 'share_not_found'
+            ? "Link de compartir inválido o desactivado"
+            : "Link de compartir inválido o expirado";
+          
+          setError(errorMessage);
           setLoading(false);
           return;
         }
 
-        // Check expiration
-        if (share.expires_at && new Date(share.expires_at) < new Date()) {
-          setError("Este link ha expirado");
-          setLoading(false);
-          return;
-        }
-
-        // Check max views
-        if (share.max_views && share.view_count >= share.max_views) {
-          setError("Este link ha alcanzado su límite de vistas");
-          setLoading(false);
-          return;
-        }
-
-        // Increment view count
-        const { error: incrementError } = await supabase
-          .from('tour_shares')
-          .update({ view_count: share.view_count + 1 })
-          .eq('id', share.id);
-
-        if (incrementError) {
-          console.error('Error incrementing view count:', incrementError);
-        }
-
-        // Redirect to viewer with share token
-        const tourData = share.virtual_tours as any;
-        navigate(`/viewer/${tourData.id}?share=${token}`);
+        // Redirect to viewer with verified JWT
+        navigate(`/viewer/${data.tour.id}?share=${token}`);
       } catch (err) {
         console.error('Error validating share:', err);
         setError("Error al validar el link de compartir");
