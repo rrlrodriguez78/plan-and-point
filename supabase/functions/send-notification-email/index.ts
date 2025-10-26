@@ -203,11 +203,12 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Security: Only allow calls from service role or authenticated edge functions
+  // Security: Verify authorization with exact Bearer token match
   const authHeader = req.headers.get('authorization');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const expectedBearer = `Bearer ${serviceRoleKey}`;
   
-  if (!authHeader || !authHeader.includes(serviceRoleKey || '')) {
+  if (!authHeader || authHeader !== expectedBearer) {
     console.error('Unauthorized attempt to send notification email');
     return new Response(
       JSON.stringify({ error: 'Unauthorized' }),
@@ -225,6 +226,32 @@ const handler = async (req: Request): Promise<Response> => {
     const { notification_type, recipient_email, recipient_name, data } = body;
 
     console.log(`Sending ${notification_type} email to ${recipient_email}`);
+
+    // Verify tour ownership for tour-related notifications
+    if (notification_type === 'new_view' && data.tour_id && data.user_id) {
+      const { data: ownership, error: ownershipError } = await supabase
+        .from('virtual_tours')
+        .select('tenant_id, tenants!inner(owner_id)')
+        .eq('id', data.tour_id)
+        .single();
+
+      if (ownershipError || !ownership) {
+        console.error('Tour not found or ownership verification failed:', ownershipError);
+        return new Response(
+          JSON.stringify({ error: 'Tour not found' }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const isOwner = (ownership.tenants as any).owner_id === data.user_id;
+      if (!isOwner) {
+        console.error(`Unauthorized notification attempt: user ${data.user_id} does not own tour ${data.tour_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: You do not own this tour' }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // Select email template and subject based on notification type
     let htmlContent = '';

@@ -14,11 +14,12 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Security: Only allow calls from service role (cron jobs or admin users)
+  // Security: Verify authorization with exact Bearer token match
   const authHeader = req.headers.get('authorization');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const expectedBearer = `Bearer ${serviceRoleKey}`;
   
-  if (!authHeader || !authHeader.includes(serviceRoleKey || '')) {
+  if (!authHeader || authHeader !== expectedBearer) {
     console.error('Unauthorized attempt to trigger weekly reports');
     return new Response(
       JSON.stringify({ error: 'Unauthorized - This endpoint requires admin privileges' }),
@@ -57,6 +58,19 @@ const handler = async (req: Request): Promise<Response> => {
         const lastWeek = new Date(today);
         lastWeek.setDate(today.getDate() - 7);
 
+        // Verify user owns tours before fetching analytics
+        const { data: userTours, error: toursError } = await supabase
+          .from('virtual_tours')
+          .select('id, tenant_id, tenants!inner(owner_id)')
+          .eq('tenants.owner_id', user.user_id);
+
+        if (toursError || !userTours || userTours.length === 0) {
+          console.log(`No tours found for user ${user.user_id}, skipping...`);
+          continue;
+        }
+
+        const tourIds = userTours.map(t => t.id);
+
         // Get analytics for the user's tours in the last week
         const { data: analytics, error: analyticsError } = await supabase
           .from('analytics_summary')
@@ -64,8 +78,9 @@ const handler = async (req: Request): Promise<Response> => {
             tour_id,
             total_views,
             unique_viewers,
-            virtual_tours!inner(title, organization_id)
+            virtual_tours!inner(title, tenant_id)
           `)
+          .in('tour_id', tourIds)
           .gte('date', lastWeek.toISOString().split('T')[0])
           .lte('date', today.toISOString().split('T')[0]);
 
