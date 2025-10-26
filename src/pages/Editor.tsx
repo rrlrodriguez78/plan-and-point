@@ -61,6 +61,7 @@ const Editor = () => {
   const [hotspotsOpen, setHotspotsOpen] = useState(true);
   const [manageHotspotsOpen, setManageHotspotsOpen] = useState(false);
   const [addPointMode, setAddPointMode] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [isProcessingClick, setIsProcessingClick] = useState(false);
   const [wasSaved, setWasSaved] = useState(false);
   
@@ -614,10 +615,17 @@ const Editor = () => {
                     </div>
                     <div className="flex gap-2">
                       <Button 
-                        onClick={() => setManageHotspotsOpen(true)}
+                        onClick={() => {
+                          setEditMode(!editMode);
+                          if (editMode) {
+                            toast.info('Modo edición desactivado');
+                          } else {
+                            toast.info('Modo edición activado - Arrastra los puntos para moverlos');
+                          }
+                        }}
                         className={cn(
                           "transition-all duration-300",
-                          manageHotspotsOpen
+                          editMode
                             ? "bg-secondary text-secondary-foreground animate-slow-pulse"
                             : "bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground"
                         )}
@@ -693,7 +701,7 @@ const Editor = () => {
                         onHotspotClick={handleHotspotClick}
                         onHotspotDrag={handleHotspotDrag}
                         onCanvasClick={handleCanvasClick}
-                        readOnly={!addPointMode}
+                        readOnly={!addPointMode && !editMode}
                       />
                     </TabsContent>
                   ))}
