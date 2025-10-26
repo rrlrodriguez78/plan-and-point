@@ -65,10 +65,12 @@ const PublicTours = () => {
   const fetchPublicTours = async () => {
     try {
       setLoading(true);
+      // Public tours page: show ALL published tours (from any organization)
+      // Frontend filter ensures only published tours are shown
       const { data, error } = await supabase
         .from('virtual_tours')
         .select('id, title, description, cover_image_url, created_at, is_published, password_protected')
-        .eq('is_published', true)
+        .eq('is_published', true) // Frontend filter: only published tours
         .order('created_at', { ascending: false });
 
       if (error) throw error;

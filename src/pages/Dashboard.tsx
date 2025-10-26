@@ -72,11 +72,12 @@ const Dashboard = () => {
 
       setOrganization(org);
 
-      // Load tours - ONLY from user's organization
+      // Load tours - ONLY from user's organization (Dashboard filtering)
+      // This ensures users only see their own tours in the dashboard
       const { data: toursData } = await supabase
         .from('virtual_tours')
         .select('*')
-        .eq('organization_id', org.id)
+        .eq('organization_id', org.id) // Frontend filter: only this user's org
         .order('created_at', { ascending: false });
 
       if (toursData) {
