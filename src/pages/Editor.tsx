@@ -86,6 +86,8 @@ const Editor = () => {
   const [guidedMatches, setGuidedMatches] = useState<Match[]>([]);
   const [currentGuidedIndex, setCurrentGuidedIndex] = useState(0);
   const [placedHotspotIds, setPlacedHotspotIds] = useState<string[]>([]);
+  const [isPlacingPoint, setIsPlacingPoint] = useState(false);
+  const [placementProgress, setPlacementProgress] = useState(0);
   
   // Grupo de Fotos por Plano
   const [photoGroupDialogOpen, setPhotoGroupDialogOpen] = useState(false);
@@ -224,7 +226,24 @@ const Editor = () => {
         return;
       }
       
+      // Prevenir clics múltiples durante el procesamiento
+      if (isPlacingPoint) return;
+      
+      setIsPlacingPoint(true);
+      setPlacementProgress(0);
+      
       try {
+        // Simular progreso de carga
+        const progressInterval = setInterval(() => {
+          setPlacementProgress((prev) => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 100);
+        
         // Ordenar fotos por fecha antes de crear
         const sortedPhotos = currentMatch.photos
           .sort((a, b) => {
@@ -246,6 +265,12 @@ const Editor = () => {
           displayOrder: currentGuidedIndex + 1,
         });
         
+        clearInterval(progressInterval);
+        setPlacementProgress(100);
+        
+        // Dar tiempo para que el usuario vea el progreso completo
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Guardar ID del hotspot creado
         setPlacedHotspotIds(prev => [...prev, hotspot.id]);
         
@@ -255,16 +280,20 @@ const Editor = () => {
         // Avanzar al siguiente o terminar
         if (currentGuidedIndex < guidedMatches.length - 1) {
           setCurrentGuidedIndex(prev => prev + 1);
-          toast.success(`${currentMatch.name} creado. Siguiente: ${guidedMatches[currentGuidedIndex + 1].name}`);
+          toast.success(`✅ ${currentMatch.name} creado. Siguiente: ${guidedMatches[currentGuidedIndex + 1].name}`);
         } else {
           // Terminamos
           setGuidedMode(false);
           setCurrentGuidedIndex(0);
-          toast.success(`¡Completado! ${guidedMatches.length} puntos creados exitosamente`);
+          setAddPointMode(false); // Desactivar modo add point al terminar
+          toast.success(`🎉 ¡Completado! ${guidedMatches.length} puntos creados exitosamente`);
         }
       } catch (error) {
         console.error('Error creando hotspot:', error);
         toast.error('No se pudo crear el punto. Intenta de nuevo.');
+      } finally {
+        setIsPlacingPoint(false);
+        setPlacementProgress(0);
       }
       return;
     }
@@ -504,7 +533,13 @@ const Editor = () => {
     setPlacedHotspotIds([]);
     setGuidedMode(true);
     setImportDialogOpen(false);
-    toast.success(`Modo guiado activado. Haz click en el plano para colocar ${matches.length} puntos en orden`);
+    
+    // ✅ Activar automáticamente el modo "Add Point"
+    setAddPointMode(true);
+    setMoveMode(false);
+    setSelectMode(false);
+    
+    toast.success(`🎯 Modo guiado activado. Haz click en el plano para colocar ${matches.length} puntos en orden`);
   };
 
   const handleSkipPoint = () => {
@@ -970,6 +1005,8 @@ const Editor = () => {
           onSkip={handleSkipPoint}
           onUndo={handleUndoPoint}
           onCancel={handleCancelGuided}
+          isPlacing={isPlacingPoint}
+          placementProgress={placementProgress}
         />
       )}
     </div>

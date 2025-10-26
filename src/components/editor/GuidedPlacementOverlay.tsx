@@ -15,6 +15,8 @@ interface GuidedPlacementOverlayProps {
   onSkip: () => void;
   onUndo: () => void;
   onCancel: () => void;
+  isPlacing?: boolean;
+  placementProgress?: number;
 }
 
 export const GuidedPlacementOverlay = ({
@@ -22,7 +24,9 @@ export const GuidedPlacementOverlay = ({
   currentIndex,
   onSkip,
   onUndo,
-  onCancel
+  onCancel,
+  isPlacing = false,
+  placementProgress = 0
 }: GuidedPlacementOverlayProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   
@@ -119,10 +123,21 @@ export const GuidedPlacementOverlay = ({
             )}
             
             <p className="text-xs text-muted-foreground mb-3">
-              Haz click en el plano donde debe ir este punto
+              {isPlacing ? '⏳ Procesando punto...' : 'Haz click en el plano donde debe ir este punto'}
             </p>
 
-            {/* Progress bar */}
+            {/* Progress bar del punto actual siendo procesado */}
+            {isPlacing && (
+              <div className="space-y-1 mb-3">
+                <Progress value={placementProgress} className="h-3" />
+                <div className="flex justify-between text-xs text-primary font-semibold">
+                  <span>⏳ Guardando punto...</span>
+                  <span>{Math.round(placementProgress)}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* Progress bar general */}
             <div className="space-y-1">
               <Progress value={progress} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -140,7 +155,7 @@ export const GuidedPlacementOverlay = ({
             size="sm"
             onClick={onSkip}
             className="flex-1"
-            disabled={currentIndex >= matches.length - 1}
+            disabled={currentIndex >= matches.length - 1 || isPlacing}
           >
             <SkipForward className="w-4 h-4 mr-1" />
             Omitir
@@ -151,7 +166,7 @@ export const GuidedPlacementOverlay = ({
             size="sm"
             onClick={onUndo}
             className="flex-1"
-            disabled={currentIndex === 0}
+            disabled={currentIndex === 0 || isPlacing}
           >
             <Undo2 className="w-4 h-4 mr-1" />
             Deshacer
@@ -162,6 +177,7 @@ export const GuidedPlacementOverlay = ({
             size="sm"
             onClick={onCancel}
             className="flex-1"
+            disabled={isPlacing}
           >
             <X className="w-4 h-4 mr-1" />
             Cancelar
