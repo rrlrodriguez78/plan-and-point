@@ -166,8 +166,8 @@ export const PhotoGroupDialog = ({
     
     if (validMatches.length === 0) {
       toast({
-        title: "No hay fotos válidas",
-        description: "No se encontraron matches entre fotos y puntos",
+        title: t('photoImport.noValidPhotos'),
+        description: t('photoImport.noMatchesBetweenPhotosPoints'),
         variant: "destructive"
       });
       return;
@@ -193,16 +193,16 @@ export const PhotoGroupDialog = ({
       }
       
       toast({
-        title: "✅ Fotos agregadas exitosamente",
-        description: `${totalAdded} fotos agregadas a ${validMatches.length} punto(s)`
+        title: t('photoImport.photosAddedSuccess'),
+        description: `${totalAdded} ${t('photoImport.photosAddedTo')} ${validMatches.length} ${t('photoImport.points')}`
       });
       
       onPhotosAdded();
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: "Error agregando fotos",
-        description: "No se pudieron agregar todas las fotos",
+        title: t('photoImport.errorAddingAllPhotos'),
+        description: t('photoImport.couldNotAddAllPhotos'),
         variant: "destructive"
       });
     }
@@ -220,7 +220,7 @@ export const PhotoGroupDialog = ({
       });
     }
     
-    setPhotoGroups([{ id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }]);
+    setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }]);
     setMatches([]);
     setValidPhotos(0);
     setIgnoredPhotos(0);
@@ -276,9 +276,9 @@ export const PhotoGroupDialog = ({
           {existingHotspots.length === 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No hay puntos en este plano</AlertTitle>
+              <AlertTitle>{t('photoImport.noPoints')}</AlertTitle>
               <AlertDescription>
-                Debes crear puntos primero usando el botón "Auto avance" o "Add Point"
+                {t('photoImport.noPointsDesc')}
               </AlertDescription>
             </Alert>
           )}
@@ -286,10 +286,10 @@ export const PhotoGroupDialog = ({
           {existingHotspots.length > 0 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Puntos disponibles: {existingHotspots.length}</AlertTitle>
+              <AlertTitle>{t('photoImport.availablePoints', { count: existingHotspots.length })}</AlertTitle>
               <AlertDescription>
-                Las fotos deben tener nombres que coincidan con estos puntos: {existingHotspots.slice(0, 5).map(h => h.title).join(', ')}
-                {existingHotspots.length > 5 && ` y ${existingHotspots.length - 5} más...`}
+                {t('photoImport.matchingDesc')}{existingHotspots.slice(0, 5).map(h => h.title).join(', ')}
+                {existingHotspots.length > 5 && ` and ${existingHotspots.length - 5} more...`}
               </AlertDescription>
             </Alert>
           )}
@@ -299,7 +299,7 @@ export const PhotoGroupDialog = ({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Image className="w-5 h-5 text-muted-foreground" />
-                <h3 className="font-semibold">Grupos de fotos</h3>
+                <h3 className="font-semibold">{t('photoImport.photoGroups')}</h3>
               </div>
               <Button
                 size="sm"
@@ -307,7 +307,7 @@ export const PhotoGroupDialog = ({
                 onClick={addPhotoGroup}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Agregar grupo
+                {t('photoImport.addGroup')}
               </Button>
             </div>
 
@@ -321,7 +321,7 @@ export const PhotoGroupDialog = ({
                         value={group.name}
                         onChange={(e) => updateGroupName(group.id, e.target.value)}
                         className="h-8"
-                        placeholder="Nombre del grupo"
+                        placeholder={t('photoImport.groupNamePlaceholder')}
                       />
                     </div>
                     {photoGroups.length > 1 && (
@@ -353,14 +353,14 @@ export const PhotoGroupDialog = ({
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       {group.photos.length === 0
-                        ? "Seleccionar fotos JPG"
-                        : `✓ ${group.photos.length} fotos cargadas`}
+                        ? t('photoImport.selectPhotos')
+                        : `✓ ${group.photos.length} ${t('photoImport.photosLoaded')}`}
                     </Button>
 
                     {group.photos.length > 0 && (
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Fecha de captura (opcional si las fotos tienen fecha en nombre)
+                          {t('photoImport.captureDate')}
                         </Label>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -370,8 +370,8 @@ export const PhotoGroupDialog = ({
                             >
                               <CalendarIcon className="mr-2 h-3 w-3" />
                               {group.manualDate
-                                ? format(group.manualDate, "PPP", { locale: es })
-                                : "Detectar del nombre o seleccionar"}
+                                ? format(group.manualDate, "PPP", { locale: getDateLocale() })
+                                : t('photoImport.detectOrSelect')}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
@@ -402,10 +402,10 @@ export const PhotoGroupDialog = ({
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analizando...
+                  {t('photoImport.analyzing')}
                 </>
               ) : (
-                'Analizar Matches'
+                t('photoImport.analyzeMatches')
               )}
             </Button>
           )}
@@ -416,17 +416,17 @@ export const PhotoGroupDialog = ({
               <div className="flex items-center justify-between mb-3 p-3 bg-primary/5 rounded-lg">
                 <div>
                   <h3 className="font-semibold">
-                    {validPhotos > 0 ? '✅ Análisis completado' : '⚠️ Sin coincidencias'}
+                    {validPhotos > 0 ? t('photoImport.analysisCompleted') : t('photoImport.withoutMatches')}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {matchedHotspots} punto(s) con fotos válidas
+                    {matchedHotspots} {t('photoImport.pointsWithValidPhotos')}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary">{validPhotos}</p>
-                  <p className="text-xs text-muted-foreground">fotos válidas</p>
+                  <p className="text-xs text-muted-foreground">{t('photoImport.validPhotos')}</p>
                   {ignoredPhotos > 0 && (
-                    <p className="text-xs text-destructive">{ignoredPhotos} ignoradas</p>
+                    <p className="text-xs text-destructive">{ignoredPhotos} {t('photoImport.ignored')}</p>
                   )}
                 </div>
               </div>
@@ -448,7 +448,7 @@ export const PhotoGroupDialog = ({
                             <h4 className="font-semibold font-mono text-sm">{match.hotspot.title}</h4>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {match.photos.length} foto(s) encontrada(s)
+                            {match.photos.length} {t('photoImport.photosFound')}
                           </p>
                         </div>
                         {match.status === 'matched' ? (

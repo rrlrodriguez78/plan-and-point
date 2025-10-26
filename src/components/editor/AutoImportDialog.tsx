@@ -29,6 +29,16 @@ interface AutoImportDialogProps {
 export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoImportDialogProps) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
+  
+  const getDateLocale = () => {
+    switch (i18n.language) {
+      case 'es': return es;
+      case 'fr': return fr;
+      case 'de': return de;
+      default: return enUS;
+    }
+  };
+  
   const [listFile, setListFile] = useState<File | null>(null);
   const [names, setNames] = useState<string[]>([]);
   const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([
@@ -46,13 +56,13 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     if (!open && hasStartedPlacement) {
       cleanupPreviews(matches);
       setListFile(null);
-      setPhotoGroups([{ id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }]);
+      setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('autoImport.groupName')} 1`, photos: [], manualDate: null }]);
       setNames([]);
       setMatches([]);
       setPlacementMethod('manual');
       setHasStartedPlacement(false);
     }
-  }, [open, hasStartedPlacement, matches]);
+  }, [open, hasStartedPlacement, matches, t]);
 
   const handleListFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -63,11 +73,11 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
       const validation = validateNames(parsedNames);
       
       if (!validation.valid) {
-        toast({
-          title: "Error en list.txt",
-          description: validation.errors.join('\n'),
-          variant: "destructive"
-        });
+      toast({
+        title: t('autoImport.errorInListFile'),
+        description: validation.errors.join('\n'),
+        variant: "destructive"
+      });
         return;
       }
 
@@ -76,13 +86,13 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
       setMatches([]);
       
       toast({
-        title: "Archivo cargado",
-        description: `${parsedNames.length} nombres encontrados`
+        title: t('autoImport.fileLoaded'),
+        description: `${parsedNames.length} ${t('autoImport.namesFound')}`
       });
     } catch (error) {
       toast({
-        title: "Error leyendo archivo",
-        description: "No se pudo leer el archivo list.txt",
+        title: t('autoImport.errorReadingFile'),
+        description: t('autoImport.couldNotReadFile'),
         variant: "destructive"
       });
     }
@@ -91,7 +101,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
   const addPhotoGroup = () => {
     setPhotoGroups(prev => [
       ...prev,
-      { id: crypto.randomUUID(), name: `Grupo ${prev.length + 1}`, photos: [], manualDate: null }
+      { id: crypto.randomUUID(), name: `${t('autoImport.groupName')} ${prev.length + 1}`, photos: [], manualDate: null }
     ]);
   };
 
@@ -119,8 +129,8 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     if (files.length > 0) {
       const group = photoGroups.find(g => g.id === groupId);
       toast({
-        title: `${group?.name} actualizado`,
-        description: `${files.length} fotos cargadas`
+        title: `${group?.name} ${t('autoImport.groupUpdated')}`,
+        description: `${files.length} ${t('autoImport.photosLoaded')}`
       });
     }
   };
@@ -128,8 +138,8 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
   const handleAnalyze = async () => {
     if (names.length === 0) {
       toast({
-        title: "Falta list.txt",
-        description: "Debes cargar el archivo list.txt primero",
+        title: t('autoImport.missingListFile'),
+        description: t('autoImport.loadListFirst'),
         variant: "destructive"
       });
       return;
@@ -138,8 +148,8 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     const totalPhotos = photoGroups.reduce((sum, g) => sum + g.photos.length, 0);
     if (totalPhotos === 0) {
       toast({
-        title: "Faltan fotos",
-        description: "Debes cargar fotos en al menos un grupo",
+        title: t('autoImport.missingPhotos'),
+        description: t('autoImport.loadPhotosInGroup'),
         variant: "destructive"
       });
       return;
@@ -156,13 +166,13 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
       const pointsWithoutPhotos = matchedResults.filter(m => m.photos.length === 0).length;
       
       toast({
-        title: "✅ Análisis completado",
-        description: `${pointsWithPhotos} puntos con fotos (${totalMatches} fotos totales)${pointsWithoutPhotos > 0 ? ` | ❌ ${pointsWithoutPhotos} sin foto` : ''}`
+        title: t('autoImport.analysisComplete'),
+        description: `${pointsWithPhotos} ${t('autoImport.pointsWithPhotos')} (${totalMatches} ${t('autoImport.totalPhotos')})${pointsWithoutPhotos > 0 ? ` | ❌ ${pointsWithoutPhotos} ${t('autoImport.withoutPhoto')}` : ''}`
       });
     } catch (error) {
       toast({
-        title: "Error en análisis",
-        description: "No se pudo realizar el matching",
+        title: t('autoImport.errorInAnalysis'),
+        description: t('autoImport.couldNotMatch'),
         variant: "destructive"
       });
     } finally {
@@ -175,8 +185,8 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     
     if (validMatches.length === 0) {
       toast({
-        title: "No hay puntos válidos",
-        description: "No se encontraron matches entre nombres y fotos",
+        title: t('autoImport.noValidPoints'),
+        description: t('autoImport.noMatchesBetween'),
         variant: "destructive"
       });
       return;
@@ -192,7 +202,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     }
     
     setListFile(null);
-    setPhotoGroups([{ id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }]);
+    setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('autoImport.groupName')} 1`, photos: [], manualDate: null }]);
     setNames([]);
     setMatches([]);
     setPlacementMethod('manual');
@@ -207,9 +217,9 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Importación Automática de Puntos</DialogTitle>
+          <DialogTitle>{t('autoImport.title')}</DialogTitle>
           <DialogDescription>
-            Carga tu archivo list.txt y organiza tus fotos en grupos por fecha
+            {t('autoImport.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -221,28 +231,28 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-red-600" />
                   <span className="text-red-800 dark:text-red-400 font-semibold text-sm">
-                    ⚠️ IMPORTANTE: Reglas de coincidencia de nombres
+                    {t('autoImport.matchingRulesTitle')}
                   </span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-red-600 transition-transform duration-200" />
               </CollapsibleTrigger>
               <CollapsibleContent className="px-3 pb-3">
                 <div className="text-red-700 dark:text-red-300 space-y-2 text-xs mt-2">
-                  <p>Este método requiere que los nombres en <strong>list.txt</strong> y las <strong>fotos</strong> coincidan para máxima rapidez.</p>
+                  <p>{t('autoImport.matchingRulesDesc')}</p>
                   <div className="mt-1">
-                    <p className="font-semibold">✅ Ejemplos correctos:</p>
+                    <p className="font-semibold">{t('autoImport.correctExamples')}</p>
                     <ul className="list-disc list-inside ml-1 space-y-0.5">
-                      <li>list.txt: "B-0-0" → "B-0-0.jpg", "B-0-0-2024.jpg"</li>
-                      <li>list.txt: "Sala" → "Sala.jpg", "Sala-vista.jpg"</li>
+                      <li>{t('autoImport.example1')}</li>
+                      <li>{t('autoImport.example2')}</li>
                     </ul>
                   </div>
                   <div className="mt-1 p-2 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-300 dark:border-amber-700">
-                    <p className="font-semibold text-amber-800 dark:text-amber-300">📋 Formato list.txt:</p>
-                    <pre className="mt-0.5 p-1.5 bg-white dark:bg-gray-800 rounded text-xs font-mono">B-0-0{'\n'}Sala{'\n'}Cocina</pre>
+                    <p className="font-semibold text-amber-800 dark:text-amber-300">{t('autoImport.listFormat')}</p>
+                    <pre className="mt-0.5 p-1.5 bg-white dark:bg-gray-800 rounded text-xs font-mono">{t('autoImport.listFormatExample')}</pre>
                   </div>
                   <div className="mt-1 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
-                    <p className="font-semibold text-blue-800 dark:text-blue-300">💡 Sin restricciones:</p>
-                    <p className="text-blue-700 dark:text-blue-400">Usa <strong>"Add Point"</strong> para colocar puntos manualmente</p>
+                    <p className="font-semibold text-blue-800 dark:text-blue-300">{t('autoImport.noRestrictions')}</p>
+                    <p className="text-blue-700 dark:text-blue-400">{t('autoImport.noRestrictionsDesc')}</p>
                   </div>
                 </div>
               </CollapsibleContent>
@@ -253,7 +263,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <FileText className="w-5 h-5 text-muted-foreground" />
-              <h3 className="font-semibold">Archivo list.txt</h3>
+              <h3 className="font-semibold">{t('autoImport.listFileTitle')}</h3>
             </div>
             
             <input
@@ -270,7 +280,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
               onClick={() => listInputRef.current?.click()}
             >
               <Upload className="w-4 h-4 mr-2" />
-              {listFile ? `✓ ${listFile.name} (${names.length} líneas)` : 'Seleccionar list.txt'}
+              {listFile ? `✓ ${listFile.name} (${names.length} ${t('autoImport.namesFound')})` : t('autoImport.selectListFile')}
             </Button>
           </Card>
 
@@ -279,7 +289,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Image className="w-5 h-5 text-muted-foreground" />
-                <h3 className="font-semibold">Grupos de fotos</h3>
+                <h3 className="font-semibold">{t('autoImport.photoGroups')}</h3>
               </div>
               <Button
                 size="sm"
@@ -287,7 +297,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                 onClick={addPhotoGroup}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Agregar grupo
+                {t('autoImport.addGroup')}
               </Button>
             </div>
 
@@ -301,7 +311,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                         value={group.name}
                         onChange={(e) => updateGroupName(group.id, e.target.value)}
                         className="h-8"
-                        placeholder="Nombre del grupo"
+                        placeholder={t('autoImport.groupNamePlaceholder')}
                       />
                     </div>
                     {photoGroups.length > 1 && (
@@ -333,14 +343,14 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       {group.photos.length === 0
-                        ? "Seleccionar fotos JPG"
-                        : `✓ ${group.photos.length} fotos cargadas`}
+                        ? t('autoImport.selectPhotos')
+                        : `✓ ${group.photos.length} ${t('autoImport.photosLoaded')}`}
                     </Button>
 
                     {group.photos.length > 0 && (
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
-                          Fecha de captura (opcional si las fotos tienen fecha en nombre)
+                          {t('autoImport.captureDate')}
                         </Label>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -350,8 +360,8 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                             >
                               <CalendarIcon className="mr-2 h-3 w-3" />
                               {group.manualDate
-                                ? format(group.manualDate, "PPP", { locale: es })
-                                : "Detectar del nombre o seleccionar"}
+                                ? format(group.manualDate, "PPP", { locale: getDateLocale() })
+                                : t('autoImport.detectOrSelect')}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
@@ -382,10 +392,10 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analizando...
+                  {t('autoImport.analyzing')}
                 </>
               ) : (
-                'Analizar Matches'
+                t('autoImport.analyzeMatches')
               )}
             </Button>
           )}
@@ -395,14 +405,14 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
             <Card className="p-4">
               <div className="flex items-center justify-between mb-3 p-3 bg-primary/5 rounded-lg">
                 <div>
-                  <h3 className="font-semibold">✅ Análisis completado</h3>
+                  <h3 className="font-semibold">{t('autoImport.analysisCompleted')}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {pointsWithPhotos} puntos con fotos
+                    {pointsWithPhotos} {t('autoImport.pointsWithPhotos')}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary">{totalPhotos}</p>
-                  <p className="text-xs text-muted-foreground">fotos totales</p>
+                  <p className="text-xs text-muted-foreground">{t('autoImport.totalPhotos')}</p>
                 </div>
               </div>
 
@@ -423,7 +433,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                             <h4 className="font-semibold font-mono text-sm">{match.name}</h4>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {match.photos.length} foto(s) encontrada(s)
+                            {match.photos.length} {t('autoImport.photosFound')}
                           </p>
                         </div>
                         {match.photos.length > 0 ? (
@@ -470,14 +480,14 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
 
               {/* Método de colocación */}
               <div className="mt-4 pt-4 border-t">
-                <h4 className="text-sm font-semibold mb-3">Método de colocación</h4>
+                <h4 className="text-sm font-semibold mb-3">{t('autoImport.placementMethod')}</h4>
                 <RadioGroup value={placementMethod} onValueChange={(v: any) => setPlacementMethod(v)}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="manual" id="manual" />
                     <Label htmlFor="manual" className="flex-1 cursor-pointer">
-                      <div className="font-medium">Colocación manual guiada</div>
+                      <div className="font-medium">{t('autoImport.manualPlacement')}</div>
                       <div className="text-xs text-muted-foreground">
-                        Haz click en el plano {pointsWithPhotos} veces para colocar cada punto
+                        {t('autoImport.manualPlacementDesc')}
                       </div>
                     </Label>
                   </div>
@@ -489,13 +499,13 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={handleClose}>
-            Cancelar
+            {t('autoImport.cancel')}
           </Button>
           <Button 
             onClick={handleStart}
             disabled={pointsWithPhotos === 0}
           >
-            Comenzar Colocación ({pointsWithPhotos} puntos, {totalPhotos} fotos)
+            {t('autoImport.startPlacement')} ({pointsWithPhotos} {t('autoImport.points')}, {totalPhotos} {t('autoImport.totalPhotos')})
           </Button>
         </div>
       </DialogContent>
