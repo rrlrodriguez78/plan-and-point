@@ -1,8 +1,10 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { X, SkipForward, Undo2 } from 'lucide-react';
+import { X, SkipForward, Undo2, Calendar as CalendarIcon } from 'lucide-react';
 import type { Match } from '@/utils/photoMatcher';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface GuidedPlacementOverlayProps {
   matches: Match[];
@@ -52,9 +54,16 @@ export const GuidedPlacementOverlay = ({
               </Button>
             </div>
             
-            <p className="text-sm text-muted-foreground mb-2">
+            <p className="text-sm text-muted-foreground mb-1">
               Coloca el punto {currentIndex + 1} de {matches.length}
             </p>
+
+            {currentMatch.captureDate && (
+              <div className="flex items-center gap-1 text-xs text-blue-600 mb-2">
+                <CalendarIcon className="w-3 h-3" />
+                {format(parseISO(currentMatch.captureDate), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+              </div>
+            )}
             
             <p className="text-xs text-muted-foreground mb-3">
               Haz click en el plano donde debe ir este punto

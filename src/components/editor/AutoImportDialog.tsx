@@ -3,12 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, FileText, Image, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Image, CheckCircle2, XCircle, Loader2, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
 import { parseListFile, validateNames } from '@/utils/listParser';
 import { matchPhotosToNames, cleanupPreviews, type Match } from '@/utils/photoMatcher';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface AutoImportDialogProps {
   open: boolean;
@@ -24,6 +30,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
   const [matches, setMatches] = useState<Match[]>([]);
   const [placementMethod, setPlacementMethod] = useState<'manual' | 'auto'>('manual');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [manualDate, setManualDate] = useState<Date | undefined>(undefined);
   
   const listInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +128,13 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
       return;
     }
 
-    onStartPlacement(validMatches);
+    // Aplicar fecha manual a matches sin fecha
+    const matchesWithDates = validMatches.map(m => ({
+      ...m,
+      captureDate: m.captureDate || (manualDate ? format(manualDate, 'yyyy-MM-dd') : null)
+    }));
+
+    onStartPlacement(matchesWithDates);
   };
 
   const handleClose = () => {
@@ -242,6 +255,42 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                 </div>
               </div>
 
+              {/* Alerta de fotos sin fecha */}
+              {matches.some(m => m.photo && m.captureDate === null) && (
+                <Alert className="mb-4 border-yellow-500 bg-yellow-50">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertTitle className="text-yellow-900">Fecha no detectada</AlertTitle>
+                  <AlertDescription className="text-yellow-800">
+                    {matches.filter(m => m.photo && m.captureDate === null).length} fotos no tienen fecha en su nombre.
+                    Selecciona una fecha de captura para estas fotos:
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full mt-2 justify-start text-left font-normal",
+                            !manualDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {manualDate ? format(manualDate, "PPP", { locale: es }) : "Selecciona fecha"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={manualDate}
+                          onSelect={setManualDate}
+                          disabled={(date) => date > new Date()}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <ScrollArea className="h-48 border rounded-lg">
                 <div className="p-2 space-y-1">
                   {matches.map((match, idx) => (
@@ -250,19 +299,27 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
                       className="flex items-center gap-3 p-2 rounded hover:bg-muted/50"
                     >
                       <span className="text-xs text-muted-foreground w-8">#{idx + 1}</span>
-                      <span className="font-mono text-sm flex-1">{match.name}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-sm">{match.name}</div>
+                        {match.photo && match.captureDate && (
+                          <div className="flex items-center gap-1 text-xs text-blue-600 mt-0.5">
+                            <CalendarIcon className="w-3 h-3" />
+                            {format(parseISO(match.captureDate), "dd/MM/yyyy")}
+                          </div>
+                        )}
+                        {match.photo && !match.captureDate && (
+                          <div className="text-xs text-yellow-600 mt-0.5">⚠️ Sin fecha</div>
+                        )}
+                      </div>
                       {match.status === 'matched' ? (
                         <>
                           {match.photoPreview && (
                             <img 
                               src={match.photoPreview} 
                               alt={match.name}
-                              className="w-10 h-10 rounded object-cover"
+                              className="w-10 h-10 rounded object-cover flex-shrink-0"
                             />
                           )}
-                          <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                            {match.photo?.name}
-                          </span>
                           <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
                         </>
                       ) : (

@@ -205,12 +205,13 @@ const Editor = () => {
       
       try {
         // Crear hotspot con foto
-        const hotspot = await createHotspot({
-          name: currentMatch.name,
-          photo: currentMatch.photo,
-          position: { x, y },
-          displayOrder: currentGuidedIndex + 1
-        });
+      const hotspot = await createHotspot({
+        name: currentMatch.name,
+        photo: currentMatch.photo,
+        position: { x, y },
+        displayOrder: currentGuidedIndex + 1,
+        captureDate: currentMatch.captureDate
+      });
         
         // Guardar ID del hotspot creado
         setPlacedHotspotIds(prev => [...prev, hotspot.id]);

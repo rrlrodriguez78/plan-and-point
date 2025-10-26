@@ -6,6 +6,7 @@ interface CreateHotspotParams {
   photo: File;
   position: { x: number; y: number };
   displayOrder: number;
+  captureDate: string | null;
 }
 
 export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
@@ -49,13 +50,17 @@ export const useBulkHotspotCreation = (floorPlanId: string, tourId: string) => {
       if (hotspotError) throw hotspotError;
       
       // 4. Crear panorama_photo asociada
+      const finalCaptureDate = params.captureDate || new Date().toISOString().split('T')[0];
+      
       const { error: panoramaError } = await supabase
         .from('panorama_photos')
         .insert({
           hotspot_id: hotspot.id,
           photo_url: publicUrl,
           display_order: 0,
-          description: `Foto panorámica de ${params.name}`
+          description: `Foto panorámica de ${params.name}`,
+          capture_date: finalCaptureDate,
+          original_filename: params.photo.name
         });
       
       if (panoramaError) throw panoramaError;
