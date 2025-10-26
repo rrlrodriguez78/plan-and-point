@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { es, enUS, fr, de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 interface AutoImportDialogProps {
@@ -26,11 +27,12 @@ interface AutoImportDialogProps {
 }
 
 export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoImportDialogProps) => {
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const [listFile, setListFile] = useState<File | null>(null);
   const [names, setNames] = useState<string[]>([]);
   const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([
-    { id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }
+    { id: crypto.randomUUID(), name: `${t('autoImport.groupName')} 1`, photos: [], manualDate: null }
   ]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [placementMethod, setPlacementMethod] = useState<'manual' | 'auto'>('manual');

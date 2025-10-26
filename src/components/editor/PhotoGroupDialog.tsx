@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { es, enUS, fr, de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Hotspot } from '@/types/tour';
 import { useAddPhotosToHotspot } from '@/hooks/useAddPhotosToHotspot';
@@ -36,11 +37,21 @@ export const PhotoGroupDialog = ({
   tourId,
   onPhotosAdded 
 }: PhotoGroupDialogProps) => {
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { addPhotos, isAdding } = useAddPhotosToHotspot();
   
+  const getDateLocale = () => {
+    switch (i18n.language) {
+      case 'es': return es;
+      case 'fr': return fr;
+      case 'de': return de;
+      default: return enUS;
+    }
+  };
+  
   const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([
-    { id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }
+    { id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }
   ]);
   const [matches, setMatches] = useState<HotspotPhotoMatch[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -59,17 +70,17 @@ export const PhotoGroupDialog = ({
           });
         });
       }
-      setPhotoGroups([{ id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }]);
+      setPhotoGroups([{ id: crypto.randomUUID(), name: `${t('photoImport.groupName')} 1`, photos: [], manualDate: null }]);
       setMatches([]);
       setValidPhotos(0);
       setIgnoredPhotos(0);
     }
-  }, [open, matches]);
+  }, [open, matches, t]);
 
   const addPhotoGroup = () => {
     setPhotoGroups(prev => [
       ...prev,
-      { id: crypto.randomUUID(), name: `Grupo ${prev.length + 1}`, photos: [], manualDate: null }
+      { id: crypto.randomUUID(), name: `${t('photoImport.groupName')} ${prev.length + 1}`, photos: [], manualDate: null }
     ]);
   };
 
@@ -97,8 +108,8 @@ export const PhotoGroupDialog = ({
     if (files.length > 0) {
       const group = photoGroups.find(g => g.id === groupId);
       toast({
-        title: `${group?.name} actualizado`,
-        description: `${files.length} fotos cargadas`
+        title: `${group?.name} ${t('photoImport.groupUpdated')}`,
+        description: `${files.length} ${t('photoImport.photosLoaded')}`
       });
     }
   };
@@ -107,8 +118,8 @@ export const PhotoGroupDialog = ({
     const totalPhotos = photoGroups.reduce((sum, g) => sum + g.photos.length, 0);
     if (totalPhotos === 0) {
       toast({
-        title: "Faltan fotos",
-        description: "Debes cargar fotos en al menos un grupo",
+        title: t('photoImport.missingPhotos'),
+        description: t('photoImport.loadPhotosInGroup'),
         variant: "destructive"
       });
       return;
@@ -124,25 +135,25 @@ export const PhotoGroupDialog = ({
       
       if (results.validPhotos === 0) {
         toast({
-          title: "❌ Ninguna foto coincide",
-          description: "Las fotos no coinciden con los puntos existentes",
+          title: t('photoImport.noMatches'),
+          description: t('photoImport.noMatchesDesc'),
           variant: "destructive"
         });
       } else if (results.ignoredPhotos > 0) {
         toast({
-          title: "✅ Análisis completado",
-          description: `${results.validPhotos} fotos válidas de ${totalPhotos} totales. ${results.ignoredPhotos} fotos ignoradas (nombre no coincide)`
+          title: t('photoImport.analysisComplete'),
+          description: `${results.validPhotos} ${t('photoImport.validPhotosOf')} ${totalPhotos} ${t('photoImport.total')} ${results.ignoredPhotos} ${t('photoImport.photosIgnored')}`
         });
       } else {
         toast({
-          title: "✅ Todas las fotos coinciden",
-          description: `${results.validPhotos} fotos válidas para ${results.matches.filter(m => m.status === 'matched').length} puntos`
+          title: t('photoImport.allPhotosMatch'),
+          description: `${results.validPhotos} ${t('photoImport.validPhotosFor')} ${results.matches.filter(m => m.status === 'matched').length} ${t('photoImport.points')}`
         });
       }
     } catch (error) {
       toast({
-        title: "Error en análisis",
-        description: "No se pudo realizar el matching",
+        title: t('photoImport.errorAddingPhotos'),
+        description: t('photoImport.noMatchesFound'),
         variant: "destructive"
       });
     } finally {
@@ -223,39 +234,38 @@ export const PhotoGroupDialog = ({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Agregar Fotos por Grupo a Puntos Existentes</DialogTitle>
+          <DialogTitle>{t('photoImport.title')}</DialogTitle>
           <DialogDescription>
-            Organiza tus fotos en grupos por fecha. Solo se agregarán fotos cuyos nombres coincidan con puntos ya creados.
+            {t('photoImport.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4">
-          {/* Ayuda colapsable */}
           <Collapsible>
             <Card className="border-2 border-red-600 bg-red-50 dark:bg-red-950/20">
               <CollapsibleTrigger className="w-full p-3 flex items-center justify-between hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-red-600" />
                   <span className="text-red-800 dark:text-red-400 font-semibold text-sm">
-                    ⚠️ IMPORTANTE: Reglas de coincidencia de nombres
+                    {t('photoImport.matchingRulesTitle')}
                   </span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-red-600 transition-transform duration-200" />
               </CollapsibleTrigger>
               <CollapsibleContent className="px-3 pb-3">
                 <div className="text-red-700 dark:text-red-300 space-y-2 text-xs mt-2">
-                  <p>Las fotos deben coincidir <strong>EXACTAMENTE</strong> con los nombres de los puntos existentes.</p>
+                  <p>{t('photoImport.matchingRulesDesc')}</p>
                   <div className="mt-1">
-                    <p className="font-semibold">✅ Válidos:</p>
+                    <p className="font-semibold">{t('photoImport.validExamples')}</p>
                     <ul className="list-disc list-inside ml-1 space-y-0.5">
-                      <li>Punto: "B-0-0" → "B-0-0.jpg", "B-0-0-2024.jpg"</li>
-                      <li>Punto: "Cocina" → "Cocina.jpg", "Cocina-vista1.jpg"</li>
+                      <li>{t('photoImport.example1')}</li>
+                      <li>{t('photoImport.example2')}</li>
                     </ul>
                   </div>
-                  <p className="font-semibold">❌ Nombres diferentes se IGNORAN</p>
+                  <p className="font-semibold">{t('photoImport.differentNamesIgnored')}</p>
                   <div className="mt-1 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
-                    <p className="font-semibold text-blue-800 dark:text-blue-300">💡 Para nombres diferentes:</p>
-                    <p className="text-blue-700 dark:text-blue-400">Entra al punto → Editor → Agrega fotos manualmente</p>
+                    <p className="font-semibold text-blue-800 dark:text-blue-300">{t('photoImport.alternativeTitle')}</p>
+                    <p className="text-blue-700 dark:text-blue-400">{t('photoImport.alternativeDesc')}</p>
                   </div>
                 </div>
               </CollapsibleContent>
