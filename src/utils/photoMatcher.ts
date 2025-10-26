@@ -92,9 +92,11 @@ export const matchPhotosToNames = async (
           const fileName = photo.name.toLowerCase();
           const searchName = name.toLowerCase();
 
+          // Matching exacto: después del nombre debe haber un '-' o '.' inmediatamente
+          const exactPattern = new RegExp(`^${searchName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[-.]`, 'i');
+          
           if (
-            (fileName.startsWith(searchName + '-') ||
-              fileName.startsWith(searchName + '.')) &&
+            exactPattern.test(fileName) &&
             (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
           ) {
             let captureDate = extractDateFromFilename(photo.name);
@@ -142,9 +144,11 @@ export const matchPhotosToNames = async (
         const fileName = photo.name.toLowerCase();
         const searchName = name.toLowerCase();
 
+        // Matching exacto: después del nombre debe haber un '-' o '.' inmediatamente
+        const exactPattern = new RegExp(`^${searchName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[-.]`, 'i');
+
         if (
-          (fileName.startsWith(searchName + '-') ||
-            fileName.startsWith(searchName + '.')) &&
+          exactPattern.test(fileName) &&
           (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
         ) {
           matchedPhoto = photo;
@@ -192,10 +196,11 @@ export const matchPhotosToExistingHotspots = async (
         const fileName = photo.name.toLowerCase();
         const hotspotName = hotspot.title.toLowerCase();
 
-        // Match si el nombre de la foto comienza con el título del hotspot
+        // Matching exacto: después del nombre debe haber un '-' o '.' inmediatamente
+        const exactPattern = new RegExp(`^${hotspotName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[-.]`, 'i');
+
         if (
-          (fileName.startsWith(hotspotName + '-') ||
-            fileName.startsWith(hotspotName + '.')) &&
+          exactPattern.test(fileName) &&
           (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
         ) {
           let captureDate = extractDateFromFilename(photo.name);
