@@ -263,8 +263,8 @@ export default function FeatureManagement() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto py-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold">Gestión de Features</h1>
             <p className="text-muted-foreground">Control de funcionalidades por tenant</p>
