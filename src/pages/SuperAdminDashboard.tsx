@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, Trash2, Edit, Plus } from 'lucide-react';
+import { Building2, Users, Trash2, Edit, Plus, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/Navbar';
 import {
@@ -197,10 +197,16 @@ export default function SuperAdminDashboard() {
             </h1>
             <p className="text-muted-foreground mt-2">Gestiona todos los tenants del sistema</p>
           </div>
-          <Button onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Tenant
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/app/feature-management')}>
+              <Flag className="h-4 w-4 mr-2" />
+              Features
+            </Button>
+            <Button onClick={openCreateDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Tenant
+            </Button>
+          </div>
         </div>
 
         {/* System Statistics */}

@@ -169,6 +169,42 @@ export type Database = {
         }
         Relationships: []
       }
+      features: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          feature_key: string
+          feature_name: string
+          id: string
+          is_beta: boolean | null
+          requires_subscription_tier: string | null
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          id?: string
+          is_beta?: boolean | null
+          requires_subscription_tier?: string | null
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          id?: string
+          is_beta?: boolean | null
+          requires_subscription_tier?: string | null
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       floor_plans: {
         Row: {
           capture_date: string | null
@@ -216,6 +252,41 @@ export type Database = {
             columns: ["tour_id"]
             isOneToOne: false
             referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      global_feature_config: {
+        Row: {
+          created_at: string | null
+          default_enabled: boolean | null
+          feature_id: string
+          id: string
+          rollout_percentage: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_enabled?: boolean | null
+          feature_id: string
+          id?: string
+          rollout_percentage?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_enabled?: boolean | null
+          feature_id?: string
+          id?: string
+          rollout_percentage?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_feature_config_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: true
+            referencedRelation: "features"
             referencedColumns: ["id"]
           },
         ]
@@ -513,6 +584,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      tenant_features: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          enabled_at: string | null
+          feature_id: string
+          id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          enabled_at?: string | null
+          feature_id: string
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          enabled_at?: string | null
+          feature_id?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_features_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_features_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenant_users: {
         Row: {
@@ -1120,6 +1236,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_feature_enabled: {
+        Args: { _feature_key: string; _tenant_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
