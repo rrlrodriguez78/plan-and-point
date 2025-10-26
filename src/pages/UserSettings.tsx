@@ -36,11 +36,14 @@ import { SyncSettings } from '@/components/settings/SyncSettings';
 import { AudioVideoSettings } from '@/components/settings/AudioVideoSettings';
 import { AnalyticsSettings } from '@/components/settings/AnalyticsSettings';
 import { AccountSettings } from '@/components/settings/AccountSettings';
+import { SettingsAccessAudit } from '@/components/settings/SettingsAccessAudit';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 
 const UserSettings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { settings, loading: settingsLoading, updateSettings } = useUserSettingsContext();
+  const { isSuperAdmin } = useIsSuperAdmin();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     email: '',
@@ -251,7 +254,10 @@ const UserSettings = () => {
           </TabsContent>
 
           <TabsContent value="privacy">
-            <PrivacySecuritySettings settings={settings} onUpdate={updateSettings} />
+            <div className="space-y-6">
+              <PrivacySecuritySettings settings={settings} onUpdate={updateSettings} />
+              {isSuperAdmin && <SettingsAccessAudit />}
+            </div>
           </TabsContent>
 
           <TabsContent value="mobile">

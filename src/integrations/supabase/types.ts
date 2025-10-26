@@ -464,6 +464,33 @@ export type Database = {
         }
         Relationships: []
       }
+      settings_access_logs: {
+        Row: {
+          access_type: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          access_type: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tour_analytics: {
         Row: {
           avg_duration_seconds: number | null

@@ -87,6 +87,33 @@ const Settings = () => {
     description: '',
   });
 
+  // Log access attempt
+  useEffect(() => {
+    const logAccess = async () => {
+      if (authLoading || superAdminLoading || !user) return;
+
+      const accessType = isSuperAdmin ? 'allowed' : 'denied';
+      
+      try {
+        // Log access to database
+        await supabase
+          .from('settings_access_logs')
+          .insert({
+            user_id: user.id,
+            access_type: accessType,
+            ip_address: null,
+            user_agent: navigator.userAgent
+          });
+
+        console.log('Settings access logged:', { accessType, userId: user.id });
+      } catch (error) {
+        console.error('Error in access logging:', error);
+      }
+    };
+
+    logAccess();
+  }, [user, authLoading, superAdminLoading, isSuperAdmin]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/login');
