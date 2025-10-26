@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Image, CheckCircle2, XCircle, Loader2, Calendar as CalendarIcon, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { Upload, FileText, Image, CheckCircle2, XCircle, Loader2, Calendar as CalendarIcon, AlertCircle, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { parseListFile, validateNames } from '@/utils/listParser';
 import { matchPhotosToNames, cleanupPreviews, type Match, type PhotoGroup } from '@/utils/photoMatcher';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -211,38 +212,40 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4">
-          {/* Alerta IMPORTANTE en rojo */}
-          <Alert variant="destructive" className="border-2 border-red-600 bg-red-50 dark:bg-red-950/20">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <AlertTitle className="text-red-800 dark:text-red-400 font-bold text-base">
-              ⚠️ IMPORTANTE: Los nombres deben coincidir para rapidez de trabajo
-            </AlertTitle>
-            <AlertDescription className="text-red-700 dark:text-red-300 space-y-2 text-sm">
-              <p>Este método está diseñado para <strong>RAPIDEZ</strong>. Los nombres en list.txt y los nombres de las fotos DEBEN COINCIDIR.</p>
-              
-              <div className="mt-2">
-                <p className="font-semibold">✅ Ejemplos de coincidencia correcta:</p>
-                <ul className="list-disc list-inside ml-2 space-y-1">
-                  <li>list.txt: "B-0-0" → Foto: "B-0-0.jpg" o "B-0-0-2024-10-15.jpg"</li>
-                  <li>list.txt: "Sala" → Foto: "Sala.jpg" o "Sala-vista-frontal.jpg"</li>
-                  <li>list.txt: "C-1-5" → Foto: "C-1-5.jpg" o "C-1-5-20241015.jpg"</li>
-                </ul>
-              </div>
-              
-              <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-300 dark:border-amber-700">
-                <p className="font-semibold text-amber-800 dark:text-amber-300">📋 Formato del list.txt:</p>
-                <p className="text-amber-700 dark:text-amber-400">Cada línea = un punto. Sin numeración. Solo nombres.</p>
-                <pre className="mt-1 p-2 bg-white dark:bg-gray-800 rounded text-xs font-mono">
-B-0-0{'\n'}B-0-1{'\n'}Sala{'\n'}Cocina
-                </pre>
-              </div>
-              
-              <div className="mt-2 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
-                <p className="font-semibold text-blue-800 dark:text-blue-300">💡 Si prefieres trabajar sin restricciones de nombres:</p>
-                <p className="text-blue-700 dark:text-blue-400">Usa <strong>"Add Point"</strong> para colocar puntos manualmente. Los nombres no importarán.</p>
-              </div>
-            </AlertDescription>
-          </Alert>
+          {/* Ayuda colapsable */}
+          <Collapsible>
+            <Card className="border-2 border-red-600 bg-red-50 dark:bg-red-950/20">
+              <CollapsibleTrigger className="w-full p-3 flex items-center justify-between hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <span className="text-red-800 dark:text-red-400 font-semibold text-sm">
+                    ⚠️ IMPORTANTE: Reglas de coincidencia de nombres
+                  </span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-red-600 transition-transform duration-200" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="px-3 pb-3">
+                <div className="text-red-700 dark:text-red-300 space-y-2 text-xs mt-2">
+                  <p>Este método requiere que los nombres en <strong>list.txt</strong> y las <strong>fotos</strong> coincidan para máxima rapidez.</p>
+                  <div className="mt-1">
+                    <p className="font-semibold">✅ Ejemplos correctos:</p>
+                    <ul className="list-disc list-inside ml-1 space-y-0.5">
+                      <li>list.txt: "B-0-0" → "B-0-0.jpg", "B-0-0-2024.jpg"</li>
+                      <li>list.txt: "Sala" → "Sala.jpg", "Sala-vista.jpg"</li>
+                    </ul>
+                  </div>
+                  <div className="mt-1 p-2 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-300 dark:border-amber-700">
+                    <p className="font-semibold text-amber-800 dark:text-amber-300">📋 Formato list.txt:</p>
+                    <pre className="mt-0.5 p-1.5 bg-white dark:bg-gray-800 rounded text-xs font-mono">B-0-0{'\n'}Sala{'\n'}Cocina</pre>
+                  </div>
+                  <div className="mt-1 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
+                    <p className="font-semibold text-blue-800 dark:text-blue-300">💡 Sin restricciones:</p>
+                    <p className="text-blue-700 dark:text-blue-400">Usa <strong>"Add Point"</strong> para colocar puntos manualmente</p>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
           {/* Sección list.txt */}
           <Card className="p-4">
