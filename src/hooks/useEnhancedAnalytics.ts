@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface EnhancedAnalytics {
   totalTours: number;
@@ -18,7 +18,7 @@ export interface EnhancedAnalytics {
 }
 
 export const useEnhancedAnalytics = () => {
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [analytics, setAnalytics] = useState<EnhancedAnalytics>({
     totalTours: 0,
     publishedTours: 0,
@@ -36,28 +36,19 @@ export const useEnhancedAnalytics = () => {
   const [loading, setLoading] = useState(true);
 
   const loadAnalytics = async () => {
-    if (!user) return;
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
 
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (!orgData) {
-        setLoading(false);
-        return;
-      }
-
       // Get tours
-      const { data: tours } = await supabase
+      const { data: tours } = await (supabase
         .from('virtual_tours')
         .select('id, is_published')
-        .eq('organization_id', orgData.id);
+        .eq('tenant_id', currentTenant.tenant_id) as any);
 
       const totalTours = tours?.length || 0;
       const publishedTours = tours?.filter(t => t.is_published).length || 0;
@@ -82,11 +73,17 @@ export const useEnhancedAnalytics = () => {
 
       const unreadComments = comments?.length || 0;
 
-      // Get notifications
+      // Get notifications for tenant owner
+      const { data: tenantData } = await supabase
+        .from('tenants' as any)
+        .select('owner_id')
+        .eq('id', currentTenant.tenant_id)
+        .maybeSingle();
+
       const { data: notifications } = await supabase
         .from('notifications')
         .select('id, read')
-        .eq('user_id', user.id);
+        .eq('user_id', (tenantData as any)?.owner_id);
 
       const totalNotifications = notifications?.length || 0;
       const unreadNotifications = notifications?.filter(n => !n.read).length || 0;
@@ -95,7 +92,7 @@ export const useEnhancedAnalytics = () => {
       const { data: emailLogs } = await supabase
         .from('email_logs')
         .select('status, sent_at')
-        .eq('user_id', user.id);
+        .eq('user_id', (tenantData as any)?.owner_id);
 
       const totalEmailsSent = emailLogs?.length || 0;
       const successCount = emailLogs?.filter(l => l.status === 'sent').length || 0;
@@ -131,7 +128,7 @@ export const useEnhancedAnalytics = () => {
     loadAnalytics();
 
     // Subscribe to real-time updates
-    if (!user) return;
+    if (!currentTenant) return;
 
     const channels = [
       // Tours updates
@@ -184,8 +181,7 @@ export const useEnhancedAnalytics = () => {
           {
             event: '*',
             schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
+            table: 'notifications'
           },
           () => loadAnalytics()
         )
@@ -199,8 +195,7 @@ export const useEnhancedAnalytics = () => {
           {
             event: '*',
             schema: 'public',
-            table: 'email_logs',
-            filter: `user_id=eq.${user.id}`
+            table: 'email_logs'
           },
           () => loadAnalytics()
         )
@@ -210,7 +205,7 @@ export const useEnhancedAnalytics = () => {
     return () => {
       channels.forEach(channel => supabase.removeChannel(channel));
     };
-  }, [user]);
+  }, [currentTenant]);
 
   return {
     analytics,

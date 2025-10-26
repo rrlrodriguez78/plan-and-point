@@ -216,13 +216,13 @@ const Viewer = () => {
       // 2. Verificar ownership solo si el usuario está autenticado
       let isOwner = false;
       if (user) {
-        const { data: orgData } = await supabase
-          .from('organizations')
+        const { data: tenantData } = await supabase
+          .from('tenants' as any)
           .select('owner_id')
-          .eq('id', tourData.organization_id)
-          .single();
+          .eq('id', (tourData as any).tenant_id)
+          .maybeSingle();
         
-        isOwner = orgData?.owner_id === user.id;
+        isOwner = (tenantData as any)?.owner_id === user.id;
       }
       
       // 3. Si el tour no está publicado, solo el dueño puede verlo

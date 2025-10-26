@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface TourComment {
   id: string;
@@ -13,29 +13,23 @@ export interface TourComment {
 }
 
 export const useComments = () => {
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [comments, setComments] = useState<TourComment[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadComments = async () => {
-    if (!user) return;
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (!orgData) return;
-
       // Get tours
-      const { data: tours } = await supabase
+      const tours: any = (await supabase
         .from('virtual_tours')
         .select('id')
-        .eq('organization_id', orgData.id);
+        .eq('tenant_id', currentTenant.tenant_id)).data;
 
       if (!tours || tours.length === 0) {
         setLoading(false);
@@ -80,23 +74,14 @@ export const useComments = () => {
   };
 
   const deleteAllComments = async () => {
-    if (!user) return;
+    if (!currentTenant) return;
 
     try {
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (!orgData) return;
-
       // Get tours
-      const { data: tours } = await supabase
+      const tours: any = (await supabase
         .from('virtual_tours')
         .select('id')
-        .eq('organization_id', orgData.id);
+        .eq('tenant_id', currentTenant.tenant_id)).data;
 
       if (!tours || tours.length === 0) return;
 
@@ -119,7 +104,7 @@ export const useComments = () => {
     loadComments();
 
     // Subscribe to new comments
-    if (user) {
+    if (currentTenant) {
       const channel = supabase
         .channel('tour_comments')
         .on(
@@ -139,7 +124,7 @@ export const useComments = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [currentTenant]);
 
   return {
     comments,

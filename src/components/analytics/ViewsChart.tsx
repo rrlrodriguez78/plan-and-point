@@ -5,7 +5,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContai
 import { useTranslation } from 'react-i18next';
 import { Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface ChartData {
   date: string;
@@ -14,33 +14,25 @@ interface ChartData {
 
 export const ViewsChart = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
   const [data, setData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadViewsData = async () => {
-    if (!user) return;
+    if (!currentTenant) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     try {
-      // Get user's organization
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (!org) {
-        setData([]);
-        return;
-      }
-
-      // Get tour IDs for this organization
-      const { data: tours } = await supabase
+      // Get tour IDs for this tenant
+      const tours: any = (await supabase
         .from('virtual_tours')
         .select('id')
-        .eq('organization_id', org.id);
+        .eq('tenant_id', currentTenant.tenant_id)).data;
 
       if (!tours || tours.length === 0) {
         setData([]);
@@ -100,11 +92,11 @@ export const ViewsChart = () => {
 
   useEffect(() => {
     loadViewsData();
-  }, [period, user]);
+  }, [period, currentTenant]);
 
   // Real-time subscription
   useEffect(() => {
-    if (!user) return;
+    if (!currentTenant) return;
 
     const channel = supabase
       .channel('tour_views_changes')
@@ -125,7 +117,7 @@ export const ViewsChart = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, period]);
+  }, [currentTenant, period]);
 
   return (
     <Card className="p-6 border-2 border-primary/20 bg-gradient-to-br from-background to-primary/5 backdrop-blur-sm">

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield } from 'lucide-react';
@@ -31,9 +32,9 @@ interface Tour {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { t } = useTranslation();
   const [tours, setTours] = useState<Tour[]>([]);
-  const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [savingTour, setSavingTour] = useState(false);
@@ -49,36 +50,25 @@ const Dashboard = () => {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant) {
       loadData();
     }
-  }, [user]);
+  }, [user, currentTenant]);
 
   const loadData = async () => {
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Load user's organization (automatically created on signup)
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('owner_id', user!.id)
-        .single();
-
-      if (orgError || !org) {
-        console.error('Error loading organization:', orgError);
-        toast.error(t('dashboard.errorLoading'));
-        setLoading(false);
-        return;
-      }
-
-      setOrganization(org);
-
       // Load tours - EXCLUDE the "115N 3ST" tour (reserved for CreateTour page)
-      const { data: toursData } = await supabase
+      const toursData: any = (await supabase
         .from('virtual_tours')
         .select('*')
-        .eq('organization_id', org.id)
+        .eq('tenant_id', currentTenant.tenant_id)
         .neq('id', 'a5f2a965-d194-4f27-a01f-a0981f0ae307')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })).data;
 
       if (toursData) {
         setTours(toursData);
@@ -92,7 +82,7 @@ const Dashboard = () => {
   };
 
   const handleCreateTour = async (tourData: { title: string; description: string; coverImageUrl?: string }) => {
-    if (!organization) {
+    if (!currentTenant) {
       toast.error(t('dashboard.organizationNotFound'));
       return;
     }
@@ -104,9 +94,9 @@ const Dashboard = () => {
         .insert({
           title: tourData.title,
           description: tourData.description,
-          organization_id: organization.id,
+          tenant_id: currentTenant.tenant_id,
           cover_image_url: tourData.coverImageUrl,
-        })
+        } as any)
         .select()
         .single();
 
@@ -209,7 +199,7 @@ const Dashboard = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || loading || tenantLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />

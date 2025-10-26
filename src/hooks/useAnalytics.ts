@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface TourAnalytics {
   tour_id: string;
@@ -21,7 +21,7 @@ export interface AnalyticsSummary {
 }
 
 export const useAnalytics = () => {
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [tourAnalytics, setTourAnalytics] = useState<TourAnalytics[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary>({
     total_tours: 0,
@@ -34,26 +34,17 @@ export const useAnalytics = () => {
   const [loading, setLoading] = useState(true);
 
   const loadAnalytics = async () => {
-    if (!user) return;
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (!orgData) {
-        setLoading(false);
-        return;
-      }
-
       // Get tours
-      const { data: tours } = await supabase
+      const tours: any = (await supabase
         .from('virtual_tours')
         .select('id, title')
-        .eq('organization_id', orgData.id);
+        .eq('tenant_id', currentTenant.tenant_id)).data;
 
       if (!tours || tours.length === 0) {
         setLoading(false);
@@ -133,7 +124,7 @@ export const useAnalytics = () => {
 
   useEffect(() => {
     loadAnalytics();
-  }, [user]);
+  }, [currentTenant]);
 
   return {
     tourAnalytics,

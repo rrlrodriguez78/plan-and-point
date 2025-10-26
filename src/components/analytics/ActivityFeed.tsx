@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
 import { Clock, Plus, Eye, MessageSquare, Heart, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { motion } from 'framer-motion';
 
 interface Activity {
@@ -19,7 +19,7 @@ interface Activity {
 
 export const ActivityFeed = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,7 @@ export const ActivityFeed = () => {
     loadActivities();
 
     // Subscribe to real-time updates
-    if (!user) return;
+    if (!currentTenant) return;
 
     const channels = [
       // Tour views
@@ -66,8 +66,7 @@ export const ActivityFeed = () => {
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'email_logs',
-            filter: `user_id=eq.${user.id}`
+            table: 'email_logs'
           },
           () => loadActivities()
         )
@@ -91,26 +90,22 @@ export const ActivityFeed = () => {
     return () => {
       channels.forEach(channel => supabase.removeChannel(channel));
     };
-  }, [user]);
+  }, [currentTenant]);
 
   const loadActivities = async () => {
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const allActivities: Activity[] = [];
 
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user?.id)
-        .single();
-
-      if (!orgData) return;
-
       // Get tours
-      const { data: tours } = await supabase
+      const { data: tours } = await (supabase
         .from('virtual_tours')
         .select('id, title, created_at')
-        .eq('organization_id', orgData.id);
+        .eq('tenant_id', currentTenant.tenant_id) as any);
 
       if (!tours || tours.length === 0) {
         setLoading(false);
@@ -169,10 +164,16 @@ export const ActivityFeed = () => {
       }
 
       // 4. Email activities
+      const { data: tenantData } = await supabase
+        .from('tenants' as any)
+        .select('owner_id')
+        .eq('id', currentTenant.tenant_id)
+        .maybeSingle();
+
       const { data: recentEmails } = await supabase
         .from('email_logs')
         .select('id, notification_type, sent_at, status')
-        .eq('user_id', user?.id)
+        .eq('user_id', (tenantData as any)?.owner_id)
         .order('sent_at', { ascending: false })
         .limit(10);
 

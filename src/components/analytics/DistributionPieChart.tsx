@@ -5,13 +5,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { useTranslation } from 'react-i18next';
 import { Activity, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export const DistributionPieChart = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [data, setData] = useState({
     views: 0,
     likes: 0,
@@ -21,28 +21,19 @@ export const DistributionPieChart = () => {
   const [loading, setLoading] = useState(true);
 
   const loadDistributionData = async () => {
-    if (!user) return;
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
 
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-
-      if (!orgData) {
-        setLoading(false);
-        return;
-      }
-
       // Get tours
-      const { data: tours } = await supabase
+      const tours: any = (await supabase
         .from('virtual_tours')
         .select('id')
-        .eq('organization_id', orgData.id);
+        .eq('tenant_id', currentTenant.tenant_id)).data;
 
       if (!tours || tours.length === 0) {
         setLoading(false);
@@ -76,7 +67,7 @@ export const DistributionPieChart = () => {
     loadDistributionData();
 
     // Subscribe to real-time updates
-    if (!user) return;
+    if (!currentTenant) return;
 
     const channels = [
       // Tour analytics updates
@@ -125,7 +116,7 @@ export const DistributionPieChart = () => {
     return () => {
       channels.forEach(channel => supabase.removeChannel(channel));
     };
-  }, [user]);
+  }, [currentTenant]);
 
   const chartData = [
     { name: 'Views', value: data.views },

@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { useTranslation } from 'react-i18next';
 import { Trophy, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface TourData {
   name: string;
@@ -15,7 +15,7 @@ interface TourData {
 
 export const TopToursChart = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [data, setData] = useState<TourData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +23,7 @@ export const TopToursChart = () => {
     loadTopTours();
 
     // Subscribe to real-time analytics updates
-    if (!user) return;
+    if (!currentTenant) return;
 
     const channels = [
       // Tour analytics updates
@@ -58,21 +58,17 @@ export const TopToursChart = () => {
     return () => {
       channels.forEach(channel => supabase.removeChannel(channel));
     };
-  }, [user]);
+  }, [currentTenant]);
 
   const loadTopTours = async () => {
+    if (!currentTenant) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Get user's organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user?.id)
-        .single();
-
-      if (!orgData) return;
-
       // Get tours with analytics
-      const { data: tours } = await supabase
+      const tours: any = (await supabase
         .from('virtual_tours')
         .select(`
           id,
@@ -82,8 +78,8 @@ export const TopToursChart = () => {
             views_count
           )
         `)
-        .eq('organization_id', orgData.id)
-        .limit(5);
+        .eq('tenant_id', currentTenant.tenant_id)
+        .limit(5)).data;
 
       if (tours) {
         const formattedData = tours
