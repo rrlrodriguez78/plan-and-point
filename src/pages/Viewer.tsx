@@ -20,7 +20,7 @@ const Viewer = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  const { shouldShowOrientationWarning, lockLandscape, isMobile, isStandalone, isLandscape } = useDeviceOrientation();
+  const { shouldShowOrientationWarning, lockLandscape, unlockOrientation, isMobile, isStandalone, isLandscape } = useDeviceOrientation();
   const [tour, setTour] = useState<Tour | null>(null);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentFloorPlanId, setCurrentFloorPlanId] = useState<string | null>(null);
@@ -42,7 +42,15 @@ const Viewer = () => {
       console.log('✅ Usuario rotó manualmente a landscape, ocultando warning');
       setUserDismissedWarning(true);
     }
-  }, [isLandscape, userDismissedWarning, isMobile]);
+    
+    // Cleanup: desbloquear orientación al desmontar el componente
+    return () => {
+      if (isStandalone && isMobile) {
+        console.log('🔄 Desmontando Viewer, desbloqueando orientación...');
+        unlockOrientation();
+      }
+    };
+  }, [isLandscape, userDismissedWarning, isMobile, isStandalone, unlockOrientation]);
 
   // Handler mejorado para forzar landscape
   const handleForceLandscape = async () => {

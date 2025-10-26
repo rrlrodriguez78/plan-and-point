@@ -21,14 +21,21 @@ export const ViewerCanvas = ({
   selectedHotspots = []
 }: ViewerCanvasProps) => {
   const { transform, containerRef, contentRef, zoomIn, zoomOut, resetTransform } = useZoomPan();
+  
+  // Detectar si es PWA instalada
+  const isStandalone = 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    document.referrer.includes('android-app://');
 
   return (
     <div 
       ref={containerRef}
       className="relative w-full h-full bg-accent/30 overflow-hidden cursor-grab active:cursor-grabbing"
     >
-      {/* Zoom controls */}
-      <div className="absolute bottom-4 md:top-4 right-4 z-10 flex flex-row md:flex-col gap-2">
+      {/* Zoom controls - Ocultar en PWA */}
+      {!isStandalone && (
+        <div className="absolute bottom-4 md:top-4 right-4 z-10 flex flex-row md:flex-col gap-2">
         <Button
           variant="secondary"
           size="icon"
@@ -53,7 +60,8 @@ export const ViewerCanvas = ({
         >
           <Maximize className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
-      </div>
+        </div>
+      )}
 
       {/* Canvas */}
       <div className="w-full h-full flex items-center justify-center">

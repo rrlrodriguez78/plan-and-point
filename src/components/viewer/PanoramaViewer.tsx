@@ -62,6 +62,12 @@ export default function PanoramaViewer({
   const { getEventCoordinates, preventDefault } = useUnifiedPointer();
   const { isMobile } = useDeviceDetection();
   
+  // Detectar si es PWA instalada
+  const isStandalone = 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    document.referrer.includes('android-app://');
+  
   // Helper function para obtener el número de hotspots por piso
   const getHotspotCount = useCallback((floorPlanId: string): number => {
     return hotspotsByFloor[floorPlanId]?.length || 0;
@@ -825,36 +831,41 @@ export default function PanoramaViewer({
                   </DropdownMenu>
                 )}
 
-                <div className="w-px h-8 bg-white/30" />
-                
-                {/* Controles de Zoom */}
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => zoomInOut(5)} 
-                    className="text-white hover:bg-white/20 rounded-full bg-black/40" 
-                    disabled={currentZoom >= 120}
-                    title={t('viewer.zoomOut')}
-                  >
-                    <ZoomOut className="w-5 h-5" />
-                  </Button>
-                  <span className="text-white text-sm font-medium min-w-16 text-center">
-                    {Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => zoomInOut(-5)} 
-                    className="text-white hover:bg-white/20 rounded-full bg-black/40" 
-                    disabled={currentZoom <= 30}
-                    title={t('viewer.zoomIn')}
-                  >
-                    <ZoomIn className="w-5 h-5" />
-                  </Button>
-                </div>
 
                 <div className="w-px h-8 bg-white/30" />
+                
+                {/* Controles de Zoom - Ocultar en PWA */}
+                {!isStandalone && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => zoomInOut(5)} 
+                        className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                        disabled={currentZoom >= 120}
+                        title={t('viewer.zoomOut')}
+                      >
+                        <ZoomOut className="w-5 h-5" />
+                      </Button>
+                      <span className="text-white text-sm font-medium min-w-16 text-center">
+                        {Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => zoomInOut(-5)} 
+                        className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                        disabled={currentZoom <= 30}
+                        title={t('viewer.zoomIn')}
+                      >
+                        <ZoomIn className="w-5 h-5" />
+                      </Button>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/30" />
+                  </>
+                )}
                 
                 {/* Reset View */}
                 <Button 
