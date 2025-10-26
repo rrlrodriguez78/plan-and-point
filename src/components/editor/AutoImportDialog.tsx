@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,8 +34,22 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
   const [matches, setMatches] = useState<Match[]>([]);
   const [placementMethod, setPlacementMethod] = useState<'manual' | 'auto'>('manual');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [hasStartedPlacement, setHasStartedPlacement] = useState(false);
   
   const listInputRef = useRef<HTMLInputElement>(null);
+
+  // Limpiar automáticamente cuando el diálogo se cierra después de completar la colocación
+  useEffect(() => {
+    if (!open && hasStartedPlacement) {
+      cleanupPreviews(matches);
+      setListFile(null);
+      setPhotoGroups([{ id: crypto.randomUUID(), name: 'Grupo 1', photos: [], manualDate: null }]);
+      setNames([]);
+      setMatches([]);
+      setPlacementMethod('manual');
+      setHasStartedPlacement(false);
+    }
+  }, [open, hasStartedPlacement, matches]);
 
   const handleListFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,6 +179,7 @@ export const AutoImportDialog = ({ open, onOpenChange, onStartPlacement }: AutoI
       return;
     }
 
+    setHasStartedPlacement(true);
     onStartPlacement(validMatches);
   };
 
