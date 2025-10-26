@@ -36,7 +36,10 @@ const Landing = () => {
             </p>
             <div className="flex gap-4 justify-center">
               <Link to="/signup">
-                <Button size="lg" className="text-lg px-8">
+                <Button 
+                  size="lg" 
+                  className="text-lg px-8 bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground border-2 border-primary/50 hover:border-accent hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] hover:scale-105 transition-all duration-300 animate-pulse"
+                >
                   {t('landing.getStarted')}
                 </Button>
               </Link>
