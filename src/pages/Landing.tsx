@@ -120,11 +120,11 @@ const Landing = () => {
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => {
   return (
-    <div className="p-6 rounded-xl bg-card border border-border hover:shadow-lg transition-all duration-300 hover:scale-105">
-      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4 text-primary">
+    <div className="p-6 rounded-xl bg-gradient-to-br from-card via-card to-card/80 border-2 border-primary/30 hover:border-accent hover:shadow-[0_0_25px_rgba(var(--primary),0.4)] transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center mb-4 text-primary-foreground shadow-lg animate-pulse">
         {icon}
       </div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">{title}</h3>
       <p className="text-muted-foreground">{description}</p>
     </div>
   );
