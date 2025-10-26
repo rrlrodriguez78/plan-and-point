@@ -7,8 +7,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Building2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export default function TenantSwitcher() {
+interface TenantSwitcherProps {
+  className?: string;
+}
+
+export default function TenantSwitcher({ className }: TenantSwitcherProps) {
   const { currentTenant, tenants, setCurrentTenant, loading } = useTenant();
 
   if (loading || tenants.length === 0) {
@@ -18,7 +23,7 @@ export default function TenantSwitcher() {
   // Don't show if only one tenant
   if (tenants.length === 1) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
         <Building2 className="h-4 w-4" />
         {currentTenant?.tenant_name}
       </div>
@@ -33,7 +38,7 @@ export default function TenantSwitcher() {
         if (tenant) setCurrentTenant(tenant);
       }}
     >
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger className={cn("w-[200px]", className)}>
         <Building2 className="h-4 w-4 mr-2" />
         <SelectValue placeholder="Selecciona tenant" />
       </SelectTrigger>

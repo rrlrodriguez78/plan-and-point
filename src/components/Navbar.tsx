@@ -31,7 +31,7 @@ export const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-4">
-          <TenantSwitcher />
+          <TenantSwitcher className="ml-auto" />
           <LanguageSwitcher />
           {user ? (
             <>
