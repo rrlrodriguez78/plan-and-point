@@ -13,6 +13,7 @@ import { DistributionPieChart } from '@/components/analytics/DistributionPieChar
 import { NotificationsWidget } from '@/components/analytics/NotificationsWidget';
 import { EmailActivityWidget } from '@/components/analytics/EmailActivityWidget';
 import { CommentsWidget } from '@/components/analytics/CommentsWidget';
+import { TenantStats } from '@/components/analytics/TenantStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, Eye, Heart, MessageSquare, TrendingUp, Bell, Mail } from 'lucide-react';
 import { useEnhancedAnalytics } from '@/hooks/useEnhancedAnalytics';
@@ -20,11 +21,13 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useComments } from '@/hooks/useComments';
 import { useEmailLogs } from '@/hooks/useEmailLogs';
+import { useTenant } from '@/contexts/TenantContext';
 
 const Inicio = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { currentTenant } = useTenant();
   const { analytics, loading } = useEnhancedAnalytics();
   const { displayName } = useUserProfile();
   const { deleteAllNotifications } = useNotifications();
@@ -57,6 +60,9 @@ const Inicio = () => {
             {t('inicio.welcomeBack')}, {displayName}
           </p>
         </div>
+
+        {/* Tenant Statistics */}
+        {currentTenant && <TenantStats />}
 
         {/* Stats Cards Grid - 6 cards */}
         {loading ? (

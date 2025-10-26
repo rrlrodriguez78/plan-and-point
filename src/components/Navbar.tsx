@@ -31,8 +31,8 @@ export const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-4">
-            <TenantSwitcher />
-            <LanguageSwitcher />
+          <TenantSwitcher />
+          <LanguageSwitcher />
           {user ? (
             <>
               <DropdownMenu>
@@ -79,20 +79,34 @@ export const Navbar = () => {
                       My Settings
                     </Link>
                   </DropdownMenuItem>
+                  
+                  {/* Tenant Admin Section */}
                   {isTenantAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/app/tenant-admin" className="flex items-center cursor-pointer">
-                        <Users className="w-4 h-4 mr-2" />
-                        Gestionar Usuarios
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <div className="h-px bg-border my-2" />
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Administración
+                      </div>
+                      <DropdownMenuItem asChild>
+                        <Link to="/app/tenant-admin" className="flex items-center cursor-pointer">
+                          <Users className="w-4 h-4 mr-2" />
+                          Gestionar Usuarios
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
+
+                  {/* Super Admin Section */}
                   {isSuperAdmin && (
                     <>
+                      <div className="h-px bg-border my-2" />
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Super Admin
+                      </div>
                       <DropdownMenuItem asChild>
                         <Link to="/app/super-admin" className="flex items-center cursor-pointer">
                           <Building2 className="w-4 h-4 mr-2" />
-                          Super Admin
+                          Gestionar Tenants
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>

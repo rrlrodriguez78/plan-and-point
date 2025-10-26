@@ -113,7 +113,7 @@ export default function TenantAdmin() {
       // Check if user exists
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email, full_name')
         .eq('email', userForm.email)
         .single();
 
@@ -137,6 +137,20 @@ export default function TenantAdmin() {
         }
         return;
       }
+
+      // Create notification for the new user
+      await supabase.from('notifications').insert({
+        user_id: profiles.id,
+        type: 'tenant_invite',
+        title: 'Agregado a nuevo tenant',
+        message: `Has sido agregado al tenant "${currentTenant.tenant_name}" con rol ${userForm.role === 'tenant_admin' ? 'Administrador' : 'Miembro'}`,
+        metadata: {
+          tenant_id: currentTenant.tenant_id,
+          tenant_name: currentTenant.tenant_name,
+          role: userForm.role,
+          invited_by: user?.id,
+        },
+      });
 
       toast.success('Usuario agregado exitosamente');
       setShowUserDialog(false);
