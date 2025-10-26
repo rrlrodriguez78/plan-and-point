@@ -500,6 +500,9 @@ const Editor = () => {
                         <Plus className="w-4 h-4 mr-2" />
                         {addPointMode ? t('editor.activeMode') : t('editor.addPoint')}
                       </Button>
+                      <Button variant="outline">
+                        Auto avance
+                      </Button>
                     </div>
                   </div>
                 </Card>
