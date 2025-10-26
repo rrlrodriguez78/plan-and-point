@@ -229,6 +229,36 @@ export const PhotoGroupDialog = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4">
+          {/* Alerta IMPORTANTE en rojo */}
+          <Alert variant="destructive" className="border-2 border-red-600 bg-red-50 dark:bg-red-950/20">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertTitle className="text-red-800 dark:text-red-400 font-bold text-base">
+              ⚠️ IMPORTANTE: Solo se agregarán fotos con nombres coincidentes
+            </AlertTitle>
+            <AlertDescription className="text-red-700 dark:text-red-300 space-y-2 text-sm">
+              <p>Las fotos deben tener nombres que coincidan <strong>EXACTAMENTE</strong> con los puntos ya creados en el plano.</p>
+              
+              <div className="mt-2">
+                <p className="font-semibold">✅ Ejemplos válidos:</p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li>Punto: "B-0-0" → Fotos: "B-0-0.jpg", "B-0-0-2024-10-15.jpg"</li>
+                  <li>Punto: "Cocina" → Fotos: "Cocina.jpg", "Cocina-vista1.jpg"</li>
+                </ul>
+              </div>
+              
+              <p className="font-semibold mt-2">❌ Fotos con nombres diferentes serán IGNORADAS automáticamente</p>
+              
+              <div className="mt-2 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
+                <p className="font-semibold text-blue-800 dark:text-blue-300">💡 Si deseas agregar fotos con nombres diferentes:</p>
+                <ol className="list-decimal list-inside ml-2 space-y-1 text-blue-700 dark:text-blue-400">
+                  <li>Entra al punto específico en el plano</li>
+                  <li>Abre el editor del punto</li>
+                  <li>Agrega las fotos directamente</li>
+                </ol>
+              </div>
+            </AlertDescription>
+          </Alert>
+
           {/* Alerta informativa */}
           {existingHotspots.length === 0 && (
             <Alert variant="destructive">
