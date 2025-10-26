@@ -30,10 +30,10 @@ export const DistributionPieChart = () => {
       setLoading(true);
 
       // Get tours
-      const tours: any = (await supabase
-        .from('virtual_tours')
+      const tourQuery = await (supabase.from('virtual_tours') as any)
         .select('id')
-        .eq('tenant_id', currentTenant.tenant_id)).data;
+        .eq('tenant_id', currentTenant.tenant_id);
+      const tours = tourQuery.data;
 
       if (!tours || tours.length === 0) {
         setLoading(false);

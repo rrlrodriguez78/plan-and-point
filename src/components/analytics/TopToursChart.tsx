@@ -68,8 +68,7 @@ export const TopToursChart = () => {
 
     try {
       // Get tours with analytics
-      const tours: any = (await supabase
-        .from('virtual_tours')
+      const tourQuery = await (supabase.from('virtual_tours') as any)
         .select(`
           id,
           title,
@@ -79,7 +78,8 @@ export const TopToursChart = () => {
           )
         `)
         .eq('tenant_id', currentTenant.tenant_id)
-        .limit(5)).data;
+        .limit(5);
+      const tours = tourQuery.data;
 
       if (tours) {
         const formattedData = tours

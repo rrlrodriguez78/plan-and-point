@@ -29,10 +29,10 @@ export const ViewsChart = () => {
     setLoading(true);
     try {
       // Get tour IDs for this tenant
-      const tours: any = (await supabase
-        .from('virtual_tours')
+      const tourQuery = await (supabase.from('virtual_tours') as any)
         .select('id')
-        .eq('tenant_id', currentTenant.tenant_id)).data;
+        .eq('tenant_id', currentTenant.tenant_id);
+      const tours = tourQuery.data;
 
       if (!tours || tours.length === 0) {
         setData([]);
