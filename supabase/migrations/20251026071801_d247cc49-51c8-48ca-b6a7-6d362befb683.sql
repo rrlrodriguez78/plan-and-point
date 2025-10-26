@@ -1,4 +1,4 @@
--- Arreglar policy RESTRICTIVE para permitir ver tours públicos
+- Arregl-ar policy RESTRICTIVE para permitir ver tours públicos
 -- El problema: usuarios autenticados no pueden ver tours públicos de otras organizaciones
 
 -- Eliminar la policy restrictiva actual
