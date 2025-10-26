@@ -49,7 +49,7 @@ interface TenantFeature {
 }
 
 export default function FeatureManagement() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { isSuperAdmin, loading: loadingAdmin } = useIsSuperAdmin();
   const navigate = useNavigate();
 
@@ -71,10 +71,15 @@ export default function FeatureManagement() {
   });
 
   useEffect(() => {
-    if (!user && !loadingAdmin) {
-      navigate('/login');
+    // Wait for both auth and admin checks to complete
+    if (!authLoading && !loadingAdmin) {
+      if (!user) {
+        navigate('/login');
+      } else if (!isSuperAdmin) {
+        navigate('/app/inicio');
+      }
     }
-  }, [user, loadingAdmin, navigate]);
+  }, [user, authLoading, loadingAdmin, isSuperAdmin, navigate]);
 
   useEffect(() => {
     if (isSuperAdmin) {
