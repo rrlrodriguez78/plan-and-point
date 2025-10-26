@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, LogOut, Settings, Menu, Home, Globe, User } from 'lucide-react';
+import { MapPin, LogOut, Settings, Menu, Home, Globe, User, Sparkles, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -40,8 +40,14 @@ export const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-background z-50">
                   <DropdownMenuItem asChild>
+                    <Link to="/" className="flex items-center cursor-pointer">
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {t('nav.home')}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/app/inicio" className="flex items-center cursor-pointer">
-                      <Home className="w-4 h-4 mr-2" />
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
                       {t('nav.dashboard')}
                     </Link>
                   </DropdownMenuItem>
