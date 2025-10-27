@@ -48,19 +48,23 @@ import {
   Package,
   Upload,
   FileJson,
-  Info
+  Info,
+  PackageOpen
 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function Backups() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { backups, loading, creating, restoring, createBackup, restoreBackup, deleteBackup, downloadBackup, uploadAndRestoreBackup } = useBackups();
+  const { backups, loading, creating, restoring, createBackup, restoreBackup, deleteBackup, downloadBackup, uploadAndRestoreBackup, downloadCompleteBackup, uploadAndRestoreCompleteBackup } = useBackups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showUploadCompleteDialog, setShowUploadCompleteDialog] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [backupName, setBackupName] = useState('');
@@ -116,6 +120,19 @@ export default function Backups() {
       setRestoreMode('additive');
     } catch (error) {
       console.error('Error uploading backup:', error);
+    }
+  };
+
+  const handleUploadCompleteRestore = async () => {
+    if (!selectedFile) return;
+
+    try {
+      await uploadAndRestoreCompleteBackup(selectedFile, restoreMode);
+      setShowUploadCompleteDialog(false);
+      setSelectedFile(null);
+      setRestoreMode('additive');
+    } catch (error) {
+      console.error('Error in upload complete restore:', error);
     }
   };
 
@@ -175,13 +192,23 @@ export default function Backups() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={() => setShowUploadDialog(true)}
+              <Button 
+                onClick={() => setShowUploadDialog(true)} 
+                disabled={restoring}
                 variant="outline"
                 size="lg"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Restaurar desde PC
+                <FileJson className="mr-2 h-4 w-4" />
+                Restaurar JSON
+              </Button>
+              <Button 
+                onClick={() => setShowUploadCompleteDialog(true)} 
+                disabled={restoring}
+                variant="outline"
+                size="lg"
+              >
+                <PackageOpen className="mr-2 h-4 w-4" />
+                Restaurar ZIP Completo
               </Button>
               <Button
                 onClick={() => setShowCreateDialog(true)}
@@ -305,9 +332,17 @@ export default function Backups() {
                             variant="ghost"
                             size="sm"
                             onClick={() => downloadBackup(backup)}
-                            title="Descargar"
+                            title="Descargar solo JSON"
                           >
-                            <Download className="h-4 w-4" />
+                            <FileJson className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => downloadCompleteBackup(backup)}
+                            title="Descargar completo con imágenes"
+                          >
+                            <PackageOpen className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -451,122 +486,111 @@ export default function Backups() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Upload Backup Dialog */}
+      {/* Upload and Restore JSON Dialog */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Restaurar Backup desde tu PC</DialogTitle>
+            <DialogTitle>Restaurar desde JSON</DialogTitle>
             <DialogDescription>
-              Selecciona un archivo de backup JSON previamente descargado
+              Sube un archivo de backup en formato JSON (solo estructura, sin imágenes)
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Info Box */}
-            <div className="flex gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="space-y-2 text-sm">
-                <p className="font-semibold text-blue-900 dark:text-blue-100">
-                  ℹ️ Información importante
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
-                  <li>Solo se aceptan archivos .json descargados previamente</li>
-                  <li>El backup restaurará tours, floor plans, hotspots y panoramas</li>
-                  <li>Las URLs de las imágenes se mantendrán (deben estar disponibles)</li>
-                  <li>Puedes elegir entre restauración aditiva o completa</li>
-                </ul>
-              </div>
+
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Este backup solo contiene la estructura de los tours. Las imágenes deben existir en el storage.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="backup-file">Archivo de backup (JSON)</Label>
+              <Input
+                id="backup-file"
+                type="file"
+                accept=".json"
+                onChange={handleFileSelect}
+                className="mt-2"
+              />
             </div>
 
-            {/* File Upload */}
-            <div className="space-y-3">
-              <Label htmlFor="backup-file" className="text-base font-semibold">
-                Seleccionar archivo de backup
-              </Label>
-              <div className="flex items-center gap-4">
-                <Input
-                  id="backup-file"
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileSelect}
-                  className="flex-1"
-                />
-                {selectedFile && (
-                  <Badge variant="secondary" className="gap-2">
-                    <FileJson className="h-3 w-3" />
-                    {selectedFile.name}
-                  </Badge>
-                )}
-              </div>
-              {selectedFile && (
-                <p className="text-xs text-muted-foreground">
-                  Tamaño: {(selectedFile.size / 1024).toFixed(2)} KB
-                </p>
-              )}
-            </div>
-
-            {/* Restore Mode Selection */}
-            {selectedFile && (
-              <div className="space-y-3">
-                <Label className="text-base font-semibold">Modo de restauración</Label>
-                <div className="space-y-3 pl-2">
-                  <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input
-                      type="radio"
-                      name="restore-mode-upload"
-                      value="additive"
-                      checked={restoreMode === 'additive'}
-                      onChange={() => setRestoreMode('additive')}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <span className="font-medium group-hover:text-primary transition-colors">
-                        Aditivo (Recomendado)
-                      </span>
-                      <p className="text-sm text-muted-foreground">
-                        Los tours del backup se agregarán a los existentes. No se eliminará nada.
-                      </p>
-                    </div>
-                  </label>
-                  <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input
-                      type="radio"
-                      name="restore-mode-upload"
-                      value="full"
-                      checked={restoreMode === 'full'}
-                      onChange={() => setRestoreMode('full')}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <span className="font-medium text-destructive group-hover:text-destructive/80 transition-colors">
-                        Completo (Peligroso)
-                      </span>
-                      <p className="text-sm text-muted-foreground">
-                        Se eliminarán TODOS los tours actuales y se reemplazarán con los del backup.
-                      </p>
-                    </div>
-                  </label>
+            <div>
+              <Label>Modo de restauración</Label>
+              <RadioGroup value={restoreMode} onValueChange={(value: any) => setRestoreMode(value)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="additive" id="additive" />
+                  <Label htmlFor="additive">Aditivo (mantener tours existentes)</Label>
                 </div>
-              </div>
-            )}
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="full" id="full" />
+                  <Label htmlFor="full">Completo (eliminar todos los tours existentes)</Label>
+                </div>
+              </RadioGroup>
+            </div>
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowUploadDialog(false);
-                setSelectedFile(null);
-                setRestoreMode('additive');
-              }}
-            >
+            <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleUploadRestore} 
-              disabled={!selectedFile || restoring}
-            >
-              {restoring ? 'Restaurando...' : 'Restaurar Backup'}
+            <Button onClick={handleUploadRestore} disabled={!selectedFile || restoring}>
+              {restoring ? 'Restaurando...' : 'Restaurar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload and Restore Complete Dialog */}
+      <Dialog open={showUploadCompleteDialog} onOpenChange={setShowUploadCompleteDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Restaurar Backup Completo</DialogTitle>
+            <DialogDescription>
+              Sube un archivo de backup completo que incluye estructura + imágenes
+            </DialogDescription>
+          </DialogHeader>
+
+          <Alert>
+            <PackageOpen className="h-4 w-4" />
+            <AlertDescription>
+              Este backup incluye tanto la estructura como todas las imágenes. Se subirán todas las imágenes al storage.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="complete-backup-file">Archivo de backup completo (JSON con imágenes)</Label>
+              <Input
+                id="complete-backup-file"
+                type="file"
+                accept=".json"
+                onChange={handleFileSelect}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Modo de restauración</Label>
+              <RadioGroup value={restoreMode} onValueChange={(value: any) => setRestoreMode(value)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="additive" id="complete-additive" />
+                  <Label htmlFor="complete-additive">Aditivo (mantener tours existentes)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="full" id="complete-full" />
+                  <Label htmlFor="complete-full">Completo (eliminar todos los tours existentes)</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUploadCompleteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUploadCompleteRestore} disabled={!selectedFile || restoring}>
+              {restoring ? 'Restaurando...' : 'Restaurar'}
             </Button>
           </DialogFooter>
         </DialogContent>

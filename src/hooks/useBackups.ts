@@ -279,6 +279,96 @@ export function useBackups() {
     }
   };
 
+  const downloadCompleteBackup = async (backup: Backup) => {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'download-complete-backup',
+        {
+          body: { backup_id: backup.id }
+        }
+      );
+
+      if (error) throw error;
+
+      // Create blob and download
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-complete-${backup.backup_name}-${backup.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: '✅ Backup completo descargado',
+        description: 'Incluye estructura + todas las imágenes',
+      });
+    } catch (error) {
+      console.error('Error downloading complete backup:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo descargar el backup completo',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const uploadAndRestoreCompleteBackup = async (
+    file: File,
+    mode: 'full' | 'additive' = 'additive'
+  ) => {
+    if (!currentTenant) {
+      toast({
+        title: 'Error',
+        description: 'No hay tenant seleccionado',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      const content = await file.text();
+      const completeBackup = JSON.parse(content);
+
+      // Validate complete backup structure
+      if (!completeBackup.version || !completeBackup.backup_data || !completeBackup.images) {
+        throw new Error('Formato de backup completo inválido');
+      }
+
+      const { data, error } = await supabase.functions.invoke('upload-complete-backup', {
+        body: {
+          complete_backup: completeBackup,
+          restore_mode: mode,
+          tenant_id: currentTenant.tenant_id
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: '✅ Backup completo restaurado',
+        description: `${data.restored.tours} tours + ${data.restored.images} imágenes restauradas`,
+      });
+
+      await loadBackups();
+      return data;
+    } catch (error: any) {
+      console.error('Error uploading and restoring complete backup:', error);
+      toast({
+        title: 'Error al restaurar',
+        description: error.message || 'Error al restaurar backup completo',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   return {
     backups,
     loading,
@@ -289,6 +379,8 @@ export function useBackups() {
     deleteBackup,
     downloadBackup,
     uploadAndRestoreBackup,
+    downloadCompleteBackup,
+    uploadAndRestoreCompleteBackup,
     loadBackups,
   };
 }

@@ -789,6 +789,7 @@ export type Database = {
       tour_backups: {
         Row: {
           backup_data: Json
+          backup_format: string | null
           backup_name: string
           backup_status: string | null
           backup_type: string
@@ -807,6 +808,7 @@ export type Database = {
         }
         Insert: {
           backup_data: Json
+          backup_format?: string | null
           backup_name: string
           backup_status?: string | null
           backup_type: string
@@ -825,6 +827,7 @@ export type Database = {
         }
         Update: {
           backup_data?: Json
+          backup_format?: string | null
           backup_name?: string
           backup_status?: string | null
           backup_type?: string
