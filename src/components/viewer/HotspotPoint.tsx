@@ -47,9 +47,9 @@ export const HotspotPoint = ({
   const color = isSelected ? '#10b981' : baseColor;
   
   // Tamaños optimizados para móvil y desktop
-  const baseSize = isMobile ? 36 : (style?.size || 32);
+  const baseSize = isMobile ? 26 : (style?.size || 32);
   const size = baseSize;
-  const touchAreaSize = isMobile ? 56 : 48;
+  const touchAreaSize = isMobile ? 46 : 48;
 
   // Calcular la mejor posición del tooltip basado en los límites de la pantalla
   const calculateTooltipPosition = useCallback(() => {
