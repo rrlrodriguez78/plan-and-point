@@ -113,6 +113,19 @@ export default function FloorPlanManager({
   const handleSaveFloorPlan = async () => {
     if (!editingFloorPlan) return;
 
+    // ===============================================
+    // 🔴 CRITICAL DEBUG #1: TOUR OBJECT VERIFICATION
+    // ===============================================
+    console.log('🔴 DEBUG #1 - TOUR OBJECT:', {
+      'tour exists': !!tour,
+      'tour.id': tour?.id,
+      'tour.tenant_id': tour?.tenant_id,
+      'tour.tenant_id type': typeof tour?.tenant_id,
+      'tour.tenant_id is null': tour?.tenant_id === null,
+      'tour.tenant_id is undefined': tour?.tenant_id === undefined,
+      'FULL TOUR OBJECT': JSON.parse(JSON.stringify(tour))
+    });
+
     // CRITICAL: Validate tour data is fully loaded
     if (!tour?.id) {
       alert(t('floorPlan.tourNotLoaded') || 'Error: Tour no cargado. Por favor recarga la página.');
@@ -136,30 +149,50 @@ export default function FloorPlanManager({
 
     try {
       if (isNewFloorPlan) {
-        // CRITICAL: Verify tenant_id is present before constructing data
-        console.log('🔍 PRE-INSERT DEBUG:', {
-          tour_id: tour.id,
-          tenant_id: tour.tenant_id,
-          tenant_id_type: typeof tour.tenant_id,
-          tour_complete: tour
+        // ===============================================
+        // 🔴 CRITICAL DEBUG #2: BUILDING floorPlanData
+        // ===============================================
+        console.log('🔴 DEBUG #2 - BEFORE BUILDING floorPlanData:', {
+          'editingFloorPlan.name': editingFloorPlan.name,
+          'tour.id': tour.id,
+          'tour.tenant_id': tour.tenant_id,
+          'editingFloorPlan.image_url': editingFloorPlan.image_url
         });
 
         if (!tour.tenant_id) {
+          console.error('🔴 CRITICAL ERROR: tenant_id is undefined at floorPlanData construction!');
           throw new Error('CRITICAL: tenant_id is undefined. Tour object incomplete.');
         }
 
         const floorPlanData = {
           name: editingFloorPlan.name!,
           tour_id: tour.id,
-          tenant_id: tour.tenant_id, // CRITICAL: Must not be undefined
+          tenant_id: tour.tenant_id,
           image_url: editingFloorPlan.image_url!,
           width: editingFloorPlan.width || 1920,
           height: editingFloorPlan.height || 1080,
           capture_date: editingFloorPlan.capture_date || new Date().toISOString().split('T')[0]
         };
         
-        // Debug: Log EXACT data being sent to Supabase
-        console.log('📤 SENDING TO SUPABASE:', JSON.stringify(floorPlanData, null, 2));
+        // ===============================================
+        // 🔴 CRITICAL DEBUG #3: VERIFY floorPlanData
+        // ===============================================
+        console.log('🔴 DEBUG #3 - floorPlanData OBJECT:', {
+          'floorPlanData': floorPlanData,
+          'floorPlanData.tenant_id': floorPlanData.tenant_id,
+          'tenant_id exists': 'tenant_id' in floorPlanData,
+          'tenant_id is undefined': floorPlanData.tenant_id === undefined,
+          'tenant_id is null': floorPlanData.tenant_id === null,
+          'JSON.stringify': JSON.stringify(floorPlanData, null, 2)
+        });
+
+        // ===============================================
+        // 🔴 CRITICAL DEBUG #4: EXACT JSON TO SUPABASE
+        // ===============================================
+        const jsonToSend = JSON.stringify(floorPlanData);
+        console.log('🔴 DEBUG #4 - EXACT JSON BEING SENT TO SUPABASE:');
+        console.log(jsonToSend);
+        console.log('🔴 Parsed back:', JSON.parse(jsonToSend));
         
         const { data, error } = await supabase
           .from('floor_plans')
