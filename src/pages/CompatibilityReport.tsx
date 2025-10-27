@@ -30,8 +30,8 @@ const CompatibilityReport = () => {
       { name: 'Web App Manifest', status: 'warning' as const, details: 'Deshabilitado (auth issues)' },
       { name: 'Instalable', status: 'pass' as const, details: 'Install prompt implementado' },
       { name: 'Offline mode', status: 'pass' as const, details: 'Cache configurado' },
-      { name: 'Splash screen', status: 'fail' as const, details: 'No personalizado para iOS' },
-      { name: 'Update notifications', status: 'fail' as const, details: 'No implementado' },
+      { name: 'Splash screen', status: 'pass' as const, details: 'Generador en /app/pwa-splash' },
+      { name: 'Update notifications', status: 'pass' as const, details: 'Toast con botón Recargar' },
     ],
     desktop: [
       { name: 'Breakpoints Tailwind', status: 'pass' as const, details: 'sm, md, lg, xl, 2xl' },
@@ -67,7 +67,7 @@ const CompatibilityReport = () => {
       { name: 'LCP < 2.5s', status: 'pass' as const, details: 'Monitoreado con Performance API' },
       { name: 'FID < 100ms', status: 'pass' as const, details: 'Tracking activo' },
       { name: 'CLS < 0.1', status: 'pass' as const, details: 'Layout shift monitoreado' },
-      { name: 'Images WebP + lazy', status: 'warning' as const, details: 'No implementado' },
+      { name: 'Images WebP + lazy', status: 'pass' as const, details: 'OptimizedImage + IntersectionObserver' },
     ],
   };
 

@@ -39,6 +39,20 @@ const supportsWebP = (() => {
 })();
 
 /**
+ * Check if browser supports WebP (async version for more accurate detection)
+ */
+export const checkWebPSupport = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const webP = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA';
+    const img = new Image();
+    
+    img.onload = () => resolve(img.width === 2);
+    img.onerror = () => resolve(false);
+    img.src = webP;
+  });
+};
+
+/**
  * Load an image from a File or Blob
  */
 export const loadImage = (file: File | Blob): Promise<HTMLImageElement> => {
@@ -231,4 +245,68 @@ export const validateImageFile = (file: File): { valid: boolean; error?: string 
   }
 
   return { valid: true };
+};
+
+/**
+ * Convert an image to WebP format with JPEG fallback
+ */
+export const convertToWebP = async (file: File): Promise<{ webp: File; jpeg: File }> => {
+  const [webpResult, jpegResult] = await Promise.all([
+    optimizeImage(file, { format: 'webp', quality: 0.85 }),
+    optimizeImage(file, { format: 'jpeg', quality: 0.85 }),
+  ]);
+
+  const webp = new File([webpResult.blob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+    type: 'image/webp',
+    lastModified: Date.now(),
+  });
+
+  const jpeg = new File([jpegResult.blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+
+  return { webp, jpeg };
+};
+
+/**
+ * Generate responsive image variants
+ */
+export const generateResponsiveVariants = async (
+  file: File,
+  widths: number[] = [320, 640, 768, 1024, 1280, 1536]
+): Promise<Map<number, { webp: Blob; jpeg: Blob }>> => {
+  const variants = new Map<number, { webp: Blob; jpeg: Blob }>();
+
+  await Promise.all(
+    widths.map(async (width) => {
+      const webpResult = await optimizeImage(file, {
+        format: 'webp',
+        maxWidth: width,
+        quality: 0.85,
+      });
+      
+      const jpegResult = await optimizeImage(file, {
+        format: 'jpeg',
+        maxWidth: width,
+        quality: 0.85,
+      });
+
+      variants.set(width, { webp: webpResult.blob, jpeg: jpegResult.blob });
+    })
+  );
+
+  return variants;
+};
+
+/**
+ * Preload critical images
+ */
+export const preloadImage = (src: string, format: 'webp' | 'jpeg' = 'webp') => {
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.href = src;
+  link.type = format === 'webp' ? 'image/webp' : 'image/jpeg';
+  document.head.appendChild(link);
 };
