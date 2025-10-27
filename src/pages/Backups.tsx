@@ -49,7 +49,8 @@ import {
   Upload,
   FileJson,
   Info,
-  PackageOpen
+  PackageOpen,
+  TestTube2
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -227,6 +228,14 @@ export default function Backups() {
               >
                 <PackageOpen className="mr-2 h-4 w-4" />
                 Restaurar ZIP Completo
+              </Button>
+              <Button
+                onClick={() => navigate('/app/backup-test')}
+                variant="secondary"
+                size="lg"
+              >
+                <TestTube2 className="mr-2 h-4 w-4" />
+                Ejecutar Tests
               </Button>
               <Button
                 onClick={() => setShowCreateDialog(true)}

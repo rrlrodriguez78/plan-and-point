@@ -38,9 +38,11 @@ import {
   Plus
 } from 'lucide-react';
 import { useMobileSettingsBackup } from '@/hooks/useMobileSettingsBackup';
+import { useChunkedBackup } from '@/hooks/useChunkedBackup';
 import { UserSettings } from '@/hooks/useUserSettings';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { BackupProgress } from '@/components/backups/BackupProgress';
 
 interface MobileBackupManagerProps {
   currentSettings: UserSettings;
@@ -49,21 +51,38 @@ interface MobileBackupManagerProps {
 
 export const MobileBackupManager = ({ currentSettings, onRestoreSettings }: MobileBackupManagerProps) => {
   const { backups, loading, creating, createBackup, restoreBackup, deleteBackup, compareBackups } = useMobileSettingsBackup();
+  const { progress: uploadProgress, metrics: uploadMetrics, uploadBackup } = useChunkedBackup();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [backupName, setBackupName] = useState('');
   const [backupDescription, setBackupDescription] = useState('');
   const [compareBackupId, setCompareBackupId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleCreateBackup = async () => {
     if (!backupName.trim()) return;
     
     try {
-      await createBackup(backupName, backupDescription, currentSettings);
+      setIsUploading(true);
+      
+      // Usar chunked upload para backups grandes
+      const backupData = {
+        user_settings: currentSettings,
+        created_at: new Date().toISOString(),
+        version: '1.0'
+      };
+      
+      await uploadBackup(backupData, backupName, backupDescription);
+      
       setBackupName('');
       setBackupDescription('');
       setIsCreateDialogOpen(false);
+      setIsUploading(false);
+      
+      // Recargar backups después de crear
+      await createBackup(backupName, backupDescription, currentSettings);
     } catch (error) {
       console.error('Error creating backup:', error);
+      setIsUploading(false);
     }
   };
 
@@ -161,6 +180,17 @@ export const MobileBackupManager = ({ currentSettings, onRestoreSettings }: Mobi
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Show backup progress if uploading */}
+        {isUploading && (
+          <div className="mb-4">
+            <BackupProgress 
+              visible={uploadProgress.status === 'uploading'}
+              progress={uploadProgress}
+              metrics={uploadMetrics}
+            />
+          </div>
+        )}
+        
         {loading ? (
           <div className="text-center py-8 text-muted-foreground">
             Cargando backups...

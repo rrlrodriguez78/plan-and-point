@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UploadProgress {
@@ -237,9 +237,9 @@ export const useChunkedBackup = (): UseChunkedBackupReturn => {
   }, []);
 
   // Cargar métricas al iniciar
-  useState(() => {
+  useEffect(() => {
     loadMetrics();
-  });
+  }, [loadMetrics]);
 
   return {
     uploadBackup,
