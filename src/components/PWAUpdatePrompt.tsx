@@ -42,25 +42,7 @@ export function PWAUpdatePrompt() {
     }
   }, [offlineReady]);
 
-  // Show online/offline status changes
-  useEffect(() => {
-    if (!isOnline) {
-      toast.error('Sin conexión', {
-        description: 'Estás trabajando en modo offline',
-        duration: Infinity,
-        id: 'offline-status',
-        icon: <WifiOff className="h-5 w-5" />,
-      });
-    } else {
-      // Dismiss offline toast when back online
-      toast.dismiss('offline-status');
-      toast.success('Conexión restaurada', {
-        description: 'La conexión a internet se ha restablecido',
-        duration: 3000,
-        icon: <Wifi className="h-5 w-5" />,
-      });
-    }
-  }, [isOnline]);
+  // Online/offline status tracking disabled to avoid intrusive notifications
 
   return null;
 }
