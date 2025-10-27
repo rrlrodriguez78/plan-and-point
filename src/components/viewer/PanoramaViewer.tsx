@@ -5,7 +5,7 @@ import {
   X, RotateCw, ZoomIn, ZoomOut, 
   Maximize, Minimize, Info, MapPin,
   ChevronLeft, ChevronRight, Building2, Calendar, List,
-  Menu, ChevronDown
+  ChevronDown
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -116,7 +116,6 @@ export default function PanoramaViewer({
   const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoadingScene, setIsLoadingScene] = useState(false);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 99998 : 30;
@@ -606,20 +605,6 @@ export default function PanoramaViewer({
           )}
 
           {/* Botón flotante toggle menú - SOLO MÓVILES */}
-          {isMobile && !loadingError && !isLoadingScene && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsMenuVisible(!isMenuVisible)}
-              className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] 
-                         text-white bg-black/80 hover:bg-black/90 
-                         backdrop-blur-sm rounded-full h-10 w-10 shadow-2xl 
-                         border border-white/30"
-              title={isMenuVisible ? t('viewer.hideMenu') : t('viewer.showMenu')}
-            >
-              {isMenuVisible ? <ChevronDown className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
-          )}
 
           {/* Header superior - SIEMPRE VISIBLE */}
           <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-50">
@@ -662,18 +647,11 @@ export default function PanoramaViewer({
             </div>
           </div>
 
-          {/* Controles inferiores - Responsive según dispositivo */}
-          {(!isMobile || isMenuVisible) && (
-            <AnimatePresence>
-              <motion.div 
-                {...(isMobile && {
-                  initial: { y: 100, opacity: 0 },
-                  animate: { y: 0, opacity: 1 },
-                  exit: { y: 100, opacity: 0 },
-                  transition: { type: "spring", damping: 25, stiffness: 300 }
-                })}
-                className="absolute bottom-0 left-0 right-0 p-4 z-50"
-              >
+          {/* Controles inferiores - SIEMPRE VISIBLES */}
+          <AnimatePresence>
+            <motion.div 
+              className="absolute bottom-0 left-0 right-0 p-4 z-50"
+            >
                 <div className={`bg-black/70 backdrop-blur-md rounded-xl p-4 mx-auto max-w-4xl border border-white/10 ${isLoadingScene ? 'pointer-events-none opacity-50' : ''}`}>
                   <div className="flex items-center justify-center gap-3 flex-wrap pointer-events-auto">
                 {/* Floor Selector */}
@@ -946,7 +924,6 @@ export default function PanoramaViewer({
             </div>
           </motion.div>
         </AnimatePresence>
-      )}
 
           <AnimatePresence>
             {showInfo && activePhoto?.description && !loadingError && (
