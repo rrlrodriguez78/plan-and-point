@@ -56,12 +56,6 @@ export const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/app/crear-tour" className="flex items-center cursor-pointer">
-                      <Plus className="w-4 h-4 mr-2" />
-                      {t('nav.createTours')}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <Link to="/app/tours" className="flex items-center cursor-pointer">
                       <MapPin className="w-4 h-4 mr-2" />
                       {t('nav.tours')}
