@@ -102,11 +102,11 @@ serve(async (req) => {
     let updateData: any = { password_protected: enabled };
 
     if (enabled && password) {
-      // Server-side password validation
-      if (password.length < 8) {
+      // Server-side password validation - same requirements as user passwords
+      if (password.length < 12) {
         console.error('Password validation failed: too short');
         return new Response(
-          JSON.stringify({ error: 'Password must be at least 8 characters' }),
+          JSON.stringify({ error: 'Password must be at least 12 characters' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -114,6 +114,34 @@ serve(async (req) => {
         console.error('Password validation failed: too long');
         return new Response(
           JSON.stringify({ error: 'Password must be less than 128 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!/[A-Z]/.test(password)) {
+        console.error('Password validation failed: no uppercase');
+        return new Response(
+          JSON.stringify({ error: 'Password must include at least one uppercase letter' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!/[a-z]/.test(password)) {
+        console.error('Password validation failed: no lowercase');
+        return new Response(
+          JSON.stringify({ error: 'Password must include at least one lowercase letter' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!/[0-9]/.test(password)) {
+        console.error('Password validation failed: no number');
+        return new Response(
+          JSON.stringify({ error: 'Password must include at least one number' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!/[^A-Za-z0-9]/.test(password)) {
+        console.error('Password validation failed: no special character');
+        return new Response(
+          JSON.stringify({ error: 'Password must include at least one special character' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -146,9 +174,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Unexpected error in set-tour-password');
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: errorMessage }),
+      JSON.stringify({ error: 'An error occurred processing your request' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

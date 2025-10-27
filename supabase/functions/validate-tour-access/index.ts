@@ -105,7 +105,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in validate-tour-access:', error);
     return new Response(
-      JSON.stringify({ valid: false, error: 'Internal server error' }),
+      JSON.stringify({ valid: false, error: 'An error occurred processing your request' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
