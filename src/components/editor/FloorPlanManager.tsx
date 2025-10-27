@@ -122,6 +122,7 @@ export default function FloorPlanManager({
         const floorPlanData = {
           name: editingFloorPlan.name!,
           tour_id: tour.id,
+          tenant_id: tour.tenant_id,
           image_url: editingFloorPlan.image_url!,
           width: editingFloorPlan.width || 1920,
           height: editingFloorPlan.height || 1080,
@@ -160,9 +161,11 @@ export default function FloorPlanManager({
       setEditingFloorPlan(null);
       setIsNewFloorPlan(false);
       setErrors({});
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving floor plan:', error);
-      alert(t('floorPlan.errorSaving'));
+      const errorMessage = error?.message || t('floorPlan.errorSaving');
+      alert(`${t('floorPlan.errorSaving')}: ${errorMessage}`);
+      console.error('Full error details:', error);
     }
   };
 
