@@ -55,6 +55,80 @@ export type Database = {
           },
         ]
       }
+      background_backup_jobs: {
+        Row: {
+          backup_id: string
+          completed_at: string | null
+          created_at: string | null
+          current_operation: string | null
+          error_message: string | null
+          estimated_size_mb: number | null
+          id: string
+          last_activity: string
+          processed_chunks: number | null
+          processed_images: number | null
+          progress: number | null
+          result_data: Json | null
+          started_at: string
+          status: string
+          total_chunks: number | null
+          total_images: number | null
+          updated_at: string | null
+          upload_token: string
+          user_id: string
+        }
+        Insert: {
+          backup_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          current_operation?: string | null
+          error_message?: string | null
+          estimated_size_mb?: number | null
+          id?: string
+          last_activity?: string
+          processed_chunks?: number | null
+          processed_images?: number | null
+          progress?: number | null
+          result_data?: Json | null
+          started_at?: string
+          status?: string
+          total_chunks?: number | null
+          total_images?: number | null
+          updated_at?: string | null
+          upload_token: string
+          user_id: string
+        }
+        Update: {
+          backup_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          current_operation?: string | null
+          error_message?: string | null
+          estimated_size_mb?: number | null
+          id?: string
+          last_activity?: string
+          processed_chunks?: number | null
+          processed_images?: number | null
+          progress?: number | null
+          result_data?: Json | null
+          started_at?: string
+          status?: string
+          total_chunks?: number | null
+          total_images?: number | null
+          updated_at?: string | null
+          upload_token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "background_backup_jobs_backup_id_fkey"
+            columns: ["backup_id"]
+            isOneToOne: false
+            referencedRelation: "tour_backups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_chunks: {
         Row: {
           chunk_data: string
@@ -1395,6 +1469,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_failed_uploads: { Args: never; Returns: number }
+      cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_old_backups: { Args: never; Returns: undefined }
       complete_large_backup_upload: {
         Args: { p_upload_token: string }
@@ -1419,6 +1494,26 @@ export type Database = {
           successful_uploads: number
           total_storage_used: number
           total_uploads: number
+        }[]
+      }
+      get_backup_job_status: {
+        Args: { p_upload_token: string }
+        Returns: {
+          backup_id: string
+          completed_at: string
+          current_operation: string
+          elapsed_seconds: number
+          error_message: string
+          estimated_size_mb: number
+          last_activity: string
+          processed_chunks: number
+          processed_images: number
+          progress: number
+          started_at: string
+          status: string
+          total_chunks: number
+          total_images: number
+          upload_token: string
         }[]
       }
       get_backup_metrics_stats: {

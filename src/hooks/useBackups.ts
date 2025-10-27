@@ -73,36 +73,36 @@ export function useBackups() {
           return;
         }
 
-        // Check current status
-        const { data: progressData, error } = await supabase.rpc(
-          'get_upload_progress',
+        // Check current status using new RPC
+        const { data: statusData, error } = await supabase.rpc(
+          'get_backup_job_status',
           { p_upload_token: uploadToken }
         );
 
-        if (error || !progressData || progressData.length === 0) {
+        if (error || !statusData || statusData.length === 0) {
           localStorage.removeItem('activeDownload');
           return;
         }
 
-        const progress = progressData[0];
+        const job = statusData[0];
         
-        if (progress.status === 'completed') {
+        if (job.status === 'completed') {
           // Download is ready - trigger download automatically
           toast({
             title: '✅ Descarga completada',
             description: 'Iniciando descarga automáticamente...',
           });
           setDownloadingComplete(true);
-          pollDownloadProgress(uploadToken, backupName)
+          pollPersistentDownloadProgress(uploadToken, backupName)
             .finally(() => setDownloadingComplete(false));
-        } else if (progress.status === 'processing') {
+        } else if (job.status === 'processing') {
           // Still processing, reconnect
           toast({
             title: '🔄 Reconectando...',
-            description: `Continuando descarga de ${backupName} (${progress.progress_percentage}%)`,
+            description: `Continuando descarga de ${backupName} (${job.progress}%)`,
           });
           setDownloadingComplete(true);
-          pollDownloadProgress(uploadToken, backupName)
+          pollPersistentDownloadProgress(uploadToken, backupName)
             .finally(() => setDownloadingComplete(false));
         } else {
           // Failed or cancelled
@@ -345,15 +345,18 @@ export function useBackups() {
       console.log('[DOWNLOAD] Starting complete backup download for:', backup.id);
       
       toast({
-        title: '⏳ Iniciando descarga...',
-        description: 'Preparando backup completo con imágenes en segundo plano.',
+        title: '⏳ Iniciando descarga persistente...',
+        description: 'Este proceso continúa aunque salgas de la página.',
       });
 
-      // Call edge function to start background processing
+      // Start background job
       const { data, error } = await supabase.functions.invoke(
         'download-complete-backup',
         {
-          body: { backup_id: backup.id }
+          body: { 
+            backup_id: backup.id,
+            action: 'start'
+          }
         }
       );
 
@@ -362,32 +365,30 @@ export function useBackups() {
         throw error;
       }
 
-      console.log('[DOWNLOAD] Background processing started:', data);
+      console.log('[DOWNLOAD] Persistent background job started:', data);
 
-      // Extract upload token
       const uploadToken = data.upload_token;
       if (!uploadToken) {
         throw new Error('No upload token received');
       }
 
-      // Persist active download state
+      // Persist in localStorage for reconnection
       localStorage.setItem('activeDownload', JSON.stringify({
         uploadToken,
         backupId: backup.id,
         backupName: backup.backup_name,
         startedAt: Date.now(),
-        totalImages: data.total_images,
-        estimatedSizeMB: data.estimated_size_mb
+        status: data.status
       }));
 
       toast({
         title: '🔄 Procesando en segundo plano...',
-        description: `${data.total_images} imágenes • ~${data.estimated_size_mb} MB. Puedes salir de esta página.`,
-        duration: 6000,
+        description: 'Puedes cerrar esta página y volver más tarde. El proceso continuará.',
+        duration: 8000,
       });
 
       // Start polling (will continue even if user navigates away)
-      await pollDownloadProgress(uploadToken, backup.backup_name);
+      await pollPersistentDownloadProgress(uploadToken, backup.backup_name);
 
     } catch (error: any) {
       console.error('[DOWNLOAD] Error:', error);
@@ -402,46 +403,50 @@ export function useBackups() {
     }
   };
 
-  const pollDownloadProgress = async (uploadToken: string, backupName: string) => {
+  const pollPersistentDownloadProgress = async (uploadToken: string, backupName: string) => {
     let completed = false;
     let attempts = 0;
-    const maxAttempts = 120; // 10 minutes max (5s interval)
+    const maxAttempts = 360; // 30 minutes max (5s interval)
     let lastProgress = 0;
 
     while (!completed && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
-      const { data: progressData, error: progressError } = await supabase.rpc(
-        'get_upload_progress',
+      // Use new RPC to check job status
+      const { data: statusData, error: statusError } = await supabase.rpc(
+        'get_backup_job_status',
         { p_upload_token: uploadToken }
       );
 
-      if (progressError) {
-        console.error('[DOWNLOAD] Progress check error:', progressError);
+      if (statusError) {
+        console.error('[DOWNLOAD] Status check error:', statusError);
         attempts++;
         continue;
       }
 
-      if (progressData && progressData.length > 0) {
-        const progress = progressData[0];
+      if (statusData && statusData.length > 0) {
+        const job = statusData[0];
         
-        console.log(`[DOWNLOAD] Progress: ${progress.progress_percentage}% (${progress.uploaded_chunks}/${progress.total_chunks})`);
+        console.log(`[DOWNLOAD] Progress: ${job.progress}% - ${job.current_operation} (${job.processed_images}/${job.total_images} images)`);
         
-        if (progress.status === 'completed') {
+        if (job.status === 'completed') {
           completed = true;
           console.log('[DOWNLOAD] Background processing completed!');
           break;
-        } else if (progress.status === 'failed' || progress.status === 'cancelled') {
+        } else if (job.status === 'failed') {
           localStorage.removeItem('activeDownload');
-          throw new Error(`Backup processing ${progress.status}`);
+          throw new Error(job.error_message || 'Backup processing failed');
+        } else if (job.status === 'cancelled') {
+          localStorage.removeItem('activeDownload');
+          throw new Error('Backup processing was cancelled');
         }
 
-        // Update progress toast only if changed significantly
-        if (Math.abs(progress.progress_percentage - lastProgress) >= 5) {
-          lastProgress = progress.progress_percentage;
+        // Update progress toast
+        if (Math.abs(job.progress - lastProgress) >= 5) {
+          lastProgress = job.progress;
           toast({
-            title: '📦 Procesando imágenes...',
-            description: `${progress.progress_percentage}% • ${progress.uploaded_chunks} de ${progress.total_chunks} chunks`,
+            title: '📦 Procesando...',
+            description: `${job.progress}% • ${job.processed_images}/${job.total_images} imágenes • ${job.current_operation}`,
           });
         }
       }
@@ -451,14 +456,14 @@ export function useBackups() {
 
     if (!completed) {
       localStorage.removeItem('activeDownload');
-      throw new Error('Timeout: El backup está tardando demasiado. Intenta con un backup más pequeño.');
+      throw new Error('Timeout: El backup está tardando demasiado.');
     }
 
     console.log('[DOWNLOAD] Assembling final file...');
     
     toast({
       title: '🔧 Ensamblando archivo...',
-      description: 'Combinando todos los chunks en un solo archivo',
+      description: 'Descargando backup completo...',
     });
 
     // Get complete assembled data
@@ -494,7 +499,6 @@ export function useBackups() {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
 
-    // Clear active download state
     localStorage.removeItem('activeDownload');
 
     toast({
