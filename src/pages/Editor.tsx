@@ -131,14 +131,44 @@ const Editor = () => {
 
   const loadTourData = async () => {
     try {
-      const { data: tourData } = await supabase
+      const { data: tourData, error: tourError } = await supabase
         .from('virtual_tours')
-        .select('*')
+        .select('id, title, description, is_published, tenant_id, created_at, updated_at, password_protected, password_hash, password_updated_at, share_description, share_image_url, cover_image_url')
         .eq('id', id)
         .single();
 
+      if (tourError) {
+        console.error('❌ Error loading tour:', tourError);
+        toast.error('Error al cargar tour');
+        setLoading(false);
+        return;
+      }
+
       if (tourData) {
+        // 🔴 CRITICAL DEBUG: Verify tenant_id is loaded
+        console.log('🔴 TOUR LOADED IN EDITOR:', {
+          'tour.id': tourData.id,
+          'tour.tenant_id': tourData.tenant_id,
+          'tenant_id type': typeof tourData.tenant_id,
+          'tenant_id is undefined': tourData.tenant_id === undefined,
+          'tenant_id is null': tourData.tenant_id === null,
+          'FULL TOUR': JSON.parse(JSON.stringify(tourData))
+        });
+
+        if (!tourData.tenant_id) {
+          console.error('🔴 CRITICAL: Tour loaded WITHOUT tenant_id!');
+          toast.error('Error: Tour sin tenant_id. Contacta soporte.');
+          setLoading(false);
+          return;
+        }
+
         setTour(tourData);
+
+        // 🔴 VERIFY: Tour saved in state with tenant_id
+        console.log('✅ TOUR SAVED IN STATE:', {
+          'state tour set': true,
+          'will have tenant_id': !!tourData.tenant_id
+        });
 
         const { data: planData } = await supabase
           .from('floor_plans')
@@ -150,6 +180,12 @@ const Editor = () => {
           setFloorPlans(planData);
           setSelectedFloorPlan(planData[0]);
         }
+
+        console.log('✅ LOAD COMPLETE - Tour ready for FloorPlanManager:', {
+          'tour.id': tourData.id,
+          'tour.tenant_id': tourData.tenant_id,
+          'floorPlans loaded': planData?.length || 0
+        });
       }
     } catch (error) {
       console.error('Error loading tour:', error);
@@ -860,7 +896,7 @@ const Editor = () => {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Floor Plans Section */}
-            {tour && (
+            {tour && tour.tenant_id ? (
               <Collapsible open={floorPlansOpen} onOpenChange={setFloorPlansOpen}>
                 <Card className="p-4">
                   <CollapsibleTrigger asChild>
@@ -880,7 +916,13 @@ const Editor = () => {
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
-            )}
+            ) : tour && !tour.tenant_id ? (
+              <Card className="p-4 bg-destructive/10 border-destructive">
+                <p className="text-sm text-destructive">
+                  ⚠️ Error: Tour sin tenant_id. Por favor contacta soporte.
+                </p>
+              </Card>
+            ) : null}
 
             {/* Hotspots Section */}
             <Collapsible open={hotspotsOpen} onOpenChange={setHotspotsOpen}>
