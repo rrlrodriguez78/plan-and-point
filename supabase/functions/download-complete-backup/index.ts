@@ -101,6 +101,11 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully downloaded ${images.length}/${mediaFiles.length} images`);
 
+    // Calculate total size
+    const totalSize = images.reduce((sum, img) => sum + img.data.length, 0);
+    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+    console.log(`Total images size: ${totalSizeMB} MB`);
+
     // Create the complete backup package
     const completeBackup = {
       version: '1.0',
@@ -111,9 +116,17 @@ Deno.serve(async (req) => {
       images: images.map(img => ({
         path: img.path,
         data: encodeBase64(img.data),
-        contentType: img.contentType
-      }))
+        contentType: img.contentType,
+        size: img.data.length
+      })),
+      statistics: {
+        total_images: images.length,
+        total_size_bytes: totalSize,
+        total_size_mb: totalSizeMB
+      }
     };
+
+    console.log('Backup package created successfully');
 
     // Log the download
     await supabase.from('backup_logs').insert({

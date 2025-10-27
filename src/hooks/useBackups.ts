@@ -27,6 +27,7 @@ export function useBackups() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [downloadingComplete, setDownloadingComplete] = useState(false);
   const { currentTenant } = useTenant();
 
   const loadBackups = async () => {
@@ -280,7 +281,15 @@ export function useBackups() {
   };
 
   const downloadCompleteBackup = async (backup: Backup) => {
+    setDownloadingComplete(true);
     try {
+      console.log('Starting complete backup download for:', backup.id);
+      
+      toast({
+        title: '⏳ Preparando backup completo...',
+        description: 'Descargando todas las imágenes. Esto puede tardar varios minutos.',
+      });
+
       const { data, error } = await supabase.functions.invoke(
         'download-complete-backup',
         {
@@ -288,10 +297,20 @@ export function useBackups() {
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      console.log('Backup data received, creating file...');
 
       // Create blob and download
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const sizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
+      
+      console.log(`Backup size: ${sizeInMB} MB`);
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -303,16 +322,18 @@ export function useBackups() {
 
       toast({
         title: '✅ Backup completo descargado',
-        description: 'Incluye estructura + todas las imágenes',
+        description: `Archivo de ${sizeInMB} MB con estructura + ${data.statistics?.total_images || 0} imágenes`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading complete backup:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo descargar el backup completo',
+        title: 'Error al descargar backup completo',
+        description: error.message || 'Verifica la consola para más detalles',
         variant: 'destructive',
       });
       throw error;
+    } finally {
+      setDownloadingComplete(false);
     }
   };
 
@@ -374,6 +395,7 @@ export function useBackups() {
     loading,
     creating,
     restoring,
+    downloadingComplete,
     createBackup,
     restoreBackup,
     deleteBackup,

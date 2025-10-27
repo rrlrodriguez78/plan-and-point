@@ -59,7 +59,7 @@ import { es } from 'date-fns/locale';
 export default function Backups() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { backups, loading, creating, restoring, createBackup, restoreBackup, deleteBackup, downloadBackup, uploadAndRestoreBackup, downloadCompleteBackup, uploadAndRestoreCompleteBackup } = useBackups();
+  const { backups, loading, creating, restoring, downloadingComplete, createBackup, restoreBackup, deleteBackup, downloadBackup, uploadAndRestoreBackup, downloadCompleteBackup, uploadAndRestoreCompleteBackup } = useBackups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -340,9 +340,14 @@ export default function Backups() {
                             variant="ghost"
                             size="sm"
                             onClick={() => downloadCompleteBackup(backup)}
+                            disabled={downloadingComplete}
                             title="Descargar completo con imágenes"
                           >
-                            <PackageOpen className="h-4 w-4" />
+                            {downloadingComplete ? (
+                              <span className="animate-spin">⏳</span>
+                            ) : (
+                              <PackageOpen className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
