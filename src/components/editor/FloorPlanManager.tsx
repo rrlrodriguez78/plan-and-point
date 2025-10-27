@@ -46,6 +46,25 @@ const getFloorOptions = (t: any) => [
   { value: 'fourthFloor', label: t('floorPlan.floors.fourthFloor') },
   { value: 'fifthFloor', label: t('floorPlan.floors.fifthFloor') },
   { value: 'sixthFloor', label: t('floorPlan.floors.sixthFloor') },
+  { value: 'seventhFloor', label: t('floorPlan.floors.seventhFloor') || 'Séptimo Piso' },
+  { value: 'eighthFloor', label: t('floorPlan.floors.eighthFloor') || 'Octavo Piso' },
+  { value: 'ninthFloor', label: t('floorPlan.floors.ninthFloor') || 'Noveno Piso' },
+  { value: 'tenthFloor', label: t('floorPlan.floors.tenthFloor') || 'Décimo Piso' },
+  { value: 'eleventhFloor', label: t('floorPlan.floors.eleventhFloor') || 'Piso 11' },
+  { value: 'twelfthFloor', label: t('floorPlan.floors.twelfthFloor') || 'Piso 12' },
+  { value: 'thirteenthFloor', label: t('floorPlan.floors.thirteenthFloor') || 'Piso 13' },
+  { value: 'fourteenthFloor', label: t('floorPlan.floors.fourteenthFloor') || 'Piso 14' },
+  { value: 'fifteenthFloor', label: t('floorPlan.floors.fifteenthFloor') || 'Piso 15' },
+  { value: 'sixteenthFloor', label: t('floorPlan.floors.sixteenthFloor') || 'Piso 16' },
+  { value: 'seventeenthFloor', label: t('floorPlan.floors.seventeenthFloor') || 'Piso 17' },
+  { value: 'eighteenthFloor', label: t('floorPlan.floors.eighteenthFloor') || 'Piso 18' },
+  { value: 'nineteenthFloor', label: t('floorPlan.floors.nineteenthFloor') || 'Piso 19' },
+  { value: 'twentiethFloor', label: t('floorPlan.floors.twentiethFloor') || 'Piso 20' },
+  { value: 'twentyFirstFloor', label: t('floorPlan.floors.twentyFirstFloor') || 'Piso 21' },
+  { value: 'twentySecondFloor', label: t('floorPlan.floors.twentySecondFloor') || 'Piso 22' },
+  { value: 'twentyThirdFloor', label: t('floorPlan.floors.twentyThirdFloor') || 'Piso 23' },
+  { value: 'twentyFourthFloor', label: t('floorPlan.floors.twentyFourthFloor') || 'Piso 24' },
+  { value: 'twentyFifthFloor', label: t('floorPlan.floors.twentyFifthFloor') || 'Piso 25' },
   { value: 'attic', label: t('floorPlan.floors.attic') },
   { value: 'rooftop', label: t('floorPlan.floors.rooftop') },
   { value: 'custom', label: t('floorPlan.customName') },
@@ -261,7 +280,7 @@ export default function FloorPlanManager({
           <p className="text-sm">{t('floorPlan.addToStart')}</p>
         </div>
       ) : (
-        <ScrollArea className="h-64 pr-3">
+        <ScrollArea className="h-96 pr-3">
           <div className="space-y-2">
             {floorPlans.map(fp => (
               <div

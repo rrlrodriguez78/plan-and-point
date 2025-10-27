@@ -30,31 +30,57 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
     }
     
     const name = floorPlan.name.toLowerCase();
+    
+    // Casos especiales
     if (name.includes('sótano') || name.includes('sotano') || name.includes('basement')) {
       return '-1';
     }
     if (name.includes('planta baja') || name.includes('ground') || name.includes('principal')) {
       return '0';
     }
-    if (name.includes('primer') || name.includes('first') || name.includes('1')) {
-      return '1';
+    if (name.includes('ático') || name.includes('attic')) {
+      return '99';
     }
-    if (name.includes('segundo') || name.includes('second') || name.includes('2')) {
-      return '2';
-    }
-    if (name.includes('tercer') || name.includes('third') || name.includes('3')) {
-      return '3';
-    }
-    if (name.includes('cuarto') || name.includes('fourth') || name.includes('4')) {
-      return '4';
-    }
-    if (name.includes('quinto') || name.includes('fifth') || name.includes('5')) {
-      return '5';
-    }
-    if (name.includes('sexto') || name.includes('sixth') || name.includes('6')) {
-      return '6';
+    if (name.includes('azotea') || name.includes('rooftop')) {
+      return '100';
     }
     
+    // Detección de pisos del 1 al 25
+    const floorMappings = [
+      { keywords: ['primer', 'first', 'firstfloor'], number: '1' },
+      { keywords: ['segundo', 'second', 'secondfloor'], number: '2' },
+      { keywords: ['tercer', 'third', 'thirdfloor'], number: '3' },
+      { keywords: ['cuarto', 'fourth', 'fourthfloor'], number: '4' },
+      { keywords: ['quinto', 'fifth', 'fifthfloor'], number: '5' },
+      { keywords: ['sexto', 'sixth', 'sixthfloor'], number: '6' },
+      { keywords: ['séptimo', 'septimo', 'seventh', 'seventhfloor'], number: '7' },
+      { keywords: ['octavo', 'eighth', 'eighthfloor'], number: '8' },
+      { keywords: ['noveno', 'ninth', 'ninthfloor'], number: '9' },
+      { keywords: ['décimo', 'decimo', 'tenth', 'tenthfloor'], number: '10' },
+      { keywords: ['eleventhfloor', 'piso 11'], number: '11' },
+      { keywords: ['twelfthfloor', 'piso 12'], number: '12' },
+      { keywords: ['thirteenthfloor', 'piso 13'], number: '13' },
+      { keywords: ['fourteenthfloor', 'piso 14'], number: '14' },
+      { keywords: ['fifteenthfloor', 'piso 15'], number: '15' },
+      { keywords: ['sixteenthfloor', 'piso 16'], number: '16' },
+      { keywords: ['seventeenthfloor', 'piso 17'], number: '17' },
+      { keywords: ['eighteenthfloor', 'piso 18'], number: '18' },
+      { keywords: ['nineteenthfloor', 'piso 19'], number: '19' },
+      { keywords: ['twentiethfloor', 'piso 20'], number: '20' },
+      { keywords: ['twentyfirstfloor', 'piso 21'], number: '21' },
+      { keywords: ['twentysecondfloor', 'piso 22'], number: '22' },
+      { keywords: ['twentythirdfloor', 'piso 23'], number: '23' },
+      { keywords: ['twentyfourthfloor', 'piso 24'], number: '24' },
+      { keywords: ['twentyfifthfloor', 'piso 25'], number: '25' },
+    ];
+    
+    for (const mapping of floorMappings) {
+      if (mapping.keywords.some(keyword => name.includes(keyword))) {
+        return mapping.number;
+      }
+    }
+    
+    // Fallback: usar índice
     const index = floorPlans.findIndex(fp => fp.id === floorPlan.id);
     return (index + 1).toString();
   };
@@ -62,25 +88,38 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
   // Función para obtener el nombre descriptivo del piso
   const getFloorLabel = (floorPlan: FloorPlan) => {
     const number = getFloorNumber(floorPlan);
+    const numericValue = parseInt(number);
     
-    switch(number) {
-      case '-1':
-        return 'Sótano';
-      case '0':
-        return 'Planta Baja';
-      case '1':
-        return 'Primer Piso';
-      case '2':
-        return 'Segundo Piso';
-      case '3':
-        return 'Tercer Piso';
-      case '4':
-        return 'Cuarto Piso';
-      case '5':
-        return 'Quinto Piso';
-      default:
-        return `Piso ${number}`;
+    // Casos especiales
+    if (number === '-1') return 'Sótano';
+    if (number === '0') return 'Planta Baja';
+    if (number === '99') return 'Ático';
+    if (number === '100') return 'Azotea';
+    
+    // Nombres específicos para pisos 1-10
+    const specificNames: Record<string, string> = {
+      '1': 'Primer Piso',
+      '2': 'Segundo Piso',
+      '3': 'Tercer Piso',
+      '4': 'Cuarto Piso',
+      '5': 'Quinto Piso',
+      '6': 'Sexto Piso',
+      '7': 'Séptimo Piso',
+      '8': 'Octavo Piso',
+      '9': 'Noveno Piso',
+      '10': 'Décimo Piso',
+    };
+    
+    if (specificNames[number]) {
+      return specificNames[number];
     }
+    
+    // Para pisos 11 en adelante, usar "Piso X"
+    if (numericValue > 10) {
+      return `Piso ${number}`;
+    }
+    
+    return `Piso ${number}`;
   };
 
   const activeFloor = floorPlans.find(fp => fp.id === activeFloorPlanId);
