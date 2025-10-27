@@ -151,22 +151,22 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-14 left-0 md:bottom-12 md:right-0 md:left-auto w-80 sm:w-96 max-w-[90vw]"
+            className="absolute bottom-14 left-0 md:bottom-12 md:right-0 md:left-auto w-64 sm:w-72 max-w-[90vw]"
           >
-            <Card className="bg-black/80 backdrop-blur-lg border-white/20 text-white shadow-2xl max-h-[70vh]">
-              <CardContent className="p-2 sm:p-3">
-                <div className="text-xs sm:text-sm font-semibold text-slate-300 mb-2 sm:mb-3 px-1 flex items-center justify-between">
-                  <span>Seleccionar Piso ({floorPlans.length} pisos)</span>
+            <Card className="bg-black/90 backdrop-blur-lg border-white/20 text-white shadow-2xl">
+              <CardContent className="p-2">
+                <div className="text-xs font-semibold text-slate-300 mb-2 px-1 flex items-center justify-between">
+                  <span>Seleccionar Piso</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowFloorList(false)}
-                    className="h-6 w-6 text-white hover:bg-white/20"
+                    className="h-5 w-5 text-white hover:bg-white/20"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3" />
                   </Button>
                 </div>
-                <ScrollArea className="h-[60vh] max-h-[500px] pr-2 overflow-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <ScrollArea className="max-h-[40vh] pr-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <div className="space-y-1">
                     {floorPlans
                       .sort((a, b) => (b.floor_order || 0) - (a.floor_order || 0))
@@ -174,18 +174,18 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
                       <button
                         key={fp.id}
                         onClick={() => handleFloorSelect(fp.id)}
-                        className={`w-full text-left p-2 sm:p-3 rounded-md transition-colors flex items-center gap-2 sm:gap-3 ${
+                        className={`w-full text-left p-2 rounded-md transition-colors flex items-center gap-2 ${
                           activeFloorPlanId === fp.id 
                             ? 'bg-blue-500/30 border border-blue-400/50' 
                             : 'hover:bg-white/10'
                         }`}
                       >
-                        <div className="flex items-center gap-2 sm:gap-3 w-full">
-                          <span className="font-bold text-lg sm:text-xl min-w-8 sm:min-w-10 text-center text-blue-400 bg-blue-500/20 rounded-lg px-2 py-1">
+                        <div className="flex items-center gap-2 w-full">
+                          <span className="font-bold text-base min-w-7 text-center text-blue-400 bg-blue-500/20 rounded px-1.5 py-0.5">
                             {getFloorNumber(fp)}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-white text-sm sm:text-base truncate">
+                            <div className="font-semibold text-white text-sm truncate">
                               {getFloorLabel(fp)}
                             </div>
                             <div className="text-xs text-slate-400 truncate">
@@ -193,7 +193,7 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
                             </div>
                           </div>
                           {activeFloorPlanId === fp.id && (
-                            <div className="w-3 h-3 bg-blue-400 rounded-full flex-shrink-0 animate-pulse"></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full flex-shrink-0 animate-pulse"></div>
                           )}
                         </div>
                       </button>
@@ -207,12 +207,6 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
                     )}
                   </div>
                 </ScrollArea>
-                
-                {floorPlans.length > 5 && (
-                  <div className="mt-2 text-xs text-slate-400 text-center border-t border-white/10 pt-2">
-                    Usa scroll para ver más pisos
-                  </div>
-                )}
               </CardContent>
             </Card>
           </motion.div>
