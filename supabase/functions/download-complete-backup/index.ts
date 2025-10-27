@@ -24,15 +24,28 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    // Service client for admin operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // User client for RPC operations (to ensure auth.uid() works)
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader
+        }
+      }
+    });
+    
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       throw new Error('Unauthorized');
     }
@@ -44,8 +57,8 @@ Deno.serve(async (req) => {
 
     console.log('Downloading complete backup:', backup_id);
 
-    // Get backup data
-    const { data: backup, error: backupError } = await supabase
+    // Get backup data (use admin client for fetching)
+    const { data: backup, error: backupError } = await supabaseAdmin
       .from('tour_backups')
       .select('*')
       .eq('id', backup_id)
@@ -88,7 +101,7 @@ Deno.serve(async (req) => {
 
     console.log(`Estimated size: ${(estimatedTotalSize / (1024 * 1024)).toFixed(2)} MB, chunks: ${totalChunks}`);
 
-    // Initialize chunked upload
+    // Initialize chunked upload (use user client for RPC to ensure auth.uid() works)
     const { data: uploadId, error: uploadError } = await supabase.rpc('start_large_backup_upload', {
       p_upload_token: uploadToken,
       p_total_chunks: totalChunks,
@@ -100,6 +113,7 @@ Deno.serve(async (req) => {
     });
 
     if (uploadError) {
+      console.error('Upload initialization error:', uploadError);
       throw new Error(`Failed to initialize upload: ${uploadError.message}`);
     }
 
@@ -157,7 +171,7 @@ Deno.serve(async (req) => {
           
           const filePath = pathMatch[1];
           
-          const { data: fileData, error: downloadError } = await supabase.storage
+          const { data: fileData, error: downloadError } = await supabaseAdmin.storage
             .from('tour-images')
             .download(filePath);
 
@@ -206,17 +220,21 @@ Deno.serve(async (req) => {
 
     console.log(`Upload completed: ${imagesProcessed} images, ${(totalBytesProcessed / (1024 * 1024)).toFixed(2)} MB`);
 
-    // Log the download
-    await supabase.from('backup_logs').insert({
+    // Log the download (use admin client for logging)
+    await supabaseAdmin.from('backup_logs').insert({
       backup_id: backup.id,
+      user_id: user.id,
       action: 'complete_download_chunked',
-      status: 'success',
-      details: `Processed ${imagesProcessed} images in ${chunkNumber} chunks`,
-      performed_by: user.id
+      details: {
+        status: 'success',
+        images_processed: imagesProcessed,
+        total_chunks: chunkNumber,
+        total_size_mb: (totalBytesProcessed / (1024 * 1024)).toFixed(2)
+      }
     });
 
-    // Update backup format
-    await supabase
+    // Update backup format (use admin client)
+    await supabaseAdmin
       .from('tour_backups')
       .update({ backup_format: 'complete-zip' })
       .eq('id', backup_id);
