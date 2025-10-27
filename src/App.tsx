@@ -27,6 +27,7 @@ import FeatureManagement from "./pages/FeatureManagement";
 import CompatibilityTest from "./pages/CompatibilityTest";
 import CompatibilityReport from "./pages/CompatibilityReport";
 import SwipeDemo from "./pages/SwipeDemo";
+import PWASplashGenerator from "./pages/PWASplashGenerator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/app/compatibility" element={<CompatibilityTest />} />
                   <Route path="/app/compatibility-report" element={<CompatibilityReport />} />
                   <Route path="/app/swipe-demo" element={<SwipeDemo />} />
+                  <Route path="/app/pwa-splash" element={<PWASplashGenerator />} />
                   
                   {/* Catch-all route */}
                   <Route path="*" element={<NotFound />} />

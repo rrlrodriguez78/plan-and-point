@@ -15,31 +15,82 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png', 'lion-original.jpg'],
+      includeAssets: ['favicon.ico', 'icons/*.png', 'splash/*.png', 'lion-original.jpg'],
       manifest: {
         name: 'VirtualTour - Tours Virtuales 360°',
         short_name: 'VirtualTour',
-        description: 'Crea tours virtuales interactivos con hotspots 360°',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
+        description: 'Plataforma profesional para crear y compartir tours virtuales interactivos con hotspots 360°. Ideal para bienes raíces, eventos y espacios comerciales.',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'portrait-primary',
         start_url: '/',
         scope: '/',
+        id: 'dev.lovable.virtualtour',
+        categories: ['business', 'productivity', 'photo'],
+        lang: 'es-ES',
+        dir: 'ltr',
+        prefer_related_applications: false,
         icons: [
           {
             src: '/icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
           },
           {
             src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
-        ]
+        ],
+        screenshots: [
+          {
+            src: '/screenshots/screenshot-wide.png',
+            sizes: '1280x720',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Vista de tours en desktop'
+          },
+          {
+            src: '/screenshots/screenshot-narrow.png',
+            sizes: '750x1334',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Vista de tour 360° en móvil'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'Crear Tour',
+            short_name: 'Nuevo',
+            description: 'Crear un nuevo tour virtual',
+            url: '/app/tours',
+            icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Mis Tours',
+            short_name: 'Tours',
+            description: 'Ver mis tours creados',
+            url: '/app/tours',
+            icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
+          }
+        ],
+        related_applications: [],
+        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui', 'browser'],
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
