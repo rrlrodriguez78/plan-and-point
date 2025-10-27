@@ -136,21 +136,30 @@ export default function FloorPlanManager({
 
     try {
       if (isNewFloorPlan) {
+        // CRITICAL: Verify tenant_id is present before constructing data
+        console.log('🔍 PRE-INSERT DEBUG:', {
+          tour_id: tour.id,
+          tenant_id: tour.tenant_id,
+          tenant_id_type: typeof tour.tenant_id,
+          tour_complete: tour
+        });
+
+        if (!tour.tenant_id) {
+          throw new Error('CRITICAL: tenant_id is undefined. Tour object incomplete.');
+        }
+
         const floorPlanData = {
           name: editingFloorPlan.name!,
           tour_id: tour.id,
-          tenant_id: tour.tenant_id,
+          tenant_id: tour.tenant_id, // CRITICAL: Must not be undefined
           image_url: editingFloorPlan.image_url!,
           width: editingFloorPlan.width || 1920,
           height: editingFloorPlan.height || 1080,
           capture_date: editingFloorPlan.capture_date || new Date().toISOString().split('T')[0]
         };
         
-        // Debug: Log exact data being sent
-        console.log('✅ Floor Plan Data to Insert:', {
-          ...floorPlanData,
-          tour_title: tour.title
-        });
+        // Debug: Log EXACT data being sent to Supabase
+        console.log('📤 SENDING TO SUPABASE:', JSON.stringify(floorPlanData, null, 2));
         
         const { data, error } = await supabase
           .from('floor_plans')
