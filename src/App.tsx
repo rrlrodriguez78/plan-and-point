@@ -25,6 +25,7 @@ import UserApprovals from "./pages/UserApprovals";
 import Backups from "./pages/Backups";
 import FeatureManagement from "./pages/FeatureManagement";
 import CompatibilityTest from "./pages/CompatibilityTest";
+import CompatibilityReport from "./pages/CompatibilityReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => (
                   <Route path="/app/tenant-members" element={<TenantMembers />} />
                   <Route path="/app/feature-management" element={<FeatureManagement />} />
                   <Route path="/app/compatibility" element={<CompatibilityTest />} />
+                  <Route path="/app/compatibility-report" element={<CompatibilityReport />} />
                   
                   {/* Catch-all route */}
                   <Route path="*" element={<NotFound />} />
