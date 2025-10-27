@@ -403,6 +403,66 @@ export function useBackups() {
     uploadAndRestoreBackup,
     downloadCompleteBackup,
     uploadAndRestoreCompleteBackup,
+    uploadCompleteBackupChunked,
     loadBackups,
   };
+
+  async function uploadCompleteBackupChunked(file: File, mode: 'full' | 'additive' = 'additive') {
+    if (!currentTenant) {
+      toast({
+        title: 'Error',
+        description: 'No hay tenant seleccionado',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      console.log('[useBackups] Starting chunked upload for:', file.name);
+      
+      // Import uploader dynamically
+      const { LargeBackupUploader } = await import('./useLargeBackupUploader');
+      const uploader = new LargeBackupUploader();
+
+      // Upload with progress callback
+      const completeBackupData = await uploader.uploadLargeBackup(file, (progress) => {
+        console.log(`[useBackups] Upload progress: ${progress}%`);
+      });
+
+      console.log('[useBackups] Upload complete, now restoring...');
+
+      // Now restore using the uploaded data
+      const { data, error } = await supabase.functions.invoke(
+        'upload-complete-backup',
+        {
+          body: {
+            complete_backup_json: completeBackupData,
+            restore_mode: mode,
+            tenant_id: currentTenant.tenant_id,
+          },
+        }
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "Backup restaurado exitosamente",
+        description: `${data.restored.tours} tours y ${data.restored.images} imágenes restauradas`,
+      });
+
+      await loadBackups();
+      return data;
+    } catch (error) {
+      console.error('[useBackups] Error in chunked upload:', error);
+      toast({
+        title: "Error al restaurar",
+        description: error instanceof Error ? error.message : "No se pudo restaurar el backup",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setRestoring(false);
+    }
+  }
 }

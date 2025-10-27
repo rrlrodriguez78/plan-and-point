@@ -55,6 +55,44 @@ export type Database = {
           },
         ]
       }
+      backup_chunks: {
+        Row: {
+          chunk_data: string
+          chunk_hash: string
+          chunk_number: number
+          created_at: string
+          id: string
+          upload_id: string
+          user_id: string
+        }
+        Insert: {
+          chunk_data: string
+          chunk_hash: string
+          chunk_number: number
+          created_at?: string
+          id?: string
+          upload_id: string
+          user_id: string
+        }
+        Update: {
+          chunk_data?: string
+          chunk_hash?: string
+          chunk_number?: number
+          created_at?: string
+          id?: string
+          upload_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_upload"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "large_backup_upload"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_logs: {
         Row: {
           action: string
@@ -373,6 +411,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      large_backup_upload: {
+        Row: {
+          backup_name: string
+          chunk_size: number
+          completed_at: string | null
+          created_at: string
+          current_chunk: number | null
+          description: string | null
+          device_info: Json | null
+          id: string
+          status: string
+          total_chunks: number
+          total_size: number
+          upload_token: string
+          user_id: string
+        }
+        Insert: {
+          backup_name: string
+          chunk_size: number
+          completed_at?: string | null
+          created_at?: string
+          current_chunk?: number | null
+          description?: string | null
+          device_info?: Json | null
+          id?: string
+          status?: string
+          total_chunks: number
+          total_size: number
+          upload_token: string
+          user_id: string
+        }
+        Update: {
+          backup_name?: string
+          chunk_size?: number
+          completed_at?: string | null
+          created_at?: string
+          current_chunk?: number | null
+          description?: string | null
+          device_info?: Json | null
+          id?: string
+          status?: string
+          total_chunks?: number
+          total_size?: number
+          upload_token?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       mobile_settings_backup: {
         Row: {
@@ -1257,7 +1343,16 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_backup_upload: {
+        Args: { p_upload_token: string }
+        Returns: boolean
+      }
+      cleanup_failed_uploads: { Args: never; Returns: number }
       cleanup_old_backups: { Args: never; Returns: undefined }
+      complete_large_backup_upload: {
+        Args: { p_upload_token: string }
+        Returns: Json
+      }
       create_mobile_settings_backup: {
         Args: {
           p_backup_name: string
@@ -1268,6 +1363,17 @@ export type Database = {
         Returns: string
       }
       generate_share_token: { Args: never; Returns: string }
+      get_upload_progress: {
+        Args: { p_upload_token: string }
+        Returns: {
+          current_chunk: number
+          progress_percentage: number
+          status: string
+          total_chunks: number
+          upload_id: string
+          uploaded_chunks: number
+        }[]
+      }
       get_user_tenants: {
         Args: { _user_id: string }
         Returns: {
@@ -1299,6 +1405,27 @@ export type Database = {
       restore_mobile_settings_backup: {
         Args: { p_backup_id: string }
         Returns: Json
+      }
+      start_large_backup_upload: {
+        Args: {
+          p_backup_name: string
+          p_chunk_size: number
+          p_description?: string
+          p_device_info?: Json
+          p_total_chunks: number
+          p_total_size: number
+          p_upload_token: string
+        }
+        Returns: string
+      }
+      upload_backup_chunk: {
+        Args: {
+          p_chunk_data: string
+          p_chunk_hash: string
+          p_chunk_number: number
+          p_upload_token: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

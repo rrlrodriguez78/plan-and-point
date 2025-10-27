@@ -55,11 +55,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ChunkedUploadProgress } from "@/components/backups/ChunkedUploadProgress";
 
 export default function Backups() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { backups, loading, creating, restoring, downloadingComplete, createBackup, restoreBackup, deleteBackup, downloadBackup, uploadAndRestoreBackup, downloadCompleteBackup, uploadAndRestoreCompleteBackup } = useBackups();
+  const { 
+    backups, loading, creating, restoring, downloadingComplete, 
+    createBackup, restoreBackup, deleteBackup, downloadBackup, 
+    uploadAndRestoreBackup, downloadCompleteBackup, uploadCompleteBackupChunked 
+  } = useBackups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -67,9 +72,13 @@ export default function Backups() {
   const [showUploadCompleteDialog, setShowUploadCompleteDialog] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [completeBackupFile, setCompleteBackupFile] = useState<File | null>(null);
   const [backupName, setBackupName] = useState('');
   const [backupNotes, setBackupNotes] = useState('');
   const [restoreMode, setRestoreMode] = useState<'full' | 'additive'>('additive');
+  const [completeRestoreMode, setCompleteRestoreMode] = useState<'full' | 'additive'>('additive');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
 
   if (!user) {
     navigate('/auth');
@@ -124,15 +133,23 @@ export default function Backups() {
   };
 
   const handleUploadCompleteRestore = async () => {
-    if (!selectedFile) return;
+    if (!completeBackupFile) return;
+    
+    setUploadStatus('uploading');
+    setUploadProgress(0);
 
     try {
-      await uploadAndRestoreCompleteBackup(selectedFile, restoreMode);
-      setShowUploadCompleteDialog(false);
-      setSelectedFile(null);
-      setRestoreMode('additive');
+      await uploadCompleteBackupChunked(completeBackupFile, completeRestoreMode);
+      setUploadStatus('completed');
+      setTimeout(() => {
+        setShowUploadCompleteDialog(false);
+        setCompleteBackupFile(null);
+        setUploadStatus('idle');
+        setUploadProgress(0);
+      }, 2000);
     } catch (error) {
       console.error('Error in upload complete restore:', error);
+      setUploadStatus('error');
     }
   };
 
@@ -556,48 +573,61 @@ export default function Backups() {
             </DialogDescription>
           </DialogHeader>
 
-          <Alert>
-            <PackageOpen className="h-4 w-4" />
-            <AlertDescription>
-              Este backup incluye tanto la estructura como todas las imágenes. Se subirán todas las imágenes al storage.
-            </AlertDescription>
-          </Alert>
+          {uploadStatus === 'idle' && (
+            <>
+              <Alert>
+                <PackageOpen className="h-4 w-4" />
+                <AlertDescription>
+                  Este backup incluye tanto la estructura como todas las imágenes. Se subirán todas las imágenes al storage.
+                </AlertDescription>
+              </Alert>
 
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="complete-backup-file">Archivo de backup completo (JSON con imágenes)</Label>
-              <Input
-                id="complete-backup-file"
-                type="file"
-                accept=".json"
-                onChange={handleFileSelect}
-                className="mt-2"
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="complete-backup-file">Archivo de backup completo (JSON con imágenes)</Label>
+                  <Input
+                    id="complete-backup-file"
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => setCompleteBackupFile(e.target.files?.[0] || null)}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label>Modo de restauración</Label>
+                  <RadioGroup value={completeRestoreMode} onValueChange={(value: any) => setCompleteRestoreMode(value)}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="additive" id="complete-additive" />
+                      <Label htmlFor="complete-additive">Aditivo (mantener tours existentes)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="full" id="complete-full" />
+                      <Label htmlFor="complete-full">Completo (eliminar todos los tours existentes)</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowUploadCompleteDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleUploadCompleteRestore} disabled={!completeBackupFile}>
+                  Restaurar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {uploadStatus !== 'idle' && (
+            <div className="py-4">
+              <ChunkedUploadProgress 
+                progress={uploadProgress}
+                status={uploadStatus}
               />
             </div>
-
-            <div>
-              <Label>Modo de restauración</Label>
-              <RadioGroup value={restoreMode} onValueChange={(value: any) => setRestoreMode(value)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="additive" id="complete-additive" />
-                  <Label htmlFor="complete-additive">Aditivo (mantener tours existentes)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="full" id="complete-full" />
-                  <Label htmlFor="complete-full">Completo (eliminar todos los tours existentes)</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUploadCompleteDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUploadCompleteRestore} disabled={!selectedFile || restoring}>
-              {restoring ? 'Restaurando...' : 'Restaurar'}
-            </Button>
-          </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

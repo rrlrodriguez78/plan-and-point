@@ -42,11 +42,16 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { complete_backup, restore_mode, tenant_id } = await req.json();
+    const { complete_backup_json, restore_mode = 'additive', tenant_id } = await req.json();
     
-    if (!complete_backup || !tenant_id) {
-      throw new Error('complete_backup and tenant_id are required');
+    if (!complete_backup_json || !tenant_id) {
+      throw new Error('complete_backup_json and tenant_id are required');
     }
+
+    // Parse JSON if it's a string
+    const complete_backup = typeof complete_backup_json === 'string' 
+      ? JSON.parse(complete_backup_json) 
+      : complete_backup_json;
 
     const backupData: CompleteBackup = complete_backup;
     console.log('Restoring complete backup:', backupData.backup_name);
