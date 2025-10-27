@@ -113,6 +113,23 @@ export default function FloorPlanManager({
   const handleSaveFloorPlan = async () => {
     if (!editingFloorPlan) return;
 
+    // CRITICAL: Validate tour data is fully loaded
+    if (!tour?.id) {
+      alert(t('floorPlan.tourNotLoaded') || 'Error: Tour no cargado. Por favor recarga la página.');
+      console.error('❌ ERROR: Tour not loaded', { tour });
+      return;
+    }
+
+    if (!tour?.tenant_id) {
+      alert(t('floorPlan.tenantIdMissing') || 'Error: Datos de organización no disponibles. Por favor recarga la página.');
+      console.error('❌ ERROR: tour.tenant_id is undefined', { 
+        tour_id: tour.id, 
+        tour_title: tour.title,
+        tour_complete: tour 
+      });
+      return;
+    }
+
     if (!validateFloorPlan(editingFloorPlan)) {
       return;
     }
@@ -130,10 +147,9 @@ export default function FloorPlanManager({
         };
         
         // Debug: Log exact data being sent
-        console.log('🔍 DEBUG - Floor Plan Data:', {
+        console.log('✅ Floor Plan Data to Insert:', {
           ...floorPlanData,
-          tour_tenant_id: tour.tenant_id,
-          tour_id: tour.id
+          tour_title: tour.title
         });
         
         const { data, error } = await supabase
@@ -142,7 +158,30 @@ export default function FloorPlanManager({
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Supabase Insert Error:', {
+            error,
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
+          
+          // Provide specific error messages
+          if (error.code === '42501') {
+            throw new Error('No tienes permisos para crear planos en este tour. Verifica que seas miembro de la organización.');
+          } else if (error.code === '23503') {
+            throw new Error('ID de tour o tenant inválido. Por favor recarga la página.');
+          } else {
+            throw new Error(`Error al guardar: ${error.message}`);
+          }
+        }
+        
+        if (!data) {
+          throw new Error('No se recibieron datos del plano creado');
+        }
+        
+        console.log('✅ Floor Plan Created Successfully:', data);
         
         onFloorPlansUpdate([...floorPlans, data]);
       } else {
@@ -169,10 +208,24 @@ export default function FloorPlanManager({
       setIsNewFloorPlan(false);
       setErrors({});
     } catch (error: any) {
-      console.error('Error saving floor plan:', error);
-      const errorMessage = error?.message || t('floorPlan.errorSaving');
-      alert(`${t('floorPlan.errorSaving')}: ${errorMessage}`);
-      console.error('Full error details:', error);
+      console.error('❌ Error saving floor plan:', error);
+      
+      // Provide user-friendly error messages
+      let userMessage = t('floorPlan.errorSaving') || 'Error al guardar el plano';
+      
+      if (error?.message) {
+        userMessage = error.message;
+      } else if (typeof error === 'string') {
+        userMessage = error;
+      }
+      
+      alert(userMessage);
+      console.error('❌ Full error details:', {
+        error,
+        errorType: typeof error,
+        errorKeys: error ? Object.keys(error) : [],
+        stack: error?.stack
+      });
     }
   };
 
@@ -261,6 +314,17 @@ export default function FloorPlanManager({
       
       <Button 
         onClick={() => { 
+          // Validate tour is fully loaded before opening dialog
+          if (!tour?.id || !tour?.tenant_id) {
+            alert(t('floorPlan.tourNotLoaded') || 'El tour no está completamente cargado. Por favor recarga la página.');
+            console.error('❌ Cannot create floor plan - tour not fully loaded:', {
+              has_tour_id: !!tour?.id,
+              has_tenant_id: !!tour?.tenant_id,
+              tour
+            });
+            return;
+          }
+          
           setIsNewFloorPlan(true); 
           setIsCustomFloorName(false);
           setErrors({});
@@ -271,16 +335,19 @@ export default function FloorPlanManager({
             height: 1080
           }); 
         }}
-        disabled={!tour.id}
+        disabled={!tour?.id || !tour?.tenant_id}
         className="w-full bg-indigo-600 hover:bg-indigo-700"
       >
         <Plus className="w-4 h-4 mr-2" />
         {t('floorPlan.addNew')}
       </Button>
 
-      {!tour.id && (
+      {(!tour?.id || !tour?.tenant_id) && (
         <p className="text-xs text-center text-slate-500 mt-2">
-          {t('floorPlan.saveFirst')}
+          {!tour?.id 
+            ? (t('floorPlan.saveFirst') || 'Guarda el tour primero')
+            : (t('floorPlan.tourNotLoaded') || 'Tour no cargado correctamente. Recarga la página.')
+          }
         </p>
       )}
 

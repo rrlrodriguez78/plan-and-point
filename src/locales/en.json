@@ -393,6 +393,8 @@
   "floorPlan": {
     "addNew": "Add New Floor",
     "saveFirst": "Save the tour to add floors.",
+    "tourNotLoaded": "Tour is not fully loaded. Please reload the page.",
+    "tenantIdMissing": "Organization data not available. Please reload the page.",
     "noFloors": "No floors in this tour.",
     "addToStart": "Add one to get started.",
     "active": "Active",
@@ -415,7 +417,7 @@
     "dimensions": "Dimensions:",
     "imageRequired": "You must upload an image for the floor plan",
     "deleteConfirm": "Are you sure you want to delete",
-    "errorSaving": "Error saving floor.",
+    "errorSaving": "Error saving floor",
     "errorDeleting": "Error deleting floor.",
     "errorUploading": "Error uploading floor plan file.",
     "uploadError": "Error uploading file.",

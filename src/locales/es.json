@@ -393,6 +393,8 @@
   "floorPlan": {
     "addNew": "Añadir Nuevo Piso",
     "saveFirst": "Guarda el tour para poder añadir pisos.",
+    "tourNotLoaded": "El tour no está completamente cargado. Por favor recarga la página.",
+    "tenantIdMissing": "Datos de organización no disponibles. Por favor recarga la página.",
     "noFloors": "No hay pisos en este tour.",
     "addToStart": "Añade uno para empezar.",
     "active": "Activo",
@@ -415,7 +417,7 @@
     "dimensions": "Dimensiones:",
     "imageRequired": "Debes subir una imagen para el plano del piso",
     "deleteConfirm": "¿Seguro que quieres eliminar",
-    "errorSaving": "Error al guardar el piso.",
+    "errorSaving": "Error al guardar el piso",
     "errorDeleting": "Error al eliminar el piso.",
     "errorUploading": "Error al subir el archivo del plano.",
     "uploadError": "Error al subir el archivo.",
