@@ -33,7 +33,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useBackups } from '@/hooks/useBackups';
+import { usePersistentBackup } from '@/hooks/usePersistentBackup';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { 
@@ -50,7 +52,9 @@ import {
   FileJson,
   Info,
   PackageOpen,
-  TestTube2
+  TestTube2,
+  Loader2,
+  X
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -67,6 +71,13 @@ export default function Backups() {
     createBackup, restoreBackup, deleteBackup, downloadBackup, 
     uploadAndRestoreBackup, downloadCompleteBackup, uploadCompleteBackupChunked 
   } = useBackups();
+  const { 
+    activeJobs, 
+    startPersistentDownload, 
+    cancelPersistentJob,
+    getJobProgress,
+    getJobStatus 
+  } = usePersistentBackup();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -252,6 +263,77 @@ export default function Backups() {
         {/* Guía de instrucciones */}
         <BackupInstructions />
 
+        {/* Active Download Jobs */}
+        {activeJobs.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                Descargas en Segundo Plano
+              </CardTitle>
+              <CardDescription>
+                Estas descargas continúan incluso si sales de la página
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {activeJobs.map(job => (
+                  <Card key={job.token} className="border-l-4 border-l-primary">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <p className="font-semibold">Descarga Persistente</p>
+                            <p className="text-sm text-muted-foreground">
+                              {job.current_operation || 'Procesando...'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={
+                            job.status === 'completed' ? 'default' : 
+                            job.status === 'failed' ? 'destructive' : 
+                            'secondary'
+                          }>
+                            {job.status === 'processing' ? 'En progreso' : 
+                             job.status === 'completed' ? 'Completado' : 
+                             job.status === 'failed' ? 'Error' : job.status}
+                          </Badge>
+                          {job.status === 'processing' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => cancelPersistentJob(job.token)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progreso: {job.progress}%</span>
+                          <span className="text-muted-foreground">
+                            {job.processed_images}/{job.total_images} imágenes
+                          </span>
+                        </div>
+                        <Progress value={job.progress} className="h-2" />
+                        
+                        {job.error_message && (
+                          <Alert variant="destructive" className="mt-2">
+                            <AlertDescription>{job.error_message}</AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -369,12 +451,12 @@ export default function Backups() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => downloadCompleteBackup(backup)}
-                            disabled={downloadingComplete}
-                            title="Descargar completo con imágenes"
+                            onClick={() => startPersistentDownload(backup.id)}
+                            disabled={activeJobs.some(j => j.token.includes(backup.id))}
+                            title="Descarga persistente con imágenes (continúa en segundo plano)"
                           >
-                            {downloadingComplete ? (
-                              <span className="animate-spin">⏳</span>
+                            {activeJobs.some(j => j.token.includes(backup.id)) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <PackageOpen className="h-4 w-4" />
                             )}
