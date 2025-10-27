@@ -283,14 +283,14 @@ export function useBackups() {
   const downloadCompleteBackup = async (backup: Backup) => {
     setDownloadingComplete(true);
     try {
-      console.log('Starting complete backup download for:', backup.id);
+      console.log('[DOWNLOAD] Starting complete backup download for:', backup.id);
       
       toast({
-        title: '⏳ Preparando backup completo...',
-        description: 'Descargando todas las imágenes. Esto puede tardar varios minutos.',
+        title: '⏳ Iniciando descarga...',
+        description: 'Preparando backup completo con imágenes en segundo plano.',
       });
 
-      // Call edge function to start chunked download
+      // Call edge function to start background processing
       const { data, error } = await supabase.functions.invoke(
         'download-complete-backup',
         {
@@ -299,11 +299,11 @@ export function useBackups() {
       );
 
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('[DOWNLOAD] Edge function error:', error);
         throw error;
       }
 
-      console.log('Chunked download initiated:', data);
+      console.log('[DOWNLOAD] Background processing started:', data);
 
       // Extract upload token
       const uploadToken = data.upload_token;
@@ -312,14 +312,15 @@ export function useBackups() {
       }
 
       toast({
-        title: '📦 Procesando backup...',
-        description: `Preparando ${data.images_processed} imágenes en ${data.total_chunks} chunks (${data.total_size_mb} MB)`,
+        title: '🔄 Procesando en segundo plano...',
+        description: `${data.total_images} imágenes • ~${data.estimated_size_mb} MB estimados`,
       });
 
       // Poll for completion with get_upload_progress
       let completed = false;
       let attempts = 0;
-      const maxAttempts = 60; // 5 minutes max
+      const maxAttempts = 120; // 10 minutes max (5s interval)
+      let lastProgress = 0;
 
       while (!completed && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
@@ -330,37 +331,47 @@ export function useBackups() {
         );
 
         if (progressError) {
-          console.error('Progress check error:', progressError);
-          throw progressError;
+          console.error('[DOWNLOAD] Progress check error:', progressError);
+          attempts++;
+          continue;
         }
-
-        console.log('Progress:', progressData);
 
         if (progressData && progressData.length > 0) {
           const progress = progressData[0];
           
+          console.log(`[DOWNLOAD] Progress: ${progress.progress_percentage}% (${progress.uploaded_chunks}/${progress.total_chunks})`);
+          
           if (progress.status === 'completed') {
             completed = true;
+            console.log('[DOWNLOAD] Background processing completed!');
             break;
-          } else if (progress.status === 'failed') {
-            throw new Error('Backup download failed on server');
+          } else if (progress.status === 'failed' || progress.status === 'cancelled') {
+            throw new Error(`Backup processing ${progress.status}`);
           }
 
-          // Update progress toast
-          toast({
-            title: '📦 Descargando imágenes...',
-            description: `Progreso: ${progress.progress_percentage}% (${progress.uploaded_chunks}/${progress.total_chunks} chunks)`,
-          });
+          // Update progress toast only if changed significantly
+          if (Math.abs(progress.progress_percentage - lastProgress) >= 5) {
+            lastProgress = progress.progress_percentage;
+            toast({
+              title: '📦 Procesando imágenes...',
+              description: `${progress.progress_percentage}% • ${progress.uploaded_chunks} de ${progress.total_chunks} chunks`,
+            });
+          }
         }
 
         attempts++;
       }
 
       if (!completed) {
-        throw new Error('Timeout waiting for backup completion');
+        throw new Error('Timeout: El backup está tardando demasiado. Intenta con un backup más pequeño.');
       }
 
-      console.log('Download completed, assembling final file...');
+      console.log('[DOWNLOAD] Assembling final file...');
+      
+      toast({
+        title: '🔧 Ensamblando archivo...',
+        description: 'Combinando todos los chunks en un solo archivo',
+      });
 
       // Get complete assembled data
       const { data: completeData, error: completeError } = await supabase.rpc(
@@ -369,11 +380,11 @@ export function useBackups() {
       );
 
       if (completeError) {
-        console.error('Assembly error:', completeError);
+        console.error('[DOWNLOAD] Assembly error:', completeError);
         throw completeError;
       }
 
-      console.log('Complete backup assembled, creating download...');
+      console.log('[DOWNLOAD] Complete backup assembled, creating download...');
 
       // Create blob and download
       const jsonString = typeof completeData === 'string' 
@@ -383,26 +394,26 @@ export function useBackups() {
       const blob = new Blob([jsonString], { type: 'application/json' });
       const sizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
       
-      console.log(`Final backup size: ${sizeInMB} MB`);
+      console.log(`[DOWNLOAD] Final backup size: ${sizeInMB} MB`);
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-complete-${backup.backup_name}-${backup.id}.json`;
+      a.download = `backup-complete-${backup.backup_name}-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
       toast({
-        title: '✅ Backup completo descargado',
-        description: `Archivo de ${sizeInMB} MB con estructura + ${data.images_processed} imágenes`,
+        title: '✅ ¡Descarga completa!',
+        description: `Archivo de ${sizeInMB} MB guardado correctamente`,
       });
     } catch (error: any) {
-      console.error('Error downloading complete backup:', error);
+      console.error('[DOWNLOAD] Error:', error);
       toast({
-        title: 'Error al descargar backup completo',
-        description: error.message || 'Verifica la consola para más detalles',
+        title: 'Error al descargar',
+        description: error.message || 'No se pudo completar la descarga',
         variant: 'destructive',
       });
       throw error;
