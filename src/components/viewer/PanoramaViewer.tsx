@@ -699,33 +699,35 @@ export default function PanoramaViewer({
                       className="bg-black/90 backdrop-blur-sm border-white/20 text-white"
                       style={{ zIndex: 99999 }}
                     >
-                      {floorPlans.map((floor) => {
-                        const hotspotCount = getHotspotCount(floor.id);
-                        return (
-                          <DropdownMenuItem
-                            key={floor.id}
-                            onClick={() => {
-                              if (floor.id === currentFloorPlan.id) return;
-                              
-                              if (hotspotCount === 0) {
-                                toast.error(t('viewer.emptyFloorTitle'), {
-                                  description: t('viewer.emptyFloorDescription')
-                                });
-                                return;
-                              }
-                              
-                              onFloorChange(floor.id);
-                            }}
-                            className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
-                          >
-                            <Building2 className="w-4 h-4 mr-2" />
-                            <span className="flex-1">{floor.name}</span>
-                            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                              {hotspotCount}
-                            </span>
-                          </DropdownMenuItem>
-                        );
-                      })}
+                      <ScrollArea className={isMobile ? "h-[180px]" : ""}>
+                        {floorPlans.map((floor) => {
+                          const hotspotCount = getHotspotCount(floor.id);
+                          return (
+                            <DropdownMenuItem
+                              key={floor.id}
+                              onClick={() => {
+                                if (floor.id === currentFloorPlan.id) return;
+                                
+                                if (hotspotCount === 0) {
+                                  toast.error(t('viewer.emptyFloorTitle'), {
+                                    description: t('viewer.emptyFloorDescription')
+                                  });
+                                  return;
+                                }
+                                
+                                onFloorChange(floor.id);
+                              }}
+                              className={`text-white hover:bg-white/20 ${floor.id === currentFloorPlan.id ? 'bg-white/10' : ''}`}
+                            >
+                              <Building2 className="w-4 h-4 mr-2" />
+                              <span className="flex-1">{floor.name}</span>
+                              <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                                {hotspotCount}
+                              </span>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </ScrollArea>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -756,7 +758,7 @@ export default function PanoramaViewer({
                         Hotspots ({availableHotspots.length})
                       </div>
                       <DropdownMenuSeparator className="bg-white/20" />
-                      <ScrollArea className="h-[320px]">
+                      <ScrollArea className={isMobile ? "h-[180px]" : "h-[320px]"}>
                         {availableHotspots.map(hotspot => (
                           <DropdownMenuItem
                             key={hotspot.id}
@@ -803,7 +805,7 @@ export default function PanoramaViewer({
                         {t('viewer.selectDate', { count: availableDates.length })}
                       </div>
                       <DropdownMenuSeparator className="bg-white/20" />
-                      <ScrollArea className="max-h-64">
+                      <ScrollArea className={isMobile ? "h-[180px]" : "max-h-64"}>
                         {availableDates.map((date) => {
                           const photosForDate = filteredPhotos.filter(p => p.capture_date === date);
                           return (
