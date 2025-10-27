@@ -43,10 +43,13 @@ export const useZoomPan = (): UseZoomPanReturn => {
     }
   }, [deviceType]);
   
-  const [transform, setTransform] = useState<Transform>({
-    scale: getInitialScale(),
-    x: 0,
-    y: 0,
+  const [transform, setTransform] = useState<Transform>(() => {
+    const scale = getInitialScale();
+    return {
+      scale,
+      x: 0,
+      y: 0,
+    };
   });
 
   const isPanningRef = useRef(false);
@@ -100,10 +103,36 @@ export const useZoomPan = (): UseZoomPanReturn => {
     setScale(transform.scale - ZOOM_STEP);
   }, [transform.scale, setScale]);
 
-  // Reset transform (usando detección híbrida)
+  // Reset transform con centrado inteligente
   const resetTransform = useCallback(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) {
+      setTransform({ scale: getInitialScale(), x: 0, y: 0 });
+      return;
+    }
+
     const resetScale = getInitialScale();
-    setTransform({ scale: resetScale, x: 0, y: 0 });
+    const containerRect = container.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+
+    // Para móvil con zoom alto, centramos en el contenido
+    if (resetScale > 1.5) {
+      const scaledWidth = contentRect.width * resetScale;
+      const scaledHeight = contentRect.height * resetScale;
+      
+      // Centrar el contenido en el viewport
+      const centerX = (containerRect.width - scaledWidth) / 2;
+      const centerY = (containerRect.height - scaledHeight) / 2;
+      
+      setTransform({ 
+        scale: resetScale, 
+        x: Math.max(centerX, 0), 
+        y: Math.max(centerY, 0) 
+      });
+    } else {
+      setTransform({ scale: resetScale, x: 0, y: 0 });
+    }
   }, [getInitialScale]);
 
   // Handle wheel zoom
@@ -202,8 +231,12 @@ export const useZoomPan = (): UseZoomPanReturn => {
     };
   }, [handleWheel, handlePointerDown, handlePointerMove, handlePointerUp]);
 
-  // Effect para ajustar zoom cuando cambia el tipo de dispositivo
+  // Effect para ajustar zoom inicial y cuando cambia el tipo de dispositivo
   useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
     // Detectar si está en escala por defecto (móvil, tablet o desktop)
     const isAtDefaultScale = 
       Math.abs(transform.scale - MOBILE_INITIAL_SCALE) < 0.01 ||
@@ -216,16 +249,81 @@ export const useZoomPan = (): UseZoomPanReturn => {
       
       // Solo actualizar si realmente cambió la escala
       if (Math.abs(transform.scale - newScale) > 0.01) {
-        setTransform(prev => ({
-          ...prev,
-          scale: newScale,
-          // Mantener posición proporcional al cambiar zoom
-          x: prev.x * (newScale / prev.scale),
-          y: prev.y * (newScale / prev.scale)
-        }));
+        // Para móvil, centrar el contenido
+        if (newScale > 1.5) {
+          const containerRect = container.getBoundingClientRect();
+          const contentRect = content.getBoundingClientRect();
+          const scaledWidth = contentRect.width * newScale;
+          const scaledHeight = contentRect.height * newScale;
+          
+          const centerX = (containerRect.width - scaledWidth) / 2;
+          const centerY = (containerRect.height - scaledHeight) / 2;
+          
+          setTransform({
+            scale: newScale,
+            x: Math.max(centerX, 0),
+            y: Math.max(centerY, 0)
+          });
+        } else {
+          setTransform(prev => ({
+            ...prev,
+            scale: newScale,
+            x: prev.x * (newScale / prev.scale),
+            y: prev.y * (newScale / prev.scale)
+          }));
+        }
       }
     }
   }, [deviceType, getInitialScale]);
+
+  // Effect inicial para centrar el contenido al montar
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
+    const currentScale = getInitialScale();
+    
+    // Solo para móvil con zoom alto
+    if (currentScale > 1.5) {
+      // Esperar a que la imagen cargue
+      const img = content.querySelector('img');
+      if (img && !img.complete) {
+        img.onload = () => {
+          const containerRect = container.getBoundingClientRect();
+          const contentRect = content.getBoundingClientRect();
+          const scaledWidth = contentRect.width * currentScale;
+          const scaledHeight = contentRect.height * currentScale;
+          
+          const centerX = (containerRect.width - scaledWidth) / 2;
+          const centerY = (containerRect.height - scaledHeight) / 2;
+          
+          setTransform(prev => ({
+            ...prev,
+            x: Math.max(centerX, 0),
+            y: Math.max(centerY, 0)
+          }));
+        };
+      } else {
+        // Imagen ya cargada o no hay imagen
+        setTimeout(() => {
+          const containerRect = container.getBoundingClientRect();
+          const contentRect = content.getBoundingClientRect();
+          const scaledWidth = contentRect.width * currentScale;
+          const scaledHeight = contentRect.height * currentScale;
+          
+          const centerX = (containerRect.width - scaledWidth) / 2;
+          const centerY = (containerRect.height - scaledHeight) / 2;
+          
+          setTransform(prev => ({
+            ...prev,
+            x: Math.max(centerX, 0),
+            y: Math.max(centerY, 0)
+          }));
+        }, 100);
+      }
+    }
+  }, []); // Solo al montar
 
   return {
     transform,

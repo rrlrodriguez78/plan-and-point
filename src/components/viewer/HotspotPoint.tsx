@@ -40,8 +40,8 @@ export const HotspotPoint = ({
   
   const baseColor = style?.color || '#4285F4';
   const color = isSelected ? '#10b981' : baseColor;
-  // Tamaño más compacto para móvil para evitar superposición
-  const baseSize = isMobile ? 24 : (style?.size || 32);
+  // Tamaño optimizado para móvil - más grande para mejor visibilidad con zoom
+  const baseSize = isMobile ? 32 : (style?.size || 32);
   const size = baseSize;
 
   return (
@@ -56,9 +56,9 @@ export const HotspotPoint = ({
       }}
       onClick={onClick}
     >
-      {/* Animated pulse ring - más sutil en móvil */}
+      {/* Animated pulse ring - más visible en móvil */}
       <div 
-        className={`absolute inset-0 rounded-full ${isMobile ? 'animate-pulse opacity-10' : 'animate-ping opacity-25'}`}
+        className={`absolute inset-0 rounded-full ${isMobile ? 'animate-pulse opacity-20' : 'animate-ping opacity-25'}`}
         style={{
           backgroundColor: color,
           width: `${size}px`,

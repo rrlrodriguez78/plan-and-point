@@ -27,13 +27,14 @@ export const ViewerCanvas = ({
       ref={containerRef}
       className="relative w-full h-full bg-accent/30 overflow-hidden cursor-grab active:cursor-grabbing"
     >
-      {/* Zoom controls */}
-      <div className="absolute bottom-4 md:top-4 right-4 z-10 flex flex-row md:flex-col gap-2">
+      {/* Zoom controls - Optimizados para móvil */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:top-4 md:right-4 z-10 flex flex-row md:flex-col gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-full md:rounded-lg shadow-lg">
         <Button
           variant="secondary"
           size="icon"
           onClick={zoomIn}
-          className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
+          className="h-12 w-12 md:h-10 md:w-10 touch-manipulation"
+          title="Acercar"
         >
           <ZoomIn className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
@@ -41,7 +42,8 @@ export const ViewerCanvas = ({
           variant="secondary"
           size="icon"
           onClick={zoomOut}
-          className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
+          className="h-12 w-12 md:h-10 md:w-10 touch-manipulation"
+          title="Alejar"
         >
           <ZoomOut className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
@@ -49,7 +51,8 @@ export const ViewerCanvas = ({
           variant="secondary"
           size="icon"
           onClick={resetTransform}
-          className="shadow-lg h-11 w-11 md:h-10 md:w-10 touch-manipulation"
+          className="h-12 w-12 md:h-10 md:w-10 touch-manipulation"
+          title="Restablecer vista"
         >
           <Maximize className="w-5 h-5 md:w-4 md:h-4" />
         </Button>
