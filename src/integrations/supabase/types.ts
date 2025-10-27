@@ -213,7 +213,7 @@ export type Database = {
           id: string
           image_url: string
           name: string
-          tenant_id: string | null
+          tenant_id: string
           tour_id: string
           width: number
         }
@@ -224,7 +224,7 @@ export type Database = {
           id?: string
           image_url: string
           name: string
-          tenant_id?: string | null
+          tenant_id: string
           tour_id: string
           width: number
         }
@@ -235,7 +235,7 @@ export type Database = {
           id?: string
           image_url?: string
           name?: string
-          tenant_id?: string | null
+          tenant_id?: string
           tour_id?: string
           width?: number
         }
