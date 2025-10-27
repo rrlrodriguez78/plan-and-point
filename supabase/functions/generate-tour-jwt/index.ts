@@ -17,7 +17,7 @@ const GenerateJWTSchema = z.object({
   tour_id: z.string().uuid({ message: 'Invalid tour_id format' }),
   permission_level: z.enum(['view', 'comment', 'edit'], { errorMap: () => ({ message: 'Invalid permission level' }) }).optional().default('view'),
   expires_in_days: z.number().int().min(1).max(365, { message: 'Expiration must be between 1 and 365 days' }).optional().default(7),
-  max_views: z.number().int().positive({ message: 'Max views must be a positive number' }).optional()
+  max_views: z.number().int().positive({ message: 'Max views must be a positive number' }).nullable().optional()
 });
 
 const handler = async (req: Request): Promise<Response> => {
