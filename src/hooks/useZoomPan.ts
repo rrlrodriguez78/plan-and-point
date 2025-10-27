@@ -231,99 +231,26 @@ export const useZoomPan = (): UseZoomPanReturn => {
     };
   }, [handleWheel, handlePointerDown, handlePointerMove, handlePointerUp]);
 
-  // Effect para ajustar zoom inicial y cuando cambia el tipo de dispositivo
+  // Effect para ajustar zoom cuando cambia el tipo de dispositivo
   useEffect(() => {
-    const container = containerRef.current;
-    const content = contentRef.current;
-    if (!container || !content) return;
-
-    // Detectar si está en escala por defecto (móvil, tablet o desktop)
     const isAtDefaultScale = 
       Math.abs(transform.scale - MOBILE_INITIAL_SCALE) < 0.01 ||
       Math.abs(transform.scale - TABLET_INITIAL_SCALE) < 0.01 ||
       Math.abs(transform.scale - DESKTOP_INITIAL_SCALE) < 0.01;
     
-    // Solo ajustar si el usuario no ha hecho zoom manual
     if (isAtDefaultScale) {
       const newScale = getInitialScale();
       
-      // Solo actualizar si realmente cambió la escala
       if (Math.abs(transform.scale - newScale) > 0.01) {
-        // Para móvil, centrar el contenido
-        if (newScale > 1.5) {
-          const containerRect = container.getBoundingClientRect();
-          const contentRect = content.getBoundingClientRect();
-          const scaledWidth = contentRect.width * newScale;
-          const scaledHeight = contentRect.height * newScale;
-          
-          const centerX = (containerRect.width - scaledWidth) / 2;
-          const centerY = (containerRect.height - scaledHeight) / 2;
-          
-          setTransform({
-            scale: newScale,
-            x: Math.max(centerX, 0),
-            y: Math.max(centerY, 0)
-          });
-        } else {
-          setTransform(prev => ({
-            ...prev,
-            scale: newScale,
-            x: prev.x * (newScale / prev.scale),
-            y: prev.y * (newScale / prev.scale)
-          }));
-        }
+        setTransform(prev => ({
+          ...prev,
+          scale: newScale,
+          x: prev.x * (newScale / prev.scale),
+          y: prev.y * (newScale / prev.scale)
+        }));
       }
     }
-  }, [deviceType, getInitialScale]);
-
-  // Effect inicial para centrar el contenido al montar
-  useEffect(() => {
-    const container = containerRef.current;
-    const content = contentRef.current;
-    if (!container || !content) return;
-
-    const currentScale = getInitialScale();
-    
-    // Solo para móvil con zoom alto
-    if (currentScale > 1.5) {
-      // Esperar a que la imagen cargue
-      const img = content.querySelector('img');
-      if (img && !img.complete) {
-        img.onload = () => {
-          const containerRect = container.getBoundingClientRect();
-          const contentRect = content.getBoundingClientRect();
-          const scaledWidth = contentRect.width * currentScale;
-          const scaledHeight = contentRect.height * currentScale;
-          
-          const centerX = (containerRect.width - scaledWidth) / 2;
-          const centerY = (containerRect.height - scaledHeight) / 2;
-          
-          setTransform(prev => ({
-            ...prev,
-            x: Math.max(centerX, 0),
-            y: Math.max(centerY, 0)
-          }));
-        };
-      } else {
-        // Imagen ya cargada o no hay imagen
-        setTimeout(() => {
-          const containerRect = container.getBoundingClientRect();
-          const contentRect = content.getBoundingClientRect();
-          const scaledWidth = contentRect.width * currentScale;
-          const scaledHeight = contentRect.height * currentScale;
-          
-          const centerX = (containerRect.width - scaledWidth) / 2;
-          const centerY = (containerRect.height - scaledHeight) / 2;
-          
-          setTransform(prev => ({
-            ...prev,
-            x: Math.max(centerX, 0),
-            y: Math.max(centerY, 0)
-          }));
-        }, 100);
-      }
-    }
-  }, []); // Solo al montar
+  }, [deviceType, getInitialScale, transform.scale]);
 
   return {
     transform,

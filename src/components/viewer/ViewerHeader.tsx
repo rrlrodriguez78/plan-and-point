@@ -32,9 +32,7 @@ export const ViewerHeader = ({ tourTitle, onToggleFullscreen, isFullscreen, unlo
   };
 
   const handleBack = () => {
-    // Desbloquear orientación antes de navegar
     if (unlockOrientation) {
-      console.log('🔄 Desbloqueando orientación desde Back button...');
       unlockOrientation();
     }
     navigate('/app/tours');

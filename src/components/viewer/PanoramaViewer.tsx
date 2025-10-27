@@ -120,7 +120,6 @@ export default function PanoramaViewer({
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 99998 : 30;
-  console.log('PanoramaViewer render - isFullscreen:', isFullscreen, 'zIndex:', containerZIndex);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {
@@ -192,11 +191,10 @@ export default function PanoramaViewer({
     return photo.photo_url;
   }, [isMobileDevice]);
 
-  // Listener de fullscreen - DEBE estar ANTES del auto-fullscreen
+  // Listener de fullscreen
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
-      console.log('Fullscreen changed:', isCurrentlyFullscreen);
       setIsFullscreen(isCurrentlyFullscreen);
       setFullscreenVersion(v => v + 1);
     };

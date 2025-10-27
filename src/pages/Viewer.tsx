@@ -39,36 +39,25 @@ const Viewer = () => {
   // Auto-dismiss warning cuando el usuario rota manualmente a landscape
   useEffect(() => {
     if (isLandscape && !userDismissedWarning && isMobile) {
-      console.log('✅ Usuario rotó manualmente a landscape, ocultando warning');
       setUserDismissedWarning(true);
     }
   }, [isLandscape, userDismissedWarning, isMobile]);
 
   // Handler mejorado para forzar landscape
   const handleForceLandscape = async () => {
-    console.log('🔄 Forzando landscape...');
-    
-    // Ocultar el warning inmediatamente
     setUserDismissedWarning(true);
     
     try {
-      // PASO 1: Intentar entrar a fullscreen primero
       if (!document.fullscreenElement) {
-        console.log('📱 Activando fullscreen...');
         await document.documentElement.requestFullscreen();
         await new Promise(resolve => setTimeout(resolve, 300));
-        console.log('✅ Fullscreen activado');
       }
       
-      // PASO 2: Intentar lockear la orientación
-      console.log('🎯 Intentando bloquear orientación...');
       const success = await lockLandscape();
       
       if (success) {
-        console.log('✅ Landscape bloqueado exitosamente');
         toast.success(t('viewer.landscapeLocked'));
       } else {
-        console.log('⚠️ No se pudo lockear la orientación');
         toast.error(
           t('viewer.enableAutoRotate'),
           { 
@@ -78,8 +67,6 @@ const Viewer = () => {
         );
       }
     } catch (error) {
-      console.error('❌ Error en handleForceLandscape:', error);
-      
       if (error instanceof Error) {
         if (error.name === 'NotSupportedError') {
           toast.error(t('viewer.rotationNotSupported'));
@@ -94,29 +81,21 @@ const Viewer = () => {
     }
   };
 
-  // Intentar rotación automática al entrar (solo móviles) - CON RETRASO
+  // Intentar rotación automática al entrar (solo móviles)
   useEffect(() => {
     const tryAutoRotate = async () => {
       if (isMobile && !userDismissedWarning && isStandalone) {
-        console.log('🚀 Iniciando intento de rotación automática...');
-        
-        // Esperar 500ms para asegurar que el DOM esté listo
         await new Promise(resolve => setTimeout(resolve, 500));
         
         try {
-          const success = await lockLandscape();
-          if (success) {
-            console.log('✅ Rotación automática exitosa');
-          } else {
-            console.log('⚠️ Rotación automática falló, mostrando warning');
-          }
+          await lockLandscape();
         } catch (error) {
-          console.log('❌ Error en rotación automática:', error);
+          // Silently fail
         }
       }
     };
     tryAutoRotate();
-  }, [isMobile, isStandalone, userDismissedWarning]); // ✅ Removido lockLandscape
+  }, [isMobile, isStandalone, userDismissedWarning]);
 
   useEffect(() => {
     loadTourData();
@@ -181,9 +160,7 @@ const Viewer = () => {
 
   const loadTourData = async () => {
     try {
-      // Validar que id existe y es un UUID válido
       if (!id || id === ':id' || !id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        console.error('❌ ID de tour inválido:', id);
         setLoading(false);
         return;
       }
@@ -208,7 +185,6 @@ const Viewer = () => {
       }
 
       if (!tourData) {
-        console.warn('⚠️ No se encontró el tour con ID:', id);
         setLoading(false);
         return;
       }
@@ -225,9 +201,7 @@ const Viewer = () => {
         isOwner = (tenantData as any)?.owner_id === user.id;
       }
       
-      // 3. Si el tour no está publicado, solo el dueño puede verlo
       if (!tourData.is_published && !isOwner) {
-        console.warn('⚠️ Usuario no autorizado para ver este tour');
         setLoading(false);
         return;
       }
@@ -269,7 +243,6 @@ const Viewer = () => {
             return;
           }
         } else {
-          // No hay token, solicitar contraseña
           console.log('🔒 Tour protegido con contraseña, solicitando acceso');
           setPasswordProtected(true);
           setPasswordUpdatedAt(tourData.password_updated_at);
