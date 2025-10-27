@@ -26,12 +26,12 @@ const CompatibilityReport = () => {
       { name: 'Orientation responsive', status: 'pass' as const, details: 'Handlers implementados' },
     ],
     pwa: [
-      { name: 'Service Worker', status: 'pass' as const, details: 'Registrado y funcionando' },
-      { name: 'Web App Manifest', status: 'warning' as const, details: 'Deshabilitado (auth issues)' },
+      { name: 'Service Worker', status: 'pass' as const, details: 'Workbox + auto-update cada hora' },
+      { name: 'Web App Manifest', status: 'pass' as const, details: 'Optimizado con screenshots + shortcuts' },
       { name: 'Instalable', status: 'pass' as const, details: 'Install prompt implementado' },
-      { name: 'Offline mode', status: 'pass' as const, details: 'Cache configurado' },
-      { name: 'Splash screen', status: 'pass' as const, details: 'Generador en /app/pwa-splash' },
-      { name: 'Update notifications', status: 'pass' as const, details: 'Toast con botón Recargar' },
+      { name: 'Offline mode', status: 'pass' as const, details: 'Cache + online/offline detection' },
+      { name: 'Splash screen', status: 'pass' as const, details: 'iOS/Android - Generador en /app/pwa-splash' },
+      { name: 'Update notifications', status: 'pass' as const, details: 'Toast Sonner + skip waiting + reload button' },
     ],
     desktop: [
       { name: 'Breakpoints Tailwind', status: 'pass' as const, details: 'sm, md, lg, xl, 2xl' },
