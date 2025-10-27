@@ -166,7 +166,7 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
                     <X className="w-3 h-3" />
                   </Button>
                 </div>
-                <ScrollArea className="max-h-[40vh] pr-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <ScrollArea className="h-[50vh] max-h-[400px] pr-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <div className="space-y-1">
                     {floorPlans
                       .sort((a, b) => (b.floor_order || 0) - (a.floor_order || 0))
