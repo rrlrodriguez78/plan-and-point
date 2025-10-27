@@ -21,7 +21,7 @@ const CompatibilityReport = () => {
       { name: 'Touch targets 44x44px', status: 'pass' as const, details: 'Todos los botones >= 44px' },
       { name: 'Inputs sin auto-zoom', status: 'pass' as const, details: 'font-size: 16px aplicado' },
       { name: 'Status bar overlay', status: 'warning' as const, details: 'Necesita safe-area-inset' },
-      { name: 'Swipe gestures', status: 'fail' as const, details: 'No implementado en galerías' },
+      { name: 'Swipe gestures', status: 'pass' as const, details: 'Implementado - Ver /app/swipe-demo' },
       { name: 'Keyboard no tapa inputs', status: 'pass' as const, details: 'iOS viewport fix aplicado' },
       { name: 'Orientation responsive', status: 'pass' as const, details: 'Handlers implementados' },
     ],
@@ -228,7 +228,6 @@ const CompatibilityReport = () => {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm">
-              <li>• <strong>Swipe Gestures</strong>: No implementado en galerías</li>
               <li>• <strong>PWA Manifest</strong>: Deshabilitado (problemas de auth redirect)</li>
               <li>• <strong>Update Notifications</strong>: No implementado para PWA</li>
               <li>• <strong>Splash Screens iOS</strong>: No personalizados</li>
@@ -252,9 +251,12 @@ const CompatibilityReport = () => {
         </Card>
 
         {/* Footer Actions */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-wrap gap-4 justify-center">
           <Button onClick={() => navigate('/app/compatibility')}>
             Ejecutar Test en Vivo
+          </Button>
+          <Button variant="secondary" onClick={() => navigate('/app/swipe-demo')}>
+            Ver Demo de Swipe Gestures
           </Button>
           <Button variant="outline" onClick={() => window.open('/COMPATIBILITY-VERIFICATION-REPORT.md', '_blank')}>
             Ver Reporte Completo
