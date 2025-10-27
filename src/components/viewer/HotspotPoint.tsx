@@ -40,8 +40,8 @@ export const HotspotPoint = ({
   
   const baseColor = style?.color || '#4285F4';
   const color = isSelected ? '#10b981' : baseColor;
-  // Tamaño reducido para móvil para evitar superposición
-  const baseSize = isMobile ? 32 : (style?.size || 32);
+  // Tamaño más compacto para móvil para evitar superposición
+  const baseSize = isMobile ? 24 : (style?.size || 32);
   const size = baseSize;
 
   return (
