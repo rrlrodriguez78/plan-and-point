@@ -8,6 +8,7 @@ import { ThemeProvider } from "./components/contexts/ThemeContext";
 import { UserSettingsProvider } from "./contexts/UserSettingsContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import { A11ySkipLink } from "./components/A11ySkipLink";
+import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
@@ -39,6 +40,7 @@ const App = () => (
         <A11ySkipLink />
         <Toaster />
         <Sonner />
+        <PWAUpdatePrompt />
         <BrowserRouter>
           <AuthProvider>
             <TenantProvider>
