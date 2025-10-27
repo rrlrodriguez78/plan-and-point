@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // Check if password has been compromised using Have I Been Pwned API
 async function isPasswordCompromised(password: string): Promise<boolean> {
@@ -42,6 +43,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Zod validation schema
+const SetPasswordSchema = z.object({
+  tour_id: z.string().uuid({ message: 'Invalid tour_id format' }),
+  password: z.string().min(1, { message: 'Password is required' }).max(128, { message: 'Password must be less than 128 characters' }).optional(),
+  enabled: z.boolean({ required_error: 'enabled is required' })
+});
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -57,15 +65,22 @@ serve(async (req) => {
       );
     }
 
-    const { tour_id, password, enabled } = await req.json();
-
-    if (!tour_id) {
-      console.error('Missing tour_id');
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = SetPasswordSchema.safeParse(body);
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.flatten());
       return new Response(
-        JSON.stringify({ error: 'tour_id is required' }),
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { tour_id, password, enabled } = validation.data;
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

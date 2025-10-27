@@ -1,11 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { verify } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Zod validation schema
+const ValidateAccessSchema = z.object({
+  tour_id: z.string().uuid({ message: 'Invalid tour_id format' }),
+  access_token: z.string().min(1, { message: 'Access token is required' })
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -13,14 +20,22 @@ serve(async (req) => {
   }
 
   try {
-    const { tour_id, access_token } = await req.json();
-
-    if (!tour_id || !access_token) {
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = ValidateAccessSchema.safeParse(body);
+    if (!validation.success) {
       return new Response(
-        JSON.stringify({ valid: false, error: 'tour_id and access_token are required' }),
+        JSON.stringify({ 
+          valid: false,
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { tour_id, access_token } = validation.data;
 
     const jwtSecret = Deno.env.get('JWT_SECRET');
     if (!jwtSecret) {

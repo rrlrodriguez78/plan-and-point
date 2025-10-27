@@ -1,16 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface BackupRequest {
-  tenant_id: string;
-  backup_type: 'manual' | 'automatic';
-  backup_name?: string;
-  notes?: string;
-}
+// Zod validation schema
+const BackupRequestSchema = z.object({
+  tenant_id: z.string().uuid({ message: 'Invalid tenant_id format' }),
+  backup_type: z.enum(['manual', 'automatic'], { errorMap: () => ({ message: 'Invalid backup type' }) }),
+  backup_name: z.string().max(100).optional(),
+  notes: z.string().max(500).optional()
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -33,8 +35,22 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const body: BackupRequest = await req.json();
-    const { tenant_id, backup_type, backup_name, notes } = body;
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = BackupRequestSchema.safeParse(body);
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.flatten());
+      return new Response(
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { tenant_id, backup_type, backup_name, notes } = validation.data;
 
     console.log(`Creating backup for tenant ${tenant_id}, user ${user.id}`);
 
@@ -177,8 +193,8 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Backup creation error:', error);
     return new Response(
-      JSON.stringify({ error: error?.message || 'Unknown error' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'An error occurred processing your request' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

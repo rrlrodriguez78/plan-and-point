@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { verify } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -11,9 +12,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface VerifyJWTRequest {
-  jwt: string;
-}
+// Zod validation schema
+const VerifyJWTSchema = z.object({
+  jwt: z.string().min(1, { message: 'JWT token is required' })
+});
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -21,15 +23,22 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const body: VerifyJWTRequest = await req.json();
-    const { jwt: jwtToken } = body;
-
-    if (!jwtToken) {
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = VerifyJWTSchema.safeParse(body);
+    if (!validation.success) {
       return new Response(
-        JSON.stringify({ error: 'JWT token is required', valid: false }),
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          valid: false,
+          details: validation.error.flatten().fieldErrors 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { jwt: jwtToken } = validation.data;
 
     // Verify JWT signature and expiration
     const key = await crypto.subtle.importKey(
@@ -128,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in verify-tour-jwt:", error);
     return new Response(
-      JSON.stringify({ error: error.message, valid: false }),
+      JSON.stringify({ error: 'An error occurred processing your request', valid: false }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

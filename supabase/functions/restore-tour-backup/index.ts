@@ -1,14 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface RestoreRequest {
-  backup_id: string;
-  restore_mode: 'full' | 'additive';
-}
+// Zod validation schema
+const RestoreRequestSchema = z.object({
+  backup_id: z.string().uuid({ message: 'Invalid backup_id format' }),
+  restore_mode: z.enum(['full', 'additive'], { errorMap: () => ({ message: 'Invalid restore mode' }) })
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -31,8 +33,22 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const body: RestoreRequest = await req.json();
-    const { backup_id, restore_mode } = body;
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = RestoreRequestSchema.safeParse(body);
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.flatten());
+      return new Response(
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { backup_id, restore_mode } = validation.data;
 
     console.log(`Restoring backup ${backup_id} in ${restore_mode} mode for user ${user.id}`);
 
@@ -191,8 +207,8 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Restoration error:', error);
     return new Response(
-      JSON.stringify({ error: error?.message || 'Unknown error' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'An error occurred processing your request' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

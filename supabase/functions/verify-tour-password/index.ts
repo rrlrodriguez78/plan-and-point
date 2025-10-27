@@ -2,11 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 import { create } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Zod validation schema
+const VerifyPasswordSchema = z.object({
+  tour_id: z.string().uuid({ message: 'Invalid tour_id format' }),
+  password: z.string().min(1, { message: 'Password is required' }).max(128, { message: 'Password too long' })
+});
 
 // Simple in-memory rate limiting (resets on function restart)
 const rateLimitMap = new Map<string, { attempts: number; resetAt: number }>();
@@ -37,14 +44,21 @@ serve(async (req) => {
   }
 
   try {
-    const { tour_id, password } = await req.json();
-
-    if (!tour_id || !password) {
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = VerifyPasswordSchema.safeParse(body);
+    if (!validation.success) {
       return new Response(
-        JSON.stringify({ error: 'tour_id and password are required' }),
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { tour_id, password } = validation.data;
 
     // Get client IP for rate limiting
     const ipAddress = req.headers.get('x-forwarded-for') || 

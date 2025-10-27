@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -11,20 +12,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface NotificationRequest {
-  notification_type: 'new_view' | 'new_user' | 'weekly_report' | 'activity_reminder';
-  recipient_email: string;
-  recipient_name: string;
-  data: {
-    user_id?: string;
-    tour_title?: string;
-    tour_id?: string;
-    viewed_at?: string;
-    user_name?: string;
-    registered_at?: string;
-    stats?: any;
-  };
-}
+// Zod validation schema
+const NotificationSchema = z.object({
+  notification_type: z.enum(['new_view', 'new_user', 'weekly_report', 'activity_reminder'], {
+    errorMap: () => ({ message: 'Invalid notification type' })
+  }),
+  recipient_email: z.string().email({ message: 'Invalid email format' }).max(255),
+  recipient_name: z.string().min(1, { message: 'Recipient name is required' }).max(100),
+  data: z.object({
+    user_id: z.string().uuid().optional(),
+    tour_title: z.string().max(100).optional(),
+    tour_id: z.string().uuid().optional(),
+    viewed_at: z.string().optional(),
+    user_name: z.string().max(100).optional(),
+    registered_at: z.string().optional(),
+    stats: z.any().optional()
+  })
+});
 
 // Email templates
 const getNewViewEmailHtml = (data: any) => `
@@ -222,8 +226,22 @@ const handler = async (req: Request): Promise<Response> => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const body: NotificationRequest = await req.json();
-    const { notification_type, recipient_email, recipient_name, data } = body;
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = NotificationSchema.safeParse(body);
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.flatten());
+      return new Response(
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { notification_type, recipient_email, recipient_name, data } = validation.data;
 
     console.log(`Sending ${notification_type} email to ${recipient_email}`);
 

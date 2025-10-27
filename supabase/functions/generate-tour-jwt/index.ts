@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { create } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -11,12 +12,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface GenerateJWTRequest {
-  tour_id: string;
-  permission_level?: 'view' | 'comment' | 'edit';
-  expires_in_days?: number;
-  max_views?: number;
-}
+// Zod validation schema
+const GenerateJWTSchema = z.object({
+  tour_id: z.string().uuid({ message: 'Invalid tour_id format' }),
+  permission_level: z.enum(['view', 'comment', 'edit'], { errorMap: () => ({ message: 'Invalid permission level' }) }).optional().default('view'),
+  expires_in_days: z.number().int().min(1).max(365, { message: 'Expiration must be between 1 and 365 days' }).optional().default(7),
+  max_views: z.number().int().positive({ message: 'Max views must be a positive number' }).optional()
+});
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -43,15 +45,22 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const body: GenerateJWTRequest = await req.json();
-    const { tour_id, permission_level = 'view', expires_in_days = 7, max_views } = body;
-
-    if (!tour_id) {
+    const body = await req.json();
+    
+    // Validate request body with Zod
+    const validation = GenerateJWTSchema.safeParse(body);
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.flatten());
       return new Response(
-        JSON.stringify({ error: 'tour_id is required' }),
+        JSON.stringify({ 
+          error: 'Validation failed', 
+          details: validation.error.flatten().fieldErrors 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { tour_id, permission_level, expires_in_days, max_views } = validation.data;
 
     // Verify user owns the tour
     const { data: tour, error: tourError } = await supabase
@@ -135,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in generate-tour-jwt:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'An error occurred processing your request' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
