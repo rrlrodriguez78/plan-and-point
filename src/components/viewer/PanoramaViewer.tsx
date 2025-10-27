@@ -586,10 +586,10 @@ export default function PanoramaViewer({
                 size="icon"
                 onClick={handlePreviousHotspot}
                 disabled={!canGoPreviousHotspot}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-10 w-10 md:h-12 md:w-12 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
                 title={t('viewer.previousPoint')}
               >
-                <ChevronLeft className="w-8 h-8" />
+                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
 
               <Button 
@@ -597,10 +597,10 @@ export default function PanoramaViewer({
                 size="icon"
                 onClick={handleNextHotspot}
                 disabled={!canGoNextHotspot}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-14 w-14 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full h-10 w-10 md:h-12 md:w-12 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed z-40"
                 title={t('viewer.nextPoint')}
               >
-                <ChevronRight className="w-8 h-8" />
+                <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
             </>
           )}
@@ -613,11 +613,11 @@ export default function PanoramaViewer({
               onClick={() => setIsMenuVisible(!isMenuVisible)}
               className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] 
                          text-white bg-black/80 hover:bg-black/90 
-                         backdrop-blur-sm rounded-full h-12 w-12 shadow-2xl 
+                         backdrop-blur-sm rounded-full h-10 w-10 shadow-2xl 
                          border border-white/30"
               title={isMenuVisible ? t('viewer.hideMenu') : t('viewer.showMenu')}
             >
-              {isMenuVisible ? <ChevronDown className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuVisible ? <ChevronDown className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
           )}
 
@@ -646,17 +646,17 @@ export default function PanoramaViewer({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full">
-                  <Info className="w-5 h-5" />
+                <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full h-9 w-9">
+                  <Info className="w-4 h-4" />
                 </Button>
                 {/* Ocultar botón de fullscreen en PWA */}
                 {!isStandalone && (
-                  <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 rounded-full">
-                    {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                  <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20 rounded-full h-9 w-9">
+                    {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full">
-                  <X className="w-6 h-6" />
+                <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full h-9 w-9">
+                  <X className="w-5 h-5" />
                 </Button>
               </div>
             </div>
@@ -682,9 +682,9 @@ export default function PanoramaViewer({
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                        className="text-white hover:bg-white/20 rounded-lg px-3 py-1.5 h-auto flex items-center gap-2 border border-white/20 bg-black/40 text-sm"
                       >
-                        <Building2 className="w-5 h-5" />
+                        <Building2 className="w-4 h-4" />
                         <div className="flex flex-col items-start">
                           <span className="text-xs text-slate-400">Floor</span>
                           <span className="text-sm font-medium">
@@ -736,9 +736,9 @@ export default function PanoramaViewer({
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                        className="text-white hover:bg-white/20 rounded-lg px-3 py-1.5 h-auto flex items-center gap-2 border border-white/20 bg-black/40 text-sm"
                       >
-                        <MapPin className="w-5 h-5" />
+                        <MapPin className="w-4 h-4" />
                         <div className="flex flex-col items-start">
                           <span className="text-xs text-slate-400">Hotspots</span>
                           <span className="text-sm font-medium">
@@ -783,9 +783,9 @@ export default function PanoramaViewer({
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="text-white hover:bg-white/20 rounded-lg px-4 py-2 h-auto flex items-center gap-2 border border-white/20 bg-black/40"
+                        className="text-white hover:bg-white/20 rounded-lg px-3 py-1.5 h-auto flex items-center gap-2 border border-white/20 bg-black/40 text-sm"
                       >
-                        <Calendar className="w-5 h-5" />
+                        <Calendar className="w-4 h-4" />
                         <div className="flex flex-col items-start">
                           <span className="text-xs text-slate-400">{t('viewer.date')}</span>
                           <span className="text-sm font-medium">
@@ -835,29 +835,29 @@ export default function PanoramaViewer({
                 <div className="w-px h-8 bg-white/30" />
                 
                 {/* Controles de Zoom */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={() => zoomInOut(5)} 
-                    className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                    className="text-white hover:bg-white/20 rounded-full bg-black/40 h-8 w-8" 
                     disabled={currentZoom >= 120}
                     title={t('viewer.zoomOut')}
                   >
-                    <ZoomOut className="w-5 h-5" />
+                    <ZoomOut className="w-4 h-4" />
                   </Button>
-                  <span className="text-white text-sm font-medium min-w-16 text-center">
+                  <span className="text-white text-xs font-medium min-w-12 text-center">
                     {Math.round(100 - (currentZoom - 30) / (120 - 30) * 100)}%
                   </span>
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={() => zoomInOut(-5)} 
-                    className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                    className="text-white hover:bg-white/20 rounded-full bg-black/40 h-8 w-8" 
                     disabled={currentZoom <= 30}
                     title={t('viewer.zoomIn')}
                   >
-                    <ZoomIn className="w-5 h-5" />
+                    <ZoomIn className="w-4 h-4" />
                   </Button>
                 </div>
 
@@ -868,10 +868,10 @@ export default function PanoramaViewer({
                   variant="ghost" 
                   size="icon" 
                   onClick={resetView} 
-                  className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                  className="text-white hover:bg-white/20 rounded-full bg-black/40 h-8 w-8" 
                   title={t('viewer.resetView')}
                 >
-                  <RotateCw className="w-5 h-5" />
+                  <RotateCw className="w-4 h-4" />
                 </Button>
                 
                 {/* Popover de navegación rápida de hotspots */}
@@ -880,10 +880,10 @@ export default function PanoramaViewer({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-white hover:bg-white/20 rounded-full bg-black/40" 
+                      className="text-white hover:bg-white/20 rounded-full bg-black/40 h-8 w-8" 
                       title={t('viewer.hotspotList')}
                     >
-                      <List className="w-5 h-5" />
+                      <List className="w-4 h-4" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent 
