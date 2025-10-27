@@ -1410,6 +1410,17 @@ export type Database = {
         Returns: string
       }
       generate_share_token: { Args: never; Returns: string }
+      get_backup_dashboard: {
+        Args: never
+        Returns: {
+          average_upload_size: number
+          average_upload_time: unknown
+          last_upload_date: string
+          successful_uploads: number
+          total_storage_used: number
+          total_uploads: number
+        }[]
+      }
       get_backup_metrics_stats: {
         Args: { p_days?: number }
         Returns: {
