@@ -45,6 +45,15 @@ export default function ViewerControls({ floorPlans, activeFloorPlanId, onFloorP
     if (name.includes('tercer') || name.includes('third') || name.includes('3')) {
       return '3';
     }
+    if (name.includes('cuarto') || name.includes('fourth') || name.includes('4')) {
+      return '4';
+    }
+    if (name.includes('quinto') || name.includes('fifth') || name.includes('5')) {
+      return '5';
+    }
+    if (name.includes('sexto') || name.includes('sixth') || name.includes('6')) {
+      return '6';
+    }
     
     const index = floorPlans.findIndex(fp => fp.id === floorPlan.id);
     return (index + 1).toString();
