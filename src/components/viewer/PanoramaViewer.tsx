@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { 
   X, RotateCw, ZoomIn, ZoomOut, 
   Maximize, Minimize, Info, MapPin,
-  ChevronLeft, ChevronRight, Building2, Calendar, List,
+  ChevronLeft, ChevronRight, Building2, Calendar,
   ChevronDown
 } from "lucide-react";
 import * as THREE from 'three';
@@ -113,7 +113,6 @@ export default function PanoramaViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenVersion, setFullscreenVersion] = useState(0);
   const [currentZoom, setCurrentZoom] = useState(120);
-  const [showNavList, setShowNavList] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoadingScene, setIsLoadingScene] = useState(false);
 
@@ -486,7 +485,6 @@ export default function PanoramaViewer({
   }, []);
 
   const handleNavClick = (hotspot: Hotspot) => {
-    setShowNavList(false);
     onNavigate(hotspot);
   };
 
@@ -851,75 +849,6 @@ export default function PanoramaViewer({
                 >
                   <RotateCw className="w-4 h-4" />
                 </Button>
-                
-                {/* Popover de navegación rápida de hotspots */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-white hover:bg-white/20 rounded-full bg-black/40 h-8 w-8" 
-                      title={t('viewer.hotspotList')}
-                    >
-                      <List className="w-4 h-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent 
-                    container={isFullscreen ? fullscreenContainerRef.current : undefined}
-                    className="w-80 bg-black/95 backdrop-blur-md border-white/30 text-white p-0"
-                    style={{ zIndex: 99999 }}
-                    align="end"
-                    side="top"
-                  >
-                    <div className="p-4 border-b border-white/20">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <MapPin className="w-5 h-5" />
-                        {t('viewer.allHotspots')}
-                      </h3>
-                      <p className="text-sm text-slate-400 mt-1">
-                        {availableHotspots.length} {t('viewer.hotspotsAvailable')}
-                      </p>
-                    </div>
-                    <ScrollArea className="h-[400px]">
-                      <div className="p-2">
-                        {availableHotspots.map((hotspot, index) => (
-                          <button
-                            key={hotspot.id}
-                            onClick={() => handleNavClick(hotspot)}
-                            className={`w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors ${
-                              hotspot.id === activePhoto?.hotspot_id 
-                                ? 'bg-white/20 border border-white/30' 
-                                : 'border border-transparent'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                                hotspot.id === activePhoto?.hotspot_id 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-white/20 text-white'
-                              }`}>
-                                {index + 1}
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-medium">{hotspot.title}</div>
-                                {hotspot.description && (
-                                  <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">
-                                    {hotspot.description}
-                                  </div>
-                                )}
-                              </div>
-                              {hotspot.id === activePhoto?.hotspot_id && (
-                                <div className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                                  {t('viewer.current')}
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
           </motion.div>
