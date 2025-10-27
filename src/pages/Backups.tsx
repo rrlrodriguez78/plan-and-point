@@ -35,6 +35,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useBackups } from '@/hooks/useBackups';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { 
   ArrowLeft, 
   Plus, 
@@ -44,7 +45,10 @@ import {
   Database,
   Clock,
   HardDrive,
-  Package
+  Package,
+  Upload,
+  FileJson,
+  Info
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -52,11 +56,13 @@ import { es } from 'date-fns/locale';
 export default function Backups() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { backups, loading, creating, restoring, createBackup, restoreBackup, deleteBackup, downloadBackup } = useBackups();
+  const { backups, loading, creating, restoring, createBackup, restoreBackup, deleteBackup, downloadBackup, uploadAndRestoreBackup } = useBackups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [backupName, setBackupName] = useState('');
   const [backupNotes, setBackupNotes] = useState('');
   const [restoreMode, setRestoreMode] = useState<'full' | 'additive'>('additive');
@@ -86,6 +92,30 @@ export default function Backups() {
       await deleteBackup(selectedBackup.id);
       setShowDeleteDialog(false);
       setSelectedBackup(null);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/json') {
+        toast.error('Por favor selecciona un archivo JSON válido');
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUploadRestore = async () => {
+    if (!selectedFile) return;
+    
+    try {
+      await uploadAndRestoreBackup(selectedFile, restoreMode);
+      setShowUploadDialog(false);
+      setSelectedFile(null);
+      setRestoreMode('additive');
+    } catch (error) {
+      console.error('Error uploading backup:', error);
     }
   };
 
@@ -144,14 +174,24 @@ export default function Backups() {
                 Gestiona los respaldos de seguridad de tus tours
               </p>
             </div>
-            <Button
-              onClick={() => setShowCreateDialog(true)}
-              disabled={creating}
-              size="lg"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Backup Manual
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowUploadDialog(true)}
+                variant="outline"
+                size="lg"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Restaurar desde PC
+              </Button>
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                disabled={creating}
+                size="lg"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Backup
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -410,6 +450,127 @@ export default function Backups() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upload Backup Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Restaurar Backup desde tu PC</DialogTitle>
+            <DialogDescription>
+              Selecciona un archivo de backup JSON previamente descargado
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Info Box */}
+            <div className="flex gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold text-blue-900 dark:text-blue-100">
+                  ℹ️ Información importante
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
+                  <li>Solo se aceptan archivos .json descargados previamente</li>
+                  <li>El backup restaurará tours, floor plans, hotspots y panoramas</li>
+                  <li>Las URLs de las imágenes se mantendrán (deben estar disponibles)</li>
+                  <li>Puedes elegir entre restauración aditiva o completa</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* File Upload */}
+            <div className="space-y-3">
+              <Label htmlFor="backup-file" className="text-base font-semibold">
+                Seleccionar archivo de backup
+              </Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  id="backup-file"
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileSelect}
+                  className="flex-1"
+                />
+                {selectedFile && (
+                  <Badge variant="secondary" className="gap-2">
+                    <FileJson className="h-3 w-3" />
+                    {selectedFile.name}
+                  </Badge>
+                )}
+              </div>
+              {selectedFile && (
+                <p className="text-xs text-muted-foreground">
+                  Tamaño: {(selectedFile.size / 1024).toFixed(2)} KB
+                </p>
+              )}
+            </div>
+
+            {/* Restore Mode Selection */}
+            {selectedFile && (
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Modo de restauración</Label>
+                <div className="space-y-3 pl-2">
+                  <label className="flex items-start space-x-3 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="restore-mode-upload"
+                      value="additive"
+                      checked={restoreMode === 'additive'}
+                      onChange={() => setRestoreMode('additive')}
+                      className="mt-1"
+                    />
+                    <div className="space-y-1">
+                      <span className="font-medium group-hover:text-primary transition-colors">
+                        Aditivo (Recomendado)
+                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        Los tours del backup se agregarán a los existentes. No se eliminará nada.
+                      </p>
+                    </div>
+                  </label>
+                  <label className="flex items-start space-x-3 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="restore-mode-upload"
+                      value="full"
+                      checked={restoreMode === 'full'}
+                      onChange={() => setRestoreMode('full')}
+                      className="mt-1"
+                    />
+                    <div className="space-y-1">
+                      <span className="font-medium text-destructive group-hover:text-destructive/80 transition-colors">
+                        Completo (Peligroso)
+                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        Se eliminarán TODOS los tours actuales y se reemplazarán con los del backup.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowUploadDialog(false);
+                setSelectedFile(null);
+                setRestoreMode('additive');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUploadRestore} 
+              disabled={!selectedFile || restoring}
+            >
+              {restoring ? 'Restaurando...' : 'Restaurar Backup'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

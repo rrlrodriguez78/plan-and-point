@@ -163,7 +163,21 @@ export function useBackups() {
 
   const downloadBackup = async (backup: Backup) => {
     try {
-      const blob = new Blob([JSON.stringify(backup.backup_data, null, 2)], {
+      // Crear estructura completa del backup con metadata
+      const completeBackup = {
+        _metadata: {
+          backup_id: backup.id,
+          backup_name: backup.backup_name,
+          created_at: backup.created_at,
+          tenant_id: backup.tenant_id,
+          tours_count: backup.tours_count,
+          media_files_count: backup.media_files_count,
+          size_bytes: backup.total_size_bytes,
+        },
+        data: backup.backup_data,
+      };
+
+      const blob = new Blob([JSON.stringify(completeBackup, null, 2)], {
         type: 'application/json',
       });
       
@@ -176,9 +190,16 @@ export function useBackups() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      await supabase.from('backup_logs').insert({
+        backup_id: backup.id,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        action: 'downloaded',
+        details: { downloaded_at: new Date().toISOString() },
+      });
+
       toast({
-        title: 'Backup descargado',
-        description: 'El archivo se descargó correctamente',
+        title: '✅ Backup descargado',
+        description: 'El archivo se guardó en tu PC. Guárdalo en un lugar seguro.',
       });
     } catch (error: any) {
       console.error('Error downloading backup:', error);
@@ -187,6 +208,74 @@ export function useBackups() {
         description: 'No se pudo descargar el backup',
         variant: 'destructive',
       });
+    }
+  };
+
+  const uploadAndRestoreBackup = async (file: File, mode: 'full' | 'additive' = 'additive') => {
+    if (!currentTenant) {
+      toast({
+        title: 'Error',
+        description: 'No hay tenant seleccionado',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      // Leer el archivo
+      const fileContent = await file.text();
+      const backupData = JSON.parse(fileContent);
+
+      // Validar estructura del backup
+      if (!backupData.data || !backupData._metadata) {
+        throw new Error('Archivo de backup inválido o corrupto');
+      }
+
+      const { data: restoredData, error } = await supabase.functions.invoke('restore-tour-backup', {
+        body: {
+          backup_data: backupData.data,
+          restore_mode: mode,
+          tenant_id: currentTenant.tenant_id,
+          is_file_upload: true,
+        },
+      });
+
+      if (error) throw error;
+
+      // Crear registro del backup importado
+      await supabase.from('tour_backups').insert({
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        tenant_id: currentTenant.tenant_id,
+        backup_name: `Importado: ${backupData._metadata.backup_name}`,
+        backup_type: 'manual',
+        backup_status: 'completed',
+        backup_data: backupData.data,
+        included_files: backupData.data.media_files || [],
+        total_size_bytes: new Blob([fileContent]).size,
+        tours_count: backupData.data.tours?.length || 0,
+        media_files_count: backupData.data.media_files?.length || 0,
+        completed_at: new Date().toISOString(),
+        notes: `Restaurado desde archivo. Backup original: ${backupData._metadata.created_at}`,
+      });
+
+      toast({
+        title: '✅ Backup restaurado desde archivo',
+        description: `Se restauraron ${restoredData.tours_restored} tours correctamente`,
+      });
+
+      await loadBackups();
+      return restoredData;
+    } catch (error: any) {
+      console.error('Error restoring from file:', error);
+      toast({
+        title: 'Error al restaurar backup',
+        description: error.message || 'El archivo puede estar corrupto o ser incompatible',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -199,6 +288,7 @@ export function useBackups() {
     restoreBackup,
     deleteBackup,
     downloadBackup,
+    uploadAndRestoreBackup,
     loadBackups,
   };
 }

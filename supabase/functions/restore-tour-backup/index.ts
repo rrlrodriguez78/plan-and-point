@@ -6,10 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Zod validation schema
-const RestoreRequestSchema = z.object({
+// Zod validation schemas
+const RestoreFromDBSchema = z.object({
   backup_id: z.string().uuid({ message: 'Invalid backup_id format' }),
-  restore_mode: z.enum(['full', 'additive'], { errorMap: () => ({ message: 'Invalid restore mode' }) })
+  restore_mode: z.enum(['full', 'additive'], { errorMap: () => ({ message: 'Invalid restore mode' }) }),
+  is_file_upload: z.literal(false).optional()
+});
+
+const RestoreFromFileSchema = z.object({
+  backup_data: z.any(),
+  restore_mode: z.enum(['full', 'additive'], { errorMap: () => ({ message: 'Invalid restore mode' }) }),
+  tenant_id: z.string().uuid({ message: 'Invalid tenant_id format' }),
+  is_file_upload: z.literal(true)
 });
 
 Deno.serve(async (req) => {
@@ -35,8 +43,16 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     
-    // Validate request body with Zod
-    const validation = RestoreRequestSchema.safeParse(body);
+    // Determine if it's a file upload or database restore
+    const isFileUpload = body.is_file_upload === true;
+    
+    let validation;
+    if (isFileUpload) {
+      validation = RestoreFromFileSchema.safeParse(body);
+    } else {
+      validation = RestoreFromDBSchema.safeParse(body);
+    }
+    
     if (!validation.success) {
       console.error('Validation error:', validation.error.flatten());
       return new Response(
@@ -48,31 +64,70 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { backup_id, restore_mode } = validation.data;
+    let backupData: any;
+    let tenantId: string;
+    let restore_mode: 'full' | 'additive';
 
-    console.log(`Restoring backup ${backup_id} in ${restore_mode} mode for user ${user.id}`);
+    if (isFileUpload) {
+      const { backup_data, tenant_id, restore_mode: mode } = validation.data as z.infer<typeof RestoreFromFileSchema>;
+      
+      // Verify user belongs to tenant
+      const { data: tenantCheck } = await supabase
+        .from('tenant_users')
+        .select('tenant_id')
+        .eq('tenant_id', tenant_id)
+        .eq('user_id', user.id)
+        .single();
 
-    // Get backup
-    const { data: backup, error: backupError } = await supabase
-      .from('tour_backups')
-      .select('*')
-      .eq('id', backup_id)
-      .eq('user_id', user.id)
-      .single();
+      if (!tenantCheck) {
+        throw new Error('User does not belong to this tenant');
+      }
 
-    if (backupError || !backup) {
-      throw new Error('Backup not found or access denied');
+      backupData = backup_data;
+      tenantId = tenant_id;
+      restore_mode = mode;
+      
+      console.log(`Restoring from uploaded file in ${restore_mode} mode for user ${user.id}`);
+    } else {
+      const { backup_id, restore_mode: mode } = validation.data as z.infer<typeof RestoreFromDBSchema>;
+      restore_mode = mode;
+
+      console.log(`Restoring backup ${backup_id} in ${restore_mode} mode for user ${user.id}`);
+
+      // Get backup from database
+      const { data: backup, error: backupError } = await supabase
+        .from('tour_backups')
+        .select('*')
+        .eq('id', backup_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (backupError || !backup) {
+        throw new Error('Backup not found or access denied');
+      }
+
+      if (!backup.can_restore) {
+        throw new Error('This backup cannot be restored');
+      }
+
+      if (backup.restore_expiry && new Date(backup.restore_expiry) < new Date()) {
+        throw new Error('Backup has expired');
+      }
+
+      backupData = backup.backup_data;
+      tenantId = backup.tenant_id;
+
+      // Log the restoration for DB backup
+      await supabase.from('backup_logs').insert({
+        backup_id: backup.id,
+        user_id: user.id,
+        action: 'restored',
+        details: {
+          restore_mode,
+          source: 'database'
+        },
+      });
     }
-
-    if (!backup.can_restore) {
-      throw new Error('This backup cannot be restored');
-    }
-
-    if (backup.restore_expiry && new Date(backup.restore_expiry) < new Date()) {
-      throw new Error('Backup has expired');
-    }
-
-    const backupData = backup.backup_data as any;
     const tours = backupData.tours || [];
 
     console.log(`Restoring ${tours.length} tours`);
@@ -82,7 +137,7 @@ Deno.serve(async (req) => {
       const { error: deleteError } = await supabase
         .from('virtual_tours')
         .delete()
-        .eq('tenant_id', backup.tenant_id);
+        .eq('tenant_id', tenantId);
 
       if (deleteError) {
         console.error('Error deleting existing tours:', deleteError);
@@ -99,7 +154,7 @@ Deno.serve(async (req) => {
         .from('virtual_tours')
         .insert({
           ...tourData,
-          tenant_id: backup.tenant_id,
+          tenant_id: tenantId,
         })
         .select()
         .single();
@@ -119,7 +174,7 @@ Deno.serve(async (req) => {
             .insert({
               ...fpData,
               tour_id: newTour.id,
-              tenant_id: backup.tenant_id,
+              tenant_id: tenantId,
             })
             .select()
             .single();
@@ -174,17 +229,19 @@ Deno.serve(async (req) => {
       restoredCount++;
     }
 
-    // Log the restoration
-    await supabase.from('backup_logs').insert({
-      backup_id: backup.id,
-      user_id: user.id,
-      action: 'restored',
-      details: {
-        restore_mode,
-        tours_restored: restoredCount,
-        total_tours: tours.length,
-      },
-    });
+    // Log the restoration for file uploads
+    if (isFileUpload) {
+      await supabase.from('backup_logs').insert({
+        user_id: user.id,
+        action: 'restored',
+        details: {
+          restore_mode,
+          tours_restored: restoredCount,
+          total_tours: tours.length,
+          source: 'file_upload'
+        },
+      });
+    }
 
     // Create notification
     await supabase.from('notifications').insert({
