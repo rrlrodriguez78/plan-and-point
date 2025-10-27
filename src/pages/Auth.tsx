@@ -236,6 +236,11 @@ const Auth = () => {
                   )}
                 </button>
               </div>
+              {!isLogin && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Mínimo 8 caracteres, incluir mayúsculas, minúsculas, números y un carácter especial (!@#$%^&*)
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
