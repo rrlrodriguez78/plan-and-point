@@ -56,6 +56,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChunkedUploadProgress } from "@/components/backups/ChunkedUploadProgress";
+import { BackupInstructions } from "@/components/backups/BackupInstructions";
 
 export default function Backups() {
   const navigate = useNavigate();
@@ -238,6 +239,9 @@ export default function Backups() {
             </div>
           </div>
         </div>
+
+        {/* Guía de instrucciones */}
+        <BackupInstructions />
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
