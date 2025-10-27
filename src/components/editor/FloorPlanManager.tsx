@@ -129,6 +129,13 @@ export default function FloorPlanManager({
           capture_date: editingFloorPlan.capture_date || new Date().toISOString().split('T')[0]
         };
         
+        // Debug: Log exact data being sent
+        console.log('🔍 DEBUG - Floor Plan Data:', {
+          ...floorPlanData,
+          tour_tenant_id: tour.tenant_id,
+          tour_id: tour.id
+        });
+        
         const { data, error } = await supabase
           .from('floor_plans')
           .insert(floorPlanData)
