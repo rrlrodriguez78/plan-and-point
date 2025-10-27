@@ -290,6 +290,7 @@ export function useBackups() {
         description: 'Descargando todas las imágenes. Esto puede tardar varios minutos.',
       });
 
+      // Call edge function to start chunked download
       const { data, error } = await supabase.functions.invoke(
         'download-complete-backup',
         {
@@ -302,14 +303,87 @@ export function useBackups() {
         throw error;
       }
 
-      console.log('Backup data received, creating file...');
+      console.log('Chunked download initiated:', data);
+
+      // Extract upload token
+      const uploadToken = data.upload_token;
+      if (!uploadToken) {
+        throw new Error('No upload token received');
+      }
+
+      toast({
+        title: '📦 Procesando backup...',
+        description: `Preparando ${data.images_processed} imágenes en ${data.total_chunks} chunks (${data.total_size_mb} MB)`,
+      });
+
+      // Poll for completion with get_upload_progress
+      let completed = false;
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+
+      while (!completed && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+
+        const { data: progressData, error: progressError } = await supabase.rpc(
+          'get_upload_progress',
+          { p_upload_token: uploadToken }
+        );
+
+        if (progressError) {
+          console.error('Progress check error:', progressError);
+          throw progressError;
+        }
+
+        console.log('Progress:', progressData);
+
+        if (progressData && progressData.length > 0) {
+          const progress = progressData[0];
+          
+          if (progress.status === 'completed') {
+            completed = true;
+            break;
+          } else if (progress.status === 'failed') {
+            throw new Error('Backup download failed on server');
+          }
+
+          // Update progress toast
+          toast({
+            title: '📦 Descargando imágenes...',
+            description: `Progreso: ${progress.progress_percentage}% (${progress.uploaded_chunks}/${progress.total_chunks} chunks)`,
+          });
+        }
+
+        attempts++;
+      }
+
+      if (!completed) {
+        throw new Error('Timeout waiting for backup completion');
+      }
+
+      console.log('Download completed, assembling final file...');
+
+      // Get complete assembled data
+      const { data: completeData, error: completeError } = await supabase.rpc(
+        'complete_large_backup_upload',
+        { p_upload_token: uploadToken }
+      );
+
+      if (completeError) {
+        console.error('Assembly error:', completeError);
+        throw completeError;
+      }
+
+      console.log('Complete backup assembled, creating download...');
 
       // Create blob and download
-      const jsonString = JSON.stringify(data, null, 2);
+      const jsonString = typeof completeData === 'string' 
+        ? completeData 
+        : JSON.stringify(completeData, null, 2);
+      
       const blob = new Blob([jsonString], { type: 'application/json' });
       const sizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
       
-      console.log(`Backup size: ${sizeInMB} MB`);
+      console.log(`Final backup size: ${sizeInMB} MB`);
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -322,7 +396,7 @@ export function useBackups() {
 
       toast({
         title: '✅ Backup completo descargado',
-        description: `Archivo de ${sizeInMB} MB con estructura + ${data.statistics?.total_images || 0} imágenes`,
+        description: `Archivo de ${sizeInMB} MB con estructura + ${data.images_processed} imágenes`,
       });
     } catch (error: any) {
       console.error('Error downloading complete backup:', error);

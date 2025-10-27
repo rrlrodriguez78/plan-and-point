@@ -13,6 +13,9 @@ interface BackupData {
   statistics: any;
 }
 
+const CHUNK_SIZE = 512 * 1024; // 512KB chunks
+const BATCH_SIZE = 10; // Process 10 images at a time
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -56,84 +59,159 @@ Deno.serve(async (req) => {
     const backupData = backup.backup_data as BackupData;
     const mediaFiles = backupData.media_files || [];
 
-    console.log(`Processing ${mediaFiles.length} media files`);
+    console.log(`Processing ${mediaFiles.length} media files with chunked approach`);
 
-    // Download all images from storage
-    const images: { path: string; data: Uint8Array; contentType: string }[] = [];
+    // Generate upload token
+    const uploadToken = `download_${backup_id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    for (const url of mediaFiles) {
-      try {
-        // Extract path from URL
-        const urlObj = new URL(url);
-        const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/tour-images\/(.+)/);
-        if (!pathMatch) continue;
-        
-        const filePath = pathMatch[1];
-        
-        // Download from storage
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from('tour-images')
-          .download(filePath);
-
-        if (downloadError) {
-          console.error(`Failed to download ${filePath}:`, downloadError);
-          continue;
-        }
-
-        // Convert to Uint8Array
-        const arrayBuffer = await fileData.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        // Detect content type
-        const contentType = fileData.type || 'image/jpeg';
-        
-        images.push({
-          path: filePath,
-          data: uint8Array,
-          contentType
-        });
-
-        console.log(`Downloaded: ${filePath} (${uint8Array.length} bytes)`);
-      } catch (err) {
-        console.error(`Error processing ${url}:`, err);
-      }
-    }
-
-    console.log(`Successfully downloaded ${images.length}/${mediaFiles.length} images`);
-
-    // Calculate total size
-    const totalSize = images.reduce((sum, img) => sum + img.data.length, 0);
-    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-    console.log(`Total images size: ${totalSizeMB} MB`);
-
-    // Create the complete backup package
-    const completeBackup = {
+    // Create base backup structure (without images yet)
+    const baseBackup = {
       version: '1.0',
       backup_id: backup.id,
       backup_name: backup.backup_name,
       created_at: backup.created_at,
       backup_data: backupData,
-      images: images.map(img => ({
-        path: img.path,
-        data: encodeBase64(img.data),
-        contentType: img.contentType,
-        size: img.data.length
-      })),
+      images: [] as any[],
       statistics: {
-        total_images: images.length,
-        total_size_bytes: totalSize,
-        total_size_mb: totalSizeMB
+        total_images: mediaFiles.length,
+        total_size_bytes: 0,
+        total_size_mb: '0.00'
       }
     };
 
-    console.log('Backup package created successfully');
+    // Convert base structure to JSON
+    let completeJson = JSON.stringify(baseBackup);
+    
+    // Calculate estimated total size
+    const estimatedTotalSize = completeJson.length + (mediaFiles.length * 800 * 1024); // Estimate 800KB per image
+    const totalChunks = Math.ceil(estimatedTotalSize / CHUNK_SIZE);
+
+    console.log(`Estimated size: ${(estimatedTotalSize / (1024 * 1024)).toFixed(2)} MB, chunks: ${totalChunks}`);
+
+    // Initialize chunked upload
+    const { data: uploadId, error: uploadError } = await supabase.rpc('start_large_backup_upload', {
+      p_upload_token: uploadToken,
+      p_total_chunks: totalChunks,
+      p_chunk_size: CHUNK_SIZE,
+      p_total_size: estimatedTotalSize,
+      p_backup_name: backup.backup_name,
+      p_description: `Complete backup with ${mediaFiles.length} images`,
+      p_device_info: { source: 'edge_function', type: 'download' }
+    });
+
+    if (uploadError) {
+      throw new Error(`Failed to initialize upload: ${uploadError.message}`);
+    }
+
+    console.log(`Upload initialized: ${uploadToken}, ID: ${uploadId}`);
+
+    // Process images in batches and upload as chunks
+    let chunkNumber = 0;
+    let currentChunk = '';
+    let totalBytesProcessed = 0;
+    let imagesProcessed = 0;
+
+    // Helper to upload current chunk
+    const uploadCurrentChunk = async () => {
+      if (!currentChunk) return;
+      
+      chunkNumber++;
+      const hash = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(currentChunk)
+      );
+      const hashHex = Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      const { error: chunkError } = await supabase.rpc('upload_backup_chunk', {
+        p_upload_token: uploadToken,
+        p_chunk_number: chunkNumber,
+        p_chunk_data: currentChunk,
+        p_chunk_hash: hashHex
+      });
+
+      if (chunkError) {
+        throw new Error(`Failed to upload chunk ${chunkNumber}: ${chunkError.message}`);
+      }
+
+      console.log(`Uploaded chunk ${chunkNumber} (${currentChunk.length} bytes)`);
+      currentChunk = '';
+    };
+
+    // Start with base JSON (split into chunks if needed)
+    for (let i = 0; i < completeJson.length; i += CHUNK_SIZE) {
+      currentChunk = completeJson.substring(i, i + CHUNK_SIZE);
+      await uploadCurrentChunk();
+    }
+
+    // Process images in batches
+    for (let i = 0; i < mediaFiles.length; i += BATCH_SIZE) {
+      const batch = mediaFiles.slice(i, i + BATCH_SIZE);
+      
+      for (const url of batch) {
+        try {
+          const urlObj = new URL(url);
+          const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/tour-images\/(.+)/);
+          if (!pathMatch) continue;
+          
+          const filePath = pathMatch[1];
+          
+          const { data: fileData, error: downloadError } = await supabase.storage
+            .from('tour-images')
+            .download(filePath);
+
+          if (downloadError) {
+            console.error(`Failed to download ${filePath}:`, downloadError);
+            continue;
+          }
+
+          const arrayBuffer = await fileData.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          const base64Data = encodeBase64(uint8Array);
+          
+          const imageJson = JSON.stringify({
+            path: filePath,
+            data: base64Data,
+            contentType: fileData.type || 'image/jpeg',
+            size: uint8Array.length
+          });
+
+          // Add to current chunk or start new one if too large
+          if (currentChunk.length + imageJson.length > CHUNK_SIZE) {
+            await uploadCurrentChunk();
+          }
+          
+          currentChunk += (currentChunk ? ',' : '') + imageJson;
+          totalBytesProcessed += uint8Array.length;
+          imagesProcessed++;
+
+          console.log(`Processed ${imagesProcessed}/${mediaFiles.length}: ${filePath} (${uint8Array.length} bytes)`);
+
+        } catch (err) {
+          console.error(`Error processing ${url}:`, err);
+        }
+      }
+
+      // Small delay between batches to avoid overwhelming memory
+      if (i + BATCH_SIZE < mediaFiles.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Upload any remaining chunk
+    if (currentChunk) {
+      await uploadCurrentChunk();
+    }
+
+    console.log(`Upload completed: ${imagesProcessed} images, ${(totalBytesProcessed / (1024 * 1024)).toFixed(2)} MB`);
 
     // Log the download
     await supabase.from('backup_logs').insert({
       backup_id: backup.id,
-      action: 'complete_download',
+      action: 'complete_download_chunked',
       status: 'success',
-      details: `Downloaded ${images.length} images`,
+      details: `Processed ${imagesProcessed} images in ${chunkNumber} chunks`,
       performed_by: user.id
     });
 
@@ -143,13 +221,20 @@ Deno.serve(async (req) => {
       .update({ backup_format: 'complete-zip' })
       .eq('id', backup_id);
 
+    // Return upload token and progress info
     return new Response(
-      JSON.stringify(completeBackup),
+      JSON.stringify({
+        success: true,
+        upload_token: uploadToken,
+        total_chunks: chunkNumber,
+        images_processed: imagesProcessed,
+        total_size_mb: (totalBytesProcessed / (1024 * 1024)).toFixed(2),
+        message: 'Backup prepared successfully. Use upload_token to retrieve data.'
+      }),
       {
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json',
-          'Content-Disposition': `attachment; filename="backup-complete-${backup.backup_name}-${backup.id}.json"`
+          'Content-Type': 'application/json'
         }
       }
     );
