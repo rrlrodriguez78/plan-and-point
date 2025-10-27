@@ -7,6 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/contexts/ThemeContext";
 import { UserSettingsProvider } from "./contexts/UserSettingsContext";
 import { TenantProvider } from "./contexts/TenantContext";
+import { A11ySkipLink } from "./components/A11ySkipLink";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
@@ -32,13 +33,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
+        <A11ySkipLink />
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
             <TenantProvider>
               <UserSettingsProvider>
-                <Routes>
+                <main id="main-content">
+                  <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<Auth />} />
@@ -64,6 +67,7 @@ const App = () => (
                   {/* Catch-all route */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </main>
               </UserSettingsProvider>
             </TenantProvider>
           </AuthProvider>

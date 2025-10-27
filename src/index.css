@@ -128,27 +128,135 @@ All colors MUST be HSL.
   }
 }
 
-/* Mobile optimizations - only affects screens < 768px */
-@media (max-width: 768px) {
-  /* Prevent accidental zoom on input focus */
+/* ============================================
+   MOBILE-FIRST OPTIMIZATIONS
+   ============================================ */
+
+/* Base touch optimizations for all devices */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Prevent accidental zoom on input focus - applies to all mobile */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+/* Ensure minimum touch targets (44px minimum per Apple/Google guidelines) */
+button,
+.btn,
+a[role="button"],
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"] {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Better touch feedback */
+button:active,
+.btn:active,
+a[role="button"]:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* Samsung Galaxy specific optimizations */
+.samsung-device button,
+.samsung-device .btn {
+  /* Better touch response on Samsung devices */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* PWA specific styles */
+.is-pwa {
+  /* Remove any browser chrome artifacts */
+  overscroll-behavior-y: contain;
+}
+
+/* Small screen optimizations (320px+) */
+@media (max-width: 640px) {
+  /* Increase spacing for better touch targets */
+  .space-y-4 > * + * {
+    margin-top: 1.25rem !important;
+  }
+  
+  /* Larger text for readability */
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
+  /* Better form controls */
   input,
   select,
-  textarea,
-  button {
-    font-size: 16px !important;
-  }
-
-  /* Ensure minimum touch targets (Apple/Google guidelines) */
-  button,
-  .btn,
-  a[role="button"] {
+  textarea {
     min-height: 44px;
-    min-width: 44px;
+    padding: 12px 16px;
   }
+  
+  /* Accessible focus states */
+  *:focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
 
-  /* Better touch manipulation */
-  .touch-manipulation {
-    touch-action: manipulation;
+/* Touch device specific */
+.touch-device button:hover {
+  /* Disable hover effects on touch devices */
+  background-color: inherit;
+}
+
+/* Screen reader optimizations */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip to main content link for keyboard navigation */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1em;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.skip-to-main:focus {
+  left: 50%;
+  transform: translateX(-50%);
+  top: 1em;
+}
+
+/* Fix iOS Safari viewport height issue */
+:root {
+  --vh: 1vh;
+}
+
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific */
+  body {
+    min-height: -webkit-fill-available;
   }
 }
 
