@@ -54,7 +54,8 @@ import {
   PackageOpen,
   TestTube2,
   Loader2,
-  X
+  X,
+  FileArchive
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -62,6 +63,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChunkedUploadProgress } from "@/components/backups/ChunkedUploadProgress";
 import { BackupInstructions } from "@/components/backups/BackupInstructions";
+import { StructuredExportDialog } from "@/components/backups/StructuredExportDialog";
 
 export default function Backups() {
   const navigate = useNavigate();
@@ -92,6 +94,8 @@ export default function Backups() {
   const [completeRestoreMode, setCompleteRestoreMode] = useState<'full' | 'additive'>('additive');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedTourForExport, setSelectedTourForExport] = useState<any>(null);
 
   if (!user) {
     navigate('/auth');
@@ -221,7 +225,7 @@ export default function Backups() {
                 Gestiona los respaldos de seguridad de tus tours
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button 
                 onClick={() => setShowUploadDialog(true)} 
                 disabled={restoring}
@@ -460,6 +464,20 @@ export default function Backups() {
                             ) : (
                               <PackageOpen className="h-4 w-4" />
                             )}
+                          </Button>
+                           <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTourForExport({ 
+                                id: backup.backup_data?.tours?.[0]?.id || backup.id, 
+                                name: backup.backup_name 
+                              });
+                              setShowExportDialog(true);
+                            }}
+                            title="Exportar Estructurado"
+                          >
+                            <FileArchive className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -725,6 +743,16 @@ export default function Backups() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Structured Export Dialog */}
+      {selectedTourForExport && (
+        <StructuredExportDialog
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
+          tourId={selectedTourForExport.id}
+          tourName={selectedTourForExport.name}
+        />
+      )}
     </div>
   );
 }

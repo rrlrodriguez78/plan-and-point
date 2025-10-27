@@ -1109,6 +1109,78 @@ export type Database = {
           },
         ]
       }
+      tour_exports: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          download_url: string | null
+          error_message: string | null
+          expires_at: string | null
+          export_size_mb: number | null
+          export_token: string
+          floor_plan_id: string | null
+          id: string
+          processed_files: number | null
+          progress: number | null
+          status: string
+          total_files: number | null
+          tour_id: string | null
+          user_id: string
+          zip_storage_path: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          download_url?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          export_size_mb?: number | null
+          export_token: string
+          floor_plan_id?: string | null
+          id?: string
+          processed_files?: number | null
+          progress?: number | null
+          status?: string
+          total_files?: number | null
+          tour_id?: string | null
+          user_id: string
+          zip_storage_path?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          download_url?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          export_size_mb?: number | null
+          export_token?: string
+          floor_plan_id?: string | null
+          id?: string
+          processed_files?: number | null
+          progress?: number | null
+          status?: string
+          total_files?: number | null
+          tour_id?: string | null
+          user_id?: string
+          zip_storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_exports_floor_plan_id_fkey"
+            columns: ["floor_plan_id"]
+            isOneToOne: false
+            referencedRelation: "floor_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_exports_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_shares: {
         Row: {
           created_at: string
@@ -1471,6 +1543,7 @@ export type Database = {
       cleanup_failed_uploads: { Args: never; Returns: number }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_old_backups: { Args: never; Returns: undefined }
+      cleanup_old_exports: { Args: never; Returns: number }
       complete_large_backup_upload: {
         Args: { p_upload_token: string }
         Returns: Json
