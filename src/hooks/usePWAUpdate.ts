@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Workbox } from 'workbox-window';
 
 export function usePWAUpdate() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [needRefresh, setNeedRefresh] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
   const [wb, setWb] = useState<Workbox | null>(null);
@@ -51,26 +50,6 @@ export function usePWAUpdate() {
     }
   }, []);
 
-  // Online/Offline detection
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      console.log('🌐 Connection restored');
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-      console.log('📴 Connection lost');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   const close = useCallback(() => {
     setOfflineReady(false);
@@ -92,7 +71,6 @@ export function usePWAUpdate() {
   return {
     needRefresh,
     offlineReady,
-    isOnline,
     updateNow,
     close,
   };

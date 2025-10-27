@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { usePWAUpdate } from '@/hooks/usePWAUpdate';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export function PWAUpdatePrompt() {
-  const { needRefresh, offlineReady, isOnline, updateNow, close } = usePWAUpdate();
+  const { needRefresh, offlineReady, updateNow, close } = usePWAUpdate();
 
   // Show update notification
   useEffect(() => {
