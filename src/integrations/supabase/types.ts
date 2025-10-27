@@ -135,6 +135,53 @@ export type Database = {
           },
         ]
       }
+      backup_metrics: {
+        Row: {
+          chunk_size: number | null
+          created_at: string
+          error_message: string | null
+          id: string
+          operation_type: string
+          success: boolean
+          total_size: number | null
+          upload_duration: unknown
+          upload_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chunk_size?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          operation_type: string
+          success: boolean
+          total_size?: number | null
+          upload_duration?: unknown
+          upload_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chunk_size?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          operation_type?: string
+          success?: boolean
+          total_size?: number | null
+          upload_duration?: unknown
+          upload_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_backup_metrics_upload"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "large_backup_upload"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commands: {
         Row: {
           command_number: number
@@ -1363,6 +1410,17 @@ export type Database = {
         Returns: string
       }
       generate_share_token: { Args: never; Returns: string }
+      get_backup_metrics_stats: {
+        Args: { p_days?: number }
+        Returns: {
+          avg_chunk_size: number
+          avg_upload_duration: unknown
+          failed_uploads: number
+          successful_uploads: number
+          total_data_uploaded: number
+          total_uploads: number
+        }[]
+      }
       get_upload_progress: {
         Args: { p_upload_token: string }
         Returns: {
@@ -1397,6 +1455,18 @@ export type Database = {
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
+      }
+      log_backup_metric: {
+        Args: {
+          p_chunk_size?: number
+          p_error_message?: string
+          p_operation_type: string
+          p_success: boolean
+          p_total_size?: number
+          p_upload_duration?: unknown
+          p_upload_id?: string
+        }
+        Returns: undefined
       }
       reject_user: {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
