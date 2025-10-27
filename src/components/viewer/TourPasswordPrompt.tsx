@@ -55,12 +55,10 @@ export const TourPasswordPrompt = ({
         return;
       }
 
-      // Almacenar el timestamp de actualización de contraseña
-      const accessToken = JSON.stringify({
-        tour_id: tourId,
-        password_updated_at: data.password_updated_at,
-      });
-      localStorage.setItem(`tour_access_${tourId}`, accessToken);
+      // Store signed JWT access token from server
+      if (data.access_token) {
+        localStorage.setItem(`tour_access_${tourId}`, data.access_token);
+      }
 
       toast({
         title: 'Acceso concedido',

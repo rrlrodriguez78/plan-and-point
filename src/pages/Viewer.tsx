@@ -234,19 +234,22 @@ const Viewer = () => {
 
       // Si el tour está protegido con contraseña y el usuario NO es el dueño
       if (tourData.password_protected && !isOwner) {
-        // Verificar si hay un token válido en localStorage
+        // Verificar si hay un JWT válido en localStorage
         const storedToken = localStorage.getItem(`tour_access_${id}`);
         
         if (storedToken) {
           try {
-            const tokenData = JSON.parse(storedToken);
-            // Verificar si el token es para este tour y si la contraseña no ha cambiado
-            if (tokenData.tour_id === id && tokenData.password_updated_at === tourData.password_updated_at) {
-              // Token válido, continuar con la carga
-              // Security: Do not log token data
-            } else {
-              // Token inválido o contraseña cambiada, solicitar nueva contraseña
-              // Security: Do not log token validation
+            // Validate JWT token server-side
+            const { data: validationData, error: validationError } = await supabase.functions.invoke(
+              'validate-tour-access',
+              {
+                body: { tour_id: id, access_token: storedToken }
+              }
+            );
+
+            if (validationError || !validationData?.valid) {
+              // Token inválido, expirado, o contraseña cambiada
+              localStorage.removeItem(`tour_access_${id}`);
               setPasswordProtected(true);
               setPasswordUpdatedAt(tourData.password_updated_at);
               setShowPasswordPrompt(true);
@@ -254,8 +257,10 @@ const Viewer = () => {
               setLoading(false);
               return;
             }
+            // Token válido, continuar con la carga
           } catch (error) {
-            console.error('Error parsing token:', error);
+            console.error('Error validating token:', error);
+            localStorage.removeItem(`tour_access_${id}`);
             setPasswordProtected(true);
             setPasswordUpdatedAt(tourData.password_updated_at);
             setShowPasswordPrompt(true);

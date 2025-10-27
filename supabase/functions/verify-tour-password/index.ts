@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { create } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,10 +99,37 @@ serve(async (req) => {
       );
     }
 
-    // Return timestamp for client-side token validation
+    // Generate signed JWT for secure tour access
+    const jwtSecret = Deno.env.get('JWT_SECRET');
+    if (!jwtSecret) {
+      console.error('JWT_SECRET not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(jwtSecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const payload = {
+      tour_id: tour_id,
+      password_updated_at: tour.password_updated_at,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days expiration
+    };
+
+    const jwt = await create({ alg: "HS256", typ: "JWT" }, payload, key);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
+        access_token: jwt,
         password_updated_at: tour.password_updated_at 
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

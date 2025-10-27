@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.verify-tour-password]
 verify_jwt = false
 
+[functions.validate-tour-access]
+verify_jwt = false
+
 [functions.send-notification-email]
 verify_jwt = false
 
