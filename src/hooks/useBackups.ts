@@ -56,6 +56,65 @@ export function useBackups() {
 
   useEffect(() => {
     loadBackups();
+    
+    // Check for active downloads when component mounts
+    const checkActiveDownload = async () => {
+      const activeDownloadStr = localStorage.getItem('activeDownload');
+      if (!activeDownloadStr) return;
+
+      try {
+        const activeDownload = JSON.parse(activeDownloadStr);
+        const { uploadToken, backupName, startedAt } = activeDownload;
+
+        // Check if download is still valid (started less than 15 minutes ago)
+        const elapsed = Date.now() - startedAt;
+        if (elapsed > 15 * 60 * 1000) {
+          localStorage.removeItem('activeDownload');
+          return;
+        }
+
+        // Check current status
+        const { data: progressData, error } = await supabase.rpc(
+          'get_upload_progress',
+          { p_upload_token: uploadToken }
+        );
+
+        if (error || !progressData || progressData.length === 0) {
+          localStorage.removeItem('activeDownload');
+          return;
+        }
+
+        const progress = progressData[0];
+        
+        if (progress.status === 'completed') {
+          // Download is ready - trigger download automatically
+          toast({
+            title: '✅ Descarga completada',
+            description: 'Iniciando descarga automáticamente...',
+          });
+          setDownloadingComplete(true);
+          pollDownloadProgress(uploadToken, backupName)
+            .finally(() => setDownloadingComplete(false));
+        } else if (progress.status === 'processing') {
+          // Still processing, reconnect
+          toast({
+            title: '🔄 Reconectando...',
+            description: `Continuando descarga de ${backupName} (${progress.progress_percentage}%)`,
+          });
+          setDownloadingComplete(true);
+          pollDownloadProgress(uploadToken, backupName)
+            .finally(() => setDownloadingComplete(false));
+        } else {
+          // Failed or cancelled
+          localStorage.removeItem('activeDownload');
+        }
+      } catch (err) {
+        console.error('Error checking active download:', err);
+        localStorage.removeItem('activeDownload');
+      }
+    };
+
+    checkActiveDownload();
   }, [currentTenant]);
 
   const createBackup = async (type: 'manual' | 'automatic', name?: string, notes?: string) => {
@@ -311,115 +370,137 @@ export function useBackups() {
         throw new Error('No upload token received');
       }
 
+      // Persist active download state
+      localStorage.setItem('activeDownload', JSON.stringify({
+        uploadToken,
+        backupId: backup.id,
+        backupName: backup.backup_name,
+        startedAt: Date.now(),
+        totalImages: data.total_images,
+        estimatedSizeMB: data.estimated_size_mb
+      }));
+
       toast({
         title: '🔄 Procesando en segundo plano...',
-        description: `${data.total_images} imágenes • ~${data.estimated_size_mb} MB estimados`,
+        description: `${data.total_images} imágenes • ~${data.estimated_size_mb} MB. Puedes salir de esta página.`,
+        duration: 6000,
       });
 
-      // Poll for completion with get_upload_progress
-      let completed = false;
-      let attempts = 0;
-      const maxAttempts = 120; // 10 minutes max (5s interval)
-      let lastProgress = 0;
+      // Start polling (will continue even if user navigates away)
+      await pollDownloadProgress(uploadToken, backup.backup_name);
 
-      while (!completed && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-
-        const { data: progressData, error: progressError } = await supabase.rpc(
-          'get_upload_progress',
-          { p_upload_token: uploadToken }
-        );
-
-        if (progressError) {
-          console.error('[DOWNLOAD] Progress check error:', progressError);
-          attempts++;
-          continue;
-        }
-
-        if (progressData && progressData.length > 0) {
-          const progress = progressData[0];
-          
-          console.log(`[DOWNLOAD] Progress: ${progress.progress_percentage}% (${progress.uploaded_chunks}/${progress.total_chunks})`);
-          
-          if (progress.status === 'completed') {
-            completed = true;
-            console.log('[DOWNLOAD] Background processing completed!');
-            break;
-          } else if (progress.status === 'failed' || progress.status === 'cancelled') {
-            throw new Error(`Backup processing ${progress.status}`);
-          }
-
-          // Update progress toast only if changed significantly
-          if (Math.abs(progress.progress_percentage - lastProgress) >= 5) {
-            lastProgress = progress.progress_percentage;
-            toast({
-              title: '📦 Procesando imágenes...',
-              description: `${progress.progress_percentage}% • ${progress.uploaded_chunks} de ${progress.total_chunks} chunks`,
-            });
-          }
-        }
-
-        attempts++;
-      }
-
-      if (!completed) {
-        throw new Error('Timeout: El backup está tardando demasiado. Intenta con un backup más pequeño.');
-      }
-
-      console.log('[DOWNLOAD] Assembling final file...');
-      
-      toast({
-        title: '🔧 Ensamblando archivo...',
-        description: 'Combinando todos los chunks en un solo archivo',
-      });
-
-      // Get complete assembled data
-      const { data: completeData, error: completeError } = await supabase.rpc(
-        'complete_large_backup_upload',
-        { p_upload_token: uploadToken }
-      );
-
-      if (completeError) {
-        console.error('[DOWNLOAD] Assembly error:', completeError);
-        throw completeError;
-      }
-
-      console.log('[DOWNLOAD] Complete backup assembled, creating download...');
-
-      // Create blob and download
-      const jsonString = typeof completeData === 'string' 
-        ? completeData 
-        : JSON.stringify(completeData, null, 2);
-      
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const sizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
-      
-      console.log(`[DOWNLOAD] Final backup size: ${sizeInMB} MB`);
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `backup-complete-${backup.backup_name}-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({
-        title: '✅ ¡Descarga completa!',
-        description: `Archivo de ${sizeInMB} MB guardado correctamente`,
-      });
     } catch (error: any) {
       console.error('[DOWNLOAD] Error:', error);
+      localStorage.removeItem('activeDownload');
       toast({
-        title: 'Error al descargar',
-        description: error.message || 'No se pudo completar la descarga',
+        title: 'Error en descarga',
+        description: error.message,
         variant: 'destructive',
       });
-      throw error;
     } finally {
       setDownloadingComplete(false);
     }
+  };
+
+  const pollDownloadProgress = async (uploadToken: string, backupName: string) => {
+    let completed = false;
+    let attempts = 0;
+    const maxAttempts = 120; // 10 minutes max (5s interval)
+    let lastProgress = 0;
+
+    while (!completed && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+
+      const { data: progressData, error: progressError } = await supabase.rpc(
+        'get_upload_progress',
+        { p_upload_token: uploadToken }
+      );
+
+      if (progressError) {
+        console.error('[DOWNLOAD] Progress check error:', progressError);
+        attempts++;
+        continue;
+      }
+
+      if (progressData && progressData.length > 0) {
+        const progress = progressData[0];
+        
+        console.log(`[DOWNLOAD] Progress: ${progress.progress_percentage}% (${progress.uploaded_chunks}/${progress.total_chunks})`);
+        
+        if (progress.status === 'completed') {
+          completed = true;
+          console.log('[DOWNLOAD] Background processing completed!');
+          break;
+        } else if (progress.status === 'failed' || progress.status === 'cancelled') {
+          localStorage.removeItem('activeDownload');
+          throw new Error(`Backup processing ${progress.status}`);
+        }
+
+        // Update progress toast only if changed significantly
+        if (Math.abs(progress.progress_percentage - lastProgress) >= 5) {
+          lastProgress = progress.progress_percentage;
+          toast({
+            title: '📦 Procesando imágenes...',
+            description: `${progress.progress_percentage}% • ${progress.uploaded_chunks} de ${progress.total_chunks} chunks`,
+          });
+        }
+      }
+
+      attempts++;
+    }
+
+    if (!completed) {
+      localStorage.removeItem('activeDownload');
+      throw new Error('Timeout: El backup está tardando demasiado. Intenta con un backup más pequeño.');
+    }
+
+    console.log('[DOWNLOAD] Assembling final file...');
+    
+    toast({
+      title: '🔧 Ensamblando archivo...',
+      description: 'Combinando todos los chunks en un solo archivo',
+    });
+
+    // Get complete assembled data
+    const { data: completeData, error: completeError } = await supabase.rpc(
+      'complete_large_backup_upload',
+      { p_upload_token: uploadToken }
+    );
+
+    if (completeError) {
+      console.error('[DOWNLOAD] Assembly error:', completeError);
+      localStorage.removeItem('activeDownload');
+      throw completeError;
+    }
+
+    console.log('[DOWNLOAD] Complete backup assembled, creating download...');
+
+    // Create blob and download
+    const jsonString = typeof completeData === 'string' 
+      ? completeData 
+      : JSON.stringify(completeData, null, 2);
+    
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const sizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
+    
+    console.log(`[DOWNLOAD] Final backup size: ${sizeInMB} MB`);
+    
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-complete-${backupName}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    // Clear active download state
+    localStorage.removeItem('activeDownload');
+
+    toast({
+      title: '✅ ¡Descarga completa!',
+      description: `Archivo de ${sizeInMB} MB guardado correctamente`,
+    });
   };
 
   const uploadAndRestoreCompleteBackup = async (
