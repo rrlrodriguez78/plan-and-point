@@ -4,9 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { passwordSchema } from '@/lib/passwordValidation';
@@ -14,7 +22,7 @@ import { passwordSchema } from '@/lib/passwordValidation';
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const { t } = useTranslation();
   const isLogin = location.pathname === '/login';
 
@@ -30,6 +38,10 @@ const Auth = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -76,6 +88,33 @@ const Auth = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!resetEmail) {
+      toast.error(t('auth.emailRequired'));
+      return;
+    }
+
+    setResetLoading(true);
+    
+    try {
+      const { error } = await resetPassword(resetEmail);
+      
+      if (error) {
+        toast.error(error.message || 'Error al enviar el correo de recuperación');
+      } else {
+        toast.success('Se ha enviado un correo de recuperación. Revisa tu bandeja de entrada.');
+        setShowForgotPasswordDialog(false);
+        setResetEmail('');
+      }
+    } catch (error) {
+      toast.error('Error inesperado al intentar recuperar la contraseña');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -126,16 +165,77 @@ const Auth = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder={t('auth.password')}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-                disabled={loading}
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">{t('auth.password')}</Label>
+                {isLogin && (
+                  <Dialog open={showForgotPasswordDialog} onOpenChange={setShowForgotPasswordDialog}>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Recuperar contraseña</DialogTitle>
+                        <DialogDescription>
+                          Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleResetPassword} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="resetEmail">Correo electrónico</Label>
+                          <Input
+                            id="resetEmail"
+                            type="email"
+                            placeholder="tu@email.com"
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            required
+                            disabled={resetLoading}
+                          />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={resetLoading}>
+                          {resetLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            'Enviar enlace de recuperación'
+                          )}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={t('auth.password')}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  disabled={loading}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
