@@ -2,6 +2,41 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
+// Check if password has been compromised using Have I Been Pwned API
+async function isPasswordCompromised(password: string): Promise<boolean> {
+  try {
+    // Generate SHA-1 hash of password
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    
+    // Use k-anonymity model: send only first 5 chars
+    const prefix = hash.slice(0, 5);
+    const suffix = hash.slice(5);
+    
+    // Query Have I Been Pwned API
+    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: {
+        'User-Agent': 'VirtualTours-PasswordCheck',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error('HIBP API error:', response.status);
+      return false; // Don't block on API failure
+    }
+    
+    const text = await response.text();
+    // Check if hash suffix appears in response
+    return text.includes(suffix);
+  } catch (error) {
+    console.error('Error checking password breach:', error);
+    return false; // Don't block on error
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -142,6 +177,18 @@ serve(async (req) => {
         console.error('Password validation failed: no special character');
         return new Response(
           JSON.stringify({ error: 'Password must include at least one special character' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if password has been compromised in data breaches
+      const isCompromised = await isPasswordCompromised(password);
+      if (isCompromised) {
+        console.error('Password validation failed: compromised in data breach');
+        return new Response(
+          JSON.stringify({ 
+            error: 'This password has been exposed in a data breach. Please choose a different password.' 
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
