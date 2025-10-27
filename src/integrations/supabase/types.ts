@@ -374,6 +374,39 @@ export type Database = {
           },
         ]
       }
+      mobile_settings_backup: {
+        Row: {
+          backup_name: string
+          created_at: string
+          description: string | null
+          device_info: Json | null
+          id: string
+          is_active: boolean | null
+          settings_snapshot: Json
+          user_id: string
+        }
+        Insert: {
+          backup_name: string
+          created_at?: string
+          description?: string | null
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          settings_snapshot: Json
+          user_id: string
+        }
+        Update: {
+          backup_name?: string
+          created_at?: string
+          description?: string | null
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          settings_snapshot?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string
@@ -1222,6 +1255,15 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_backups: { Args: never; Returns: undefined }
+      create_mobile_settings_backup: {
+        Args: {
+          p_backup_name: string
+          p_description: string
+          p_device_info: Json
+          p_settings_snapshot: Json
+        }
+        Returns: string
+      }
       generate_share_token: { Args: never; Returns: string }
       get_user_tenants: {
         Args: { _user_id: string }
@@ -1250,6 +1292,10 @@ export type Database = {
       reject_user: {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
         Returns: undefined
+      }
+      restore_mobile_settings_backup: {
+        Args: { p_backup_id: string }
+        Returns: Json
       }
     }
     Enums: {

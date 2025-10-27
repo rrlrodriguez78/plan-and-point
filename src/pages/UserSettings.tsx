@@ -32,6 +32,7 @@ import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
 import { LanguageRegionSettings } from '@/components/settings/LanguageRegionSettings';
 import { PrivacySecuritySettings } from '@/components/settings/PrivacySecuritySettings';
 import { MobileSettings } from '@/components/settings/MobileSettings';
+import { MobileBackupManager } from '@/components/settings/MobileBackupManager';
 import { SyncSettings } from '@/components/settings/SyncSettings';
 import { AudioVideoSettings } from '@/components/settings/AudioVideoSettings';
 import { AnalyticsSettings } from '@/components/settings/AnalyticsSettings';
@@ -261,7 +262,15 @@ const UserSettings = () => {
           </TabsContent>
 
           <TabsContent value="mobile">
-            <MobileSettings settings={settings} onUpdate={updateSettings} />
+            <div className="space-y-6">
+              <MobileSettings settings={settings} onUpdate={updateSettings} />
+              <MobileBackupManager 
+                currentSettings={settings}
+                onRestoreSettings={(restoredSettings) => {
+                  updateSettings(restoredSettings);
+                }}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="sync">
