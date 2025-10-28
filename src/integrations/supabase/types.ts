@@ -60,14 +60,20 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           error_message: string | null
+          estimated_size_mb: number | null
+          file_hash: string | null
           file_size: number | null
           file_url: string | null
           id: string
           job_type: string
+          last_error: string | null
+          max_retries: number | null
           metadata: Json | null
           processed_items: number | null
           progress_percentage: number | null
+          retry_count: number | null
           status: string
+          storage_path: string | null
           tenant_id: string
           total_items: number | null
           tour_id: string
@@ -78,14 +84,20 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           error_message?: string | null
+          estimated_size_mb?: number | null
+          file_hash?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
           job_type: string
+          last_error?: string | null
+          max_retries?: number | null
           metadata?: Json | null
           processed_items?: number | null
           progress_percentage?: number | null
+          retry_count?: number | null
           status?: string
+          storage_path?: string | null
           tenant_id: string
           total_items?: number | null
           tour_id: string
@@ -96,14 +108,20 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           error_message?: string | null
+          estimated_size_mb?: number | null
+          file_hash?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
           job_type?: string
+          last_error?: string | null
+          max_retries?: number | null
           metadata?: Json | null
           processed_items?: number | null
           progress_percentage?: number | null
+          retry_count?: number | null
           status?: string
+          storage_path?: string | null
           tenant_id?: string
           total_items?: number | null
           tour_id?: string
@@ -123,6 +141,56 @@ export type Database = {
             columns: ["tour_id"]
             isOneToOne: false
             referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      backup_queue: {
+        Row: {
+          attempts: number | null
+          backup_job_id: string
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          max_attempts: number | null
+          priority: number | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number | null
+          backup_job_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          priority?: number | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number | null
+          backup_job_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          priority?: number | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_queue_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "backup_jobs"
             referencedColumns: ["id"]
           },
         ]
