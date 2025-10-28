@@ -133,7 +133,7 @@ async function startBackup(tourId: string, backupType: string, userId: string, a
   try {
     // First, verify user has access to this tour by checking tenant membership
     const { data: userTenants, error: tenantError } = await adminClient
-      .from('tenant_members')
+      .from('tenant_users')
       .select('tenant_id')
       .eq('user_id', userId);
 
