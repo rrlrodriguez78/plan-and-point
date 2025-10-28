@@ -1292,6 +1292,16 @@ export type Database = {
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       generate_share_token: { Args: never; Returns: string }
+      get_queue_stats: {
+        Args: never
+        Returns: {
+          avg_processing_time_seconds: number
+          completed_today: number
+          pending_count: number
+          processing_count: number
+          retry_count: number
+        }[]
+      }
       get_user_tenants: {
         Args: { _user_id: string }
         Returns: {
