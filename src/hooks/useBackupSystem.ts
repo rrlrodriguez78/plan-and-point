@@ -252,7 +252,7 @@ export function useBackupSystem() {
           tourId: tourId,
           tourName: data.tourName,
           jobType: data.backupType,
-          status: 'processing',
+          status: 'pending',
           progress: 0,
           processedItems: 0,
           totalItems: data.totalItems,
@@ -260,9 +260,21 @@ export function useBackupSystem() {
         };
 
         setActiveJobs(prev => [newJob, ...prev]);
-        pollBackupStatus(data.backupId);
         
-        toast.success(`Backup started for ${data.tourName}`);
+        // Trigger queue processing immediately
+        console.log('Triggering queue processing...');
+        supabase.functions.invoke('backup-worker', {
+          body: { 
+            action: 'process_queue',
+            maxJobs: 3
+          }
+        }).then(() => {
+          console.log('Queue processing triggered');
+          // Start polling after queue is triggered
+          setTimeout(() => pollBackupStatus(data.backupId), 2000);
+        });
+        
+        toast.success(`Backup queued for ${data.tourName}. Processing will start shortly...`);
         return data.backupId;
       } else {
         throw new Error(data.error || 'Unknown error from edge function');
@@ -295,35 +307,47 @@ export function useBackupSystem() {
 
         if (error) {
           console.error('Error polling backup status:', error);
-          // Retry after 10 seconds if error
-          setTimeout(checkStatus, 10000);
+          // Retry after 5 seconds if error
+          setTimeout(checkStatus, 5000);
           return;
         }
 
         console.log('Backup status update:', data);
 
+        // Update the job with the latest status
         setActiveJobs(prev => 
           prev.map(job => 
             job.backupId === backupId 
-              ? { ...job, ...data }
+              ? {
+                  ...job,
+                  status: data.status,
+                  progress: data.progress || 0,
+                  processedItems: data.processedItems || 0,
+                  totalItems: data.totalItems || job.totalItems,
+                  downloadUrl: data.downloadUrl,
+                  fileSize: data.fileSize,
+                  error: data.error,
+                  completedAt: data.completedAt
+                }
               : job
           )
         );
 
-        // Continue polling if still processing
-        if (data.status === 'processing') {
+        // Continue polling if still processing or pending
+        if (data.status === 'processing' || data.status === 'pending') {
           setTimeout(checkStatus, 3000); // Every 3 seconds
         } else if (data.status === 'completed') {
           toast.success(`Backup completed: ${data.tourName}`);
-          // Keep completed backups visible (don't auto-remove)
+          // Reload jobs to get the parts info
+          loadActiveJobs();
         } else if (data.status === 'failed') {
-          toast.error(`Backup failed: ${data.error}`);
+          toast.error(`Backup failed: ${data.error || 'Unknown error'}`);
         }
 
       } catch (error) {
         console.error('Error in polling:', error);
-        // Retry after 10 seconds if error
-        setTimeout(checkStatus, 10000);
+        // Retry after 5 seconds if error
+        setTimeout(checkStatus, 5000);
       }
     };
 
