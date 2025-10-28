@@ -32,7 +32,7 @@ serve(async (req) => {
     // Get backup parts information
     const { data: parts, error: partsError } = await supabase
       .from('backup_parts')
-      .select('id, backup_job_id, part_number, file_path, file_size')
+      .select('id, backup_job_id, part_number, storage_path, file_size')
       .in('id', partIds);
 
     if (partsError) throw partsError;
@@ -50,21 +50,21 @@ serve(async (req) => {
     // Download and add each file to the ZIP
     for (const part of parts) {
       try {
-        console.log(`📥 Downloading part ${part.part_number} from ${part.file_path}`);
+        console.log(`📥 Downloading part ${part.part_number} from ${part.storage_path}`);
         
         const { data: fileData, error: downloadError } = await supabase
           .storage
           .from('backups')
-          .download(part.file_path);
+          .download(part.storage_path);
 
         if (downloadError) {
-          console.error(`❌ Error downloading ${part.file_path}:`, downloadError);
+          console.error(`❌ Error downloading ${part.storage_path}:`, downloadError);
           continue;
         }
 
         if (fileData) {
           const arrayBuffer = await fileData.arrayBuffer();
-          const fileName = part.file_path.split('/').pop() || `part_${part.part_number}.zip`;
+          const fileName = part.storage_path.split('/').pop() || `part_${part.part_number}.zip`;
           zip.file(fileName, arrayBuffer);
           console.log(`✅ Added ${fileName} to combined ZIP`);
         }
