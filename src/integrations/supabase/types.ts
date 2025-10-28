@@ -183,6 +183,30 @@ export type Database = {
           },
         ]
       }
+      backup_metrics: {
+        Row: {
+          details: Json | null
+          id: string
+          metric_type: string
+          metric_value: number | null
+          recorded_at: string | null
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          metric_type: string
+          metric_value?: number | null
+          recorded_at?: string | null
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          metric_type?: string
+          metric_value?: number | null
+          recorded_at?: string | null
+        }
+        Relationships: []
+      }
       backup_queue: {
         Row: {
           attempts: number | null
@@ -1343,6 +1367,7 @@ export type Database = {
           total_processed: number
         }[]
       }
+      record_backup_metrics: { Args: never; Returns: undefined }
       reject_user: {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
         Returns: undefined
