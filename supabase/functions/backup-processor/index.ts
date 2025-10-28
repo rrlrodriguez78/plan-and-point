@@ -35,16 +35,72 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
+    console.log('🔑 Environment check:', {
+      hasUrl: !!supabaseUrl,
+      hasAnonKey: !!supabaseAnonKey,
+      hasServiceKey: !!supabaseServiceKey
+    });
+    
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
+    console.log('🔐 Authorization header:', authHeader?.substring(0, 20) + '...');
+    
+    if (!authHeader) {
+      console.error('❌ Missing Authorization header');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Not authenticated',
+          details: 'Authorization header is required'
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create admin client for service operations
+    const adminClient = createClient(supabaseUrl!, supabaseServiceKey!);
+    
+    // Create user client to verify authentication
     const userClient = createClient(supabaseUrl!, supabaseAnonKey!, {
-      global: { headers: { Authorization: req.headers.get('Authorization')! } }
+      global: { 
+        headers: { 
+          Authorization: authHeader
+        } 
+      }
     });
 
-    const adminClient = createClient(supabaseUrl!, supabaseServiceKey!);
-
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
+    console.log('👤 Attempting to authenticate user...');
+    
+    // Try to get user from JWT
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    
+    console.log('Auth result:', { 
+      hasUser: !!userData?.user, 
+      userId: userData?.user?.id,
+      error: userError?.message 
+    });
+    
+    if (userError) {
+      console.error('❌ User authentication error:', userError);
       return new Response(
-        JSON.stringify({ error: 'Not authenticated' }),
+        JSON.stringify({ 
+          error: 'Not authenticated',
+          details: userError.message,
+          code: 'AUTH_ERROR'
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const user = userData?.user;
+    
+    if (!user) {
+      console.error('❌ No user found in token');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Not authenticated',
+          details: 'Invalid or expired token',
+          code: 'NO_USER'
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
