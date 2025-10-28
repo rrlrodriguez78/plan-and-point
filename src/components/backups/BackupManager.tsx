@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Download, X, RefreshCw, Archive, Image, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Download, X, RefreshCw, Archive, Image, Trash2, ChevronDown, ChevronRight, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Tour {
@@ -296,6 +296,45 @@ export const BackupManager: React.FC = () => {
     
     toast.success(`Downloaded ${totalDownloaded} file(s)`);
     setSelectedParts(new Set());
+  };
+
+  const handleDownloadAsZip = async () => {
+    if (selectedParts.size === 0) {
+      toast.error('No files selected');
+      return;
+    }
+
+    try {
+      toast.info('Preparing combined download...');
+      
+      // Llamar al endpoint del backend que combine los archivos
+      const { data, error } = await supabase.functions.invoke('combine-backup-files', {
+        body: { 
+          partIds: Array.from(selectedParts),
+          backupIds: completedBackups.map(b => b.backupId)
+        }
+      });
+
+      if (error) throw error;
+
+      // Descargar el ZIP combinado
+      if (data.downloadUrl) {
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = `combined_backup_${Date.now()}.zip`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast.success(`Combined ${data.filesIncluded} files into single ZIP!`);
+        setSelectedParts(new Set());
+      }
+      
+    } catch (error: any) {
+      console.error('Error creating combined download:', error);
+      toast.error('Failed to create combined download');
+    }
   };
 
   const toggleBackupExpanded = (backupId: string) => {
@@ -606,16 +645,29 @@ export const BackupManager: React.FC = () => {
               
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 {selectedParts.size > 0 && (
-                  <Button
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownloadSelected();
-                    }}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    {t('backups.downloadSelected', { defaultValue: 'Download Selected' })} ({selectedParts.size})
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadSelected();
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Individual ({selectedParts.size})
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadAsZip();
+                      }}
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Single ZIP ({selectedParts.size})
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
