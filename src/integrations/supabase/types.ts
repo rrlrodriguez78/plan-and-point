@@ -145,6 +145,44 @@ export type Database = {
           },
         ]
       }
+      backup_logs: {
+        Row: {
+          backup_job_id: string
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          is_error: boolean | null
+          message: string
+        }
+        Insert: {
+          backup_job_id: string
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          is_error?: boolean | null
+          message: string
+        }
+        Update: {
+          backup_job_id?: string
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          is_error?: boolean | null
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_logs_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "backup_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_queue: {
         Row: {
           attempts: number | null
@@ -1278,7 +1316,14 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      process_backup_queue: { Args: never; Returns: undefined }
+      process_backup_queue: {
+        Args: never
+        Returns: {
+          failed_count: number
+          processed_count: number
+          total_processed: number
+        }[]
+      }
       reject_user: {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
         Returns: undefined
