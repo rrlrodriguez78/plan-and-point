@@ -1390,6 +1390,17 @@ export type Database = {
           test_result: string
         }[]
       }
+      run_load_test: {
+        Args: { num_backups?: number }
+        Returns: {
+          avg_processing_time_seconds: number
+          backups_created: number
+          details: Json
+          failed_backups: number
+          successful_backups: number
+          test_type: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
