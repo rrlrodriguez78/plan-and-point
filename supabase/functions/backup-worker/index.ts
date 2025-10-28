@@ -227,26 +227,60 @@ async function processSingleBackupJob(backupJobId: string, adminClient: any) {
   console.log(`🎯 Processing single backup job: ${backupJobId}`);
 
   try {
-    // Obtener datos completos del trabajo
+    // Obtener datos completos del trabajo manualmente (igual que en processBackupQueue)
     const { data: backupJob, error: jobError } = await adminClient
       .from('backup_jobs')
-      .select(`
-        *,
-        virtual_tours (
-          *,
-          floor_plans (*),
-          hotspots (*),
-          panorama_photos (*)
-        )
-      `)
+      .select('*')
       .eq('id', backupJobId)
       .single();
 
     if (jobError || !backupJob) {
-      throw new Error('Backup job not found');
+      throw new Error(`Backup job not found: ${jobError?.message || 'No data'}`);
     }
 
-    const result = await processBackupJob(backupJobId, backupJob, adminClient);
+    // Obtener tour y sus relaciones de forma explícita
+    const { data: tour, error: tourError } = await adminClient
+      .from('virtual_tours')
+      .select('*')
+      .eq('id', backupJob.tour_id)
+      .single();
+
+    if (tourError || !tour) {
+      throw new Error(`Tour not found: ${tourError?.message || 'No data'}`);
+    }
+
+    // Obtener floor plans
+    const { data: floorPlans } = await adminClient
+      .from('floor_plans')
+      .select('*')
+      .eq('tour_id', tour.id);
+
+    // Obtener hotspots a través de los floor plans
+    const floorPlanIds = floorPlans?.map((fp: any) => fp.id) || [];
+    const { data: hotspots } = await adminClient
+      .from('hotspots')
+      .select('*')
+      .in('floor_plan_id', floorPlanIds);
+
+    // Obtener panorama photos a través de los hotspots
+    const hotspotIds = hotspots?.map((h: any) => h.id) || [];
+    const { data: panoramaPhotos } = await adminClient
+      .from('panorama_photos')
+      .select('*')
+      .in('hotspot_id', hotspotIds);
+
+    // Construir el objeto completo
+    const completeBackupJob = {
+      ...backupJob,
+      virtual_tours: {
+        ...tour,
+        floor_plans: floorPlans || [],
+        hotspots: hotspots || [],
+        panorama_photos: panoramaPhotos || []
+      }
+    };
+
+    const result = await processBackupJob(backupJobId, completeBackupJob, adminClient);
 
     return new Response(
       JSON.stringify(result),
