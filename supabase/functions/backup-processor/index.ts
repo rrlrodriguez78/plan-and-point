@@ -483,19 +483,29 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
     for (const floorPlan of tour.floor_plans || []) {
       if (floorPlan.image_url) {
         try {
+          console.log(`🔍 Processing floor plan: ${floorPlan.name}, URL: ${floorPlan.image_url}`);
           const imagePath = extractPathFromUrl(floorPlan.image_url);
+          console.log(`📂 Extracted path: ${imagePath}`);
+          
           const { data: imageBlob, error: imageError } = await adminClient.storage
             .from('tour-images')
             .download(imagePath);
 
-          if (!imageError && imageBlob) {
+          if (imageError) {
+            console.error(`❌ Storage error for ${floorPlan.name}:`, imageError);
+          } else if (!imageBlob) {
+            console.error(`❌ No blob returned for ${floorPlan.name}`);
+          } else {
             const arrayBuffer = await imageBlob.arrayBuffer();
-            zip.file(`floor_plans/${floorPlan.name || floorPlan.id}.jpg`, new Uint8Array(arrayBuffer));
-            console.log(`✅ Downloaded floor plan: ${floorPlan.name}`);
+            const filename = `${floorPlan.name || floorPlan.id}.jpg`;
+            zip.file(`floor_plans/${filename}`, new Uint8Array(arrayBuffer));
+            console.log(`✅ Downloaded floor plan: ${floorPlan.name} (${arrayBuffer.byteLength} bytes)`);
           }
         } catch (error) {
-          console.warn(`⚠️ Could not download floor plan: ${floorPlan.name}`, error);
+          console.error(`⚠️ Exception downloading floor plan: ${floorPlan.name}`, error);
         }
+      } else {
+        console.log(`⚠️ Floor plan ${floorPlan.name} has no image_url`);
       }
       processedItems++;
       await updateProgress(processedItems, 'Processing floor plans');
@@ -794,14 +804,32 @@ async function processQueueItem(queueId: string, backupJobId: string, adminClien
 
 function extractPathFromUrl(url: string): string {
   try {
+    // Si la URL contiene 'public/', extraer todo después de 'public/'
+    if (url.includes('/public/')) {
+      const parts = url.split('/public/');
+      if (parts.length > 1) {
+        // Remover el nombre del bucket del path
+        const pathAfterPublic = parts[1];
+        const pathParts = pathAfterPublic.split('/');
+        // Saltar el nombre del bucket (primer elemento) y tomar el resto
+        return pathParts.slice(1).join('/');
+      }
+    }
+    
+    // Fallback: extraer después de 'object/'
     const urlObj = new URL(url);
     const pathParts = urlObj.pathname.split('/');
     const objectIndex = pathParts.indexOf('object');
     if (objectIndex !== -1 && objectIndex + 2 < pathParts.length) {
-      return pathParts.slice(objectIndex + 2).join('/');
+      const pathAfterObject = pathParts.slice(objectIndex + 2).join('/');
+      // Si empieza con el nombre del bucket, removerlo
+      const bucketRemoved = pathAfterObject.split('/').slice(1).join('/');
+      return bucketRemoved || pathAfterObject;
     }
+    
     return pathParts[pathParts.length - 1];
-  } catch {
+  } catch (error) {
+    console.error('Error extracting path from URL:', url, error);
     return url.split('/').pop() || '';
   }
 }
