@@ -1317,6 +1317,15 @@ export type Database = {
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
       generate_share_token: { Args: never; Returns: string }
+      get_backup_system_dashboard: {
+        Args: never
+        Returns: {
+          queue_status: Json
+          recent_activity: Json
+          storage_info: Json
+          system_metrics: Json
+        }[]
+      }
       get_queue_stats: {
         Args: never
         Returns: {
