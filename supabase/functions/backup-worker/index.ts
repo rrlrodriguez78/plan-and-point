@@ -60,6 +60,34 @@ async function processBackupQueue(adminClient: any, maxJobs: number = 3) {
   console.log(`🔄 Processing backup queue, max jobs: ${maxJobs}`);
 
   try {
+    // ✅ PRIMERO: Resetear trabajos bloqueados (stuck > 5 minutos)
+    console.log('🔍 Checking for stuck jobs...');
+    const { data: stuckJobs } = await adminClient
+      .from('backup_queue')
+      .update({
+        status: 'retry',
+        error_message: 'Reset - processing timeout exceeded',
+        scheduled_at: new Date().toISOString()
+      })
+      .eq('status', 'processing')
+      .lt('started_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // 5 minutos
+      .select();
+    
+    if (stuckJobs && stuckJobs.length > 0) {
+      console.log(`♻️ Reset ${stuckJobs.length} stuck job(s)`);
+      
+      // También actualizar los backup_jobs correspondientes
+      for (const stuck of stuckJobs) {
+        await adminClient
+          .from('backup_jobs')
+          .update({
+            status: 'pending',
+            error_message: 'Job was stuck, retrying...'
+          })
+          .eq('id', stuck.backup_job_id);
+      }
+    }
+
     // Obtener trabajos pendientes de la cola
     const { data: queueItems, error: queueError } = await adminClient
       .from('backup_queue')
@@ -302,7 +330,7 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
   const userId = backupJob.user_id;
   const backupType = backupJob.job_type;
   
-  const IMAGES_PER_PART = 10; // Reducido a 10 imágenes por parte para evitar timeouts
+  const IMAGES_PER_PART = 5; // ✅ Reducido a 5 imágenes por parte para evitar CPU timeouts
   
   console.log(`🔄 Starting MULTIPART backup processing for: ${tour.title}`);
 
@@ -530,11 +558,22 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
     console.error(`💥 Backup processing failed:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     
+    // ✅ Mejorar logging del error
+    console.error('Error details:', {
+      backupJobId,
+      tourId: tour.id,
+      tourTitle: tour.title,
+      backupType,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
+    // ✅ Actualizar estado a 'failed' para que no se reintente indefinidamente
     await adminClient
       .from('backup_jobs')
       .update({
         status: 'failed',
-        error_message: errorMessage,
+        error_message: `CPU/Memory limit exceeded: ${errorMessage}`,
         completed_at: new Date().toISOString()
       })
       .eq('id', backupJobId);
@@ -543,7 +582,7 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
       .from('backup_queue')
       .update({
         status: 'failed',
-        error_message: errorMessage,
+        error_message: `CPU/Memory limit exceeded: ${errorMessage}`,
         completed_at: new Date().toISOString()
       })
       .eq('backup_job_id', backupJobId);
@@ -563,11 +602,11 @@ async function cleanupStuckJobs(adminClient: any) {
     .from('backup_queue')
     .update({
       status: 'retry',
-      error_message: 'Reset by cleanup worker',
+      error_message: 'Reset by cleanup worker - processing timeout',
       scheduled_at: new Date().toISOString()
     })
     .eq('status', 'processing')
-    .lt('started_at', new Date(Date.now() - 30 * 60 * 1000).toISOString()) // 30 minutos
+    .lt('started_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // ✅ Reducido a 5 minutos (Edge Functions timeout antes)
     .select();
 
   return new Response(
