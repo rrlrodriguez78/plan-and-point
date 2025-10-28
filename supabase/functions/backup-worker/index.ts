@@ -267,6 +267,17 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
   const userId = backupJob.user_id;
   const backupType = backupJob.job_type;
   let processedItems = 0; // Declarar aquí para que esté en scope de catch
+  
+  // ⏱️ TIMEOUT PROTECTION: Edge Functions tienen ~120s de CPU time
+  const startTime = Date.now();
+  const MAX_EXECUTION_TIME = 100000; // 100 segundos, dejando 20s de margen
+  
+  const checkTimeout = () => {
+    const elapsed = Date.now() - startTime;
+    if (elapsed > MAX_EXECUTION_TIME) {
+      throw new Error(`TIMEOUT_LIMIT: Backup excedió el límite de tiempo de ejecución (${Math.round(elapsed/1000)}s). Tours con más de 150 imágenes requieren procesamiento especial.`);
+    }
+  };
 
   console.log(`🔄 Starting REAL backup processing for: ${tour.title}`);
 
@@ -383,6 +394,11 @@ Tour ID: ${tour.id}
       // Descargar fotos panorámicas
       await updateProgress(processedItems, 'Downloading panorama photos');
       for (const [index, photo] of (tour.panorama_photos || []).entries()) {
+        // ⏱️ Check timeout cada 10 imágenes para no impactar performance
+        if (index % 10 === 0) {
+          checkTimeout();
+        }
+        
         try {
           console.log(`🔍 Processing panorama: ${photo.id}, URL: ${photo.photo_url}`);
           const imagePath = extractPathFromUrl(photo.photo_url);
@@ -499,6 +515,12 @@ Tour ID: ${tour.id}
     console.error(`💥 Backup processing failed for ${backupJobId}:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     
+    // Detectar si fue un timeout y personalizar el mensaje
+    const isTimeout = errorMessage.includes('TIMEOUT_LIMIT') || errorMessage.includes('CPU Time exceeded');
+    const finalErrorMessage = isTimeout 
+      ? `Backup demasiado grande: Este tour tiene ${tour.panorama_photos?.length || 0} imágenes. Backups con más de 150 imágenes no pueden procesarse en una sola ejecución. Por favor, contacta a soporte para tours grandes.`
+      : errorMessage;
+    
     // Registrar error
     await adminClient
       .from('backup_logs')
@@ -507,7 +529,7 @@ Tour ID: ${tour.id}
         event_type: 'backup_failed',
         message: 'Backup processing failed',
         details: {
-          error: errorMessage,
+          error: finalErrorMessage,
           processed_items: processedItems
         },
         is_error: true
@@ -518,14 +540,14 @@ Tour ID: ${tour.id}
       .from('backup_jobs')
       .update({
         status: 'failed',
-        error_message: errorMessage,
+        error_message: finalErrorMessage,
         completed_at: new Date().toISOString()
       })
       .eq('id', backupJobId);
 
     return {
       success: false,
-      error: errorMessage,
+      error: finalErrorMessage,
       backupId: backupJobId,
       processedItems: processedItems
     };
