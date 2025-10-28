@@ -209,11 +209,10 @@ async function startBackup(tourId: string, backupType: string, userId: string, a
 
     if (queueError) {
       console.error('❌ Error adding to queue:', queueError);
-      processBackupInBackground(fullTour, backupJob.id, backupType, userId, adminClient);
-    } else {
-      console.log('✅ Backup added to processing queue');
-      processBackupInBackground(fullTour, backupJob.id, backupType, userId, adminClient);
+      throw new Error(`Failed to add backup to queue: ${queueError.message}`);
     }
+    
+    console.log('✅ Backup added to processing queue - worker will handle it');
 
     return new Response(
       JSON.stringify({
