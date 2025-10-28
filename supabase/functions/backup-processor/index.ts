@@ -433,93 +433,96 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
 
     await updateProgress(0, 'Preparing metadata');
 
-    const tourMetadata = {
-      tour: {
-        id: tour.id,
-        title: tour.title,
-        description: tour.description,
-        created_at: tour.created_at,
-        updated_at: tour.updated_at
-      },
-      floor_plans: tour.floor_plans?.map((plan: any) => ({
-        id: plan.id,
-        name: plan.name,
-        image_url: plan.image_url
-      })),
-      hotspots: tour.floor_plans?.flatMap((plan: any) => 
-        plan.hotspots?.map((hotspot: any) => ({
-          id: hotspot.id,
-          title: hotspot.title,
-          floor_plan_id: hotspot.floor_plan_id,
-          x_position: hotspot.x_position,
-          y_position: hotspot.y_position
-        })) || []
-      ),
-      export_info: {
-        type: backupType,
-        created_at: new Date().toISOString(),
-        version: '1.0',
-        total_items: totalItems
-      }
-    };
-
-    zip.file('tour_metadata.json', JSON.stringify(tourMetadata, null, 2));
-    await updateProgress(1, 'Metadata added');
-
-    // Registrar progreso en logs
-    await adminClient
-      .from('backup_logs')
-      .insert({
-        backup_job_id: backupJobId,
-        event_type: 'metadata_created',
-        message: 'Tour metadata JSON generated',
-        details: { items_count: totalItems }
-      });
-
+    // Solo agregar metadata JSON en full_backup
     if (backupType === 'full_backup') {
-      for (const floorPlan of tour.floor_plans || []) {
-        if (floorPlan.image_url) {
+      const tourMetadata = {
+        tour: {
+          id: tour.id,
+          title: tour.title,
+          description: tour.description,
+          created_at: tour.created_at,
+          updated_at: tour.updated_at
+        },
+        floor_plans: tour.floor_plans?.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          image_url: plan.image_url
+        })),
+        hotspots: tour.floor_plans?.flatMap((plan: any) => 
+          plan.hotspots?.map((hotspot: any) => ({
+            id: hotspot.id,
+            title: hotspot.title,
+            floor_plan_id: hotspot.floor_plan_id,
+            x_position: hotspot.x_position,
+            y_position: hotspot.y_position
+          })) || []
+        ),
+        export_info: {
+          type: backupType,
+          created_at: new Date().toISOString(),
+          version: '1.0',
+          total_items: totalItems
+        }
+      };
+
+      zip.file('tour_metadata.json', JSON.stringify(tourMetadata, null, 2));
+      await updateProgress(1, 'Metadata added');
+
+      // Registrar progreso en logs
+      await adminClient
+        .from('backup_logs')
+        .insert({
+          backup_job_id: backupJobId,
+          event_type: 'metadata_created',
+          message: 'Tour metadata JSON generated',
+          details: { items_count: totalItems }
+        });
+    }
+
+    // Descargar floor plans (para ambos tipos)
+    for (const floorPlan of tour.floor_plans || []) {
+      if (floorPlan.image_url) {
+        try {
+          const imagePath = extractPathFromUrl(floorPlan.image_url);
+          const { data: imageBlob, error: imageError } = await adminClient.storage
+            .from('tour-images')
+            .download(imagePath);
+
+          if (!imageError && imageBlob) {
+            const arrayBuffer = await imageBlob.arrayBuffer();
+            zip.file(`floor_plans/${floorPlan.name || floorPlan.id}.jpg`, new Uint8Array(arrayBuffer));
+            console.log(`✅ Downloaded floor plan: ${floorPlan.name}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Could not download floor plan: ${floorPlan.name}`, error);
+        }
+      }
+      processedItems++;
+      await updateProgress(processedItems, 'Processing floor plans');
+    }
+
+    // Descargar panoramas (para ambos tipos)
+    for (const floorPlan of tour.floor_plans || []) {
+      for (const hotspot of floorPlan.hotspots || []) {
+        for (const photo of hotspot.panorama_photos || []) {
           try {
-            const imagePath = extractPathFromUrl(floorPlan.image_url);
+            const imagePath = extractPathFromUrl(photo.photo_url);
             const { data: imageBlob, error: imageError } = await adminClient.storage
               .from('tour-images')
               .download(imagePath);
 
             if (!imageError && imageBlob) {
               const arrayBuffer = await imageBlob.arrayBuffer();
-              zip.file(`floor_plans/${floorPlan.name || floorPlan.id}.jpg`, new Uint8Array(arrayBuffer));
-              console.log(`✅ Downloaded floor plan: ${floorPlan.name}`);
+              const hotspotFolder = `hotspot_${hotspot.id}`;
+              const fileName = photo.original_filename || `photo_${photo.id}.jpg`;
+              zip.file(`panorama_photos/${hotspotFolder}/${fileName}`, new Uint8Array(arrayBuffer));
             }
           } catch (error) {
-            console.warn(`⚠️ Could not download floor plan: ${floorPlan.name}`, error);
+            console.warn(`⚠️ Could not download photo: ${photo.id}`, error);
           }
-        }
-        processedItems++;
-        await updateProgress(processedItems, 'Processing floor plans');
-      }
-
-      for (const floorPlan of tour.floor_plans || []) {
-        for (const hotspot of floorPlan.hotspots || []) {
-          for (const photo of hotspot.panorama_photos || []) {
-            try {
-              const imagePath = extractPathFromUrl(photo.photo_url);
-              const { data: imageBlob, error: imageError } = await adminClient.storage
-                .from('tour-images')
-                .download(imagePath);
-
-              if (!imageError && imageBlob) {
-                const arrayBuffer = await imageBlob.arrayBuffer();
-                const hotspotFolder = `hotspot_${hotspot.id}`;
-                const fileName = photo.original_filename || `photo_${photo.id}.jpg`;
-                zip.file(`panorama_photos/${hotspotFolder}/${fileName}`, new Uint8Array(arrayBuffer));
-              }
-            } catch (error) {
-              console.warn(`⚠️ Could not download photo: ${photo.id}`, error);
-            }
-            processedItems++;
-            if (processedItems % 5 === 0) {
-              await updateProgress(processedItems, 'Downloading photos');
-            }
+          processedItems++;
+          if (processedItems % 5 === 0) {
+            await updateProgress(processedItems, 'Downloading photos');
           }
         }
       }
