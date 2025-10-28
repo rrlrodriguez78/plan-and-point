@@ -1390,6 +1390,14 @@ export type Database = {
           test_result: string
         }[]
       }
+      run_edge_case_tests: {
+        Args: never
+        Returns: {
+          details: Json
+          edge_case: string
+          test_result: string
+        }[]
+      }
       run_load_test: {
         Args: { num_backups?: number }
         Returns: {
