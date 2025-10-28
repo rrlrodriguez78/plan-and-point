@@ -550,13 +550,20 @@ SOLUCIÓN DE PROBLEMAS
     // Formato: TourName_backup_timestamp.zip.001, .zip.002, etc.
     const paddedPartNumber = String(currentPart).padStart(3, '0');
     const baseFilename = `${safeTourName}_backup_${timestamp}`;
-    const partStoragePath = `${userId}/${backupJobId}/${baseFilename}.zip.${paddedPartNumber}`;
+    const fullFilename = `${baseFilename}.zip.${paddedPartNumber}`;
+    const partStoragePath = `${userId}/${backupJobId}/${fullFilename}`;
     
     const { error: uploadError } = await adminClient.storage
       .from('backups')
       .upload(partStoragePath, zipBlob, {
-        contentType: 'application/zip',
-        upsert: false
+        contentType: 'application/octet-stream',
+        cacheControl: '3600',
+        upsert: false,
+        metadata: {
+          originalFilename: fullFilename,
+          partNumber: String(currentPart),
+          totalParts: String(totalParts)
+        }
       });
 
     if (uploadError) {
@@ -570,10 +577,12 @@ SOLUCIÓN DE PROBLEMAS
 
     console.log(`✅ Part ${currentPart} uploaded`);
 
-    // Generar URL firmada
+    // Generar URL firmada con nombre de archivo correcto
     const { data: signedUrlData } = await adminClient.storage
       .from('backups')
-      .createSignedUrl(partStoragePath, 7 * 24 * 60 * 60);
+      .createSignedUrl(partStoragePath, 7 * 24 * 60 * 60, {
+        download: fullFilename  // Forzar el nombre de descarga correcto
+      });
 
     // Registrar parte en la base de datos
     await adminClient
@@ -906,29 +915,8 @@ Total images in this part: ${images.length}
   });
 }
 
-// Subir parte a storage
-async function uploadPartToStorage(zipData: Uint8Array, backupJobId: string, partNumber: number, userId: string, adminClient: any): Promise<string> {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const storagePath = `${userId}/${backupJobId}/part_${partNumber}_${timestamp}.zip`;
-  
-  const { error: uploadError } = await adminClient.storage
-    .from('backups')
-    .upload(storagePath, zipData, {
-      contentType: 'application/zip',
-      upsert: false
-    });
-
-  if (uploadError) {
-    throw new Error(`Failed to upload part ${partNumber}: ${uploadError.message}`);
-  }
-
-  // Generar URL firmada
-  const { data: signedUrlData } = await adminClient.storage
-    .from('backups')
-    .createSignedUrl(storagePath, 7 * 24 * 60 * 60); // 7 días
-
-  return signedUrlData?.signedUrl || '';
-}
+// Esta función ya no se usa - la funcionalidad está en processBackupJob
+// Se mantiene por compatibilidad pero todo el upload se hace inline arriba
 
 // Invocar siguiente parte
 async function invokeNextPart(backupJobId: string): Promise<void> {
