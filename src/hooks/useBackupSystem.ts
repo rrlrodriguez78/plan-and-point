@@ -43,6 +43,8 @@ export function useBackupSystem() {
 
   const loadActiveJobs = useCallback(async () => {
     try {
+      console.log('Loading active backup jobs...');
+      
       // Get active jobs from database
       const { data: jobs, error } = await supabase
         .from('backup_jobs')
@@ -55,7 +57,12 @@ export function useBackupSystem() {
         .in('status', ['pending', 'processing'])
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error loading jobs:', error);
+        throw error;
+      }
+
+      console.log('Found active jobs:', jobs?.length || 0);
 
       const activeJobsData: BackupStatus[] = (jobs || []).map(job => ({
         backupId: job.id,
@@ -93,15 +100,34 @@ export function useBackupSystem() {
     setLoading(true);
     
     try {
+      console.log('Starting backup for tour:', tourId, 'type:', backupType);
+      
+      // First, let's test if we can reach the function with a simple call
+      console.log('Testing edge function connection...');
+      
       const { data, error } = await supabase.functions.invoke('backup-processor', {
         body: { 
           action: 'start',
-          tourId,
-          backupType
+          tourId: tourId,
+          backupType: backupType
         }
       });
 
-      if (error) throw error;
+      console.log('Edge function response:', { data, error });
+
+      if (error) {
+        console.error('Edge function error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          cause: error.cause
+        });
+        throw new Error(`Edge Function Error: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('No response data from edge function');
+      }
 
       if (data.success) {
         const newJob: BackupStatus = {
@@ -122,12 +148,24 @@ export function useBackupSystem() {
         toast.success(`Backup started for ${data.tourName}`);
         return data.backupId;
       } else {
-        throw new Error(data.error || 'Unknown error');
+        throw new Error(data.error || 'Unknown error from edge function');
       }
 
     } catch (error: any) {
-      console.error('Error starting backup:', error);
-      toast.error(`Failed to start backup: ${error.message}`);
+      console.error('Error starting backup:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+      
+      // More specific error messages
+      if (error.message.includes('Failed to fetch')) {
+        toast.error('Network error: Cannot connect to backup service');
+      } else if (error.message.includes('JWT')) {
+        toast.error('Authentication error: Please log in again');
+      } else {
+        toast.error(`Failed to start backup: ${error.message}`);
+      }
       return null;
     } finally {
       setLoading(false);
@@ -137,6 +175,8 @@ export function useBackupSystem() {
   const pollBackupStatus = async (backupId: string) => {
     const checkStatus = async () => {
       try {
+        console.log('Polling backup status for:', backupId);
+        
         const { data, error } = await supabase.functions.invoke('backup-processor', {
           body: { 
             action: 'status',
@@ -144,7 +184,14 @@ export function useBackupSystem() {
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error polling backup status:', error);
+          // Retry after 10 seconds if error
+          setTimeout(checkStatus, 10000);
+          return;
+        }
+
+        console.log('Backup status update:', data);
 
         setActiveJobs(prev => 
           prev.map(job => 
