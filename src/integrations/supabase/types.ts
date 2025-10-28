@@ -1544,6 +1544,7 @@ export type Database = {
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_old_backups: { Args: never; Returns: undefined }
       cleanup_old_exports: { Args: never; Returns: number }
+      cleanup_stuck_backup_jobs: { Args: never; Returns: number }
       complete_large_backup_upload: {
         Args: { p_upload_token: string }
         Returns: Json

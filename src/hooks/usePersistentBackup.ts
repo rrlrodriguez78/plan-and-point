@@ -19,6 +19,8 @@ interface PersistentJob {
 export function usePersistentBackup() {
   const [activeJobs, setActiveJobs] = useState<Map<string, PersistentJob>>(new Map());
   const pollingIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const lastProgressRef = useRef<Map<string, { progress: number; timestamp: number }>>(new Map());
+  const retryCountRef = useRef<Map<string, number>>(new Map());
 
   // 🎯 INICIAR O REANUDAR DOWNLOAD PERSISTENTE
   const startPersistentDownload = async (backupId: string): Promise<string> => {
@@ -81,6 +83,55 @@ export function usePersistentBackup() {
         // Actualizar estado local
         setActiveJobs(prev => new Map(prev.set(uploadToken, job)));
 
+        // 🔍 DETECCIÓN INTELIGENTE DE TRABAJOS TRABADOS
+        if (job.status === 'processing') {
+          const lastProgress = lastProgressRef.current.get(uploadToken);
+          const now = Date.now();
+          
+          if (lastProgress) {
+            // Si el progreso no cambió en 5 minutos, está trabado
+            const timeSinceLastChange = now - lastProgress.timestamp;
+            const stuckThreshold = 5 * 60 * 1000; // 5 minutos
+            
+            if (job.progress === lastProgress.progress && timeSinceLastChange > stuckThreshold) {
+              console.warn(`[STUCK DETECTION] Job ${uploadToken} stuck at ${job.progress}% for ${Math.round(timeSinceLastChange / 1000)}s`);
+              
+              const retries = retryCountRef.current.get(uploadToken) || 0;
+              
+              if (retries < 1) {
+                // Intentar reanudar una vez
+                toast.warning('Trabajo trabado detectado, intentando reanudar...');
+                retryCountRef.current.set(uploadToken, retries + 1);
+                
+                // Forzar actualización del backend
+                try {
+                  await supabase.functions.invoke('download-complete-backup', {
+                    body: { 
+                      action: 'status',
+                      upload_token: uploadToken,
+                      force_check: true
+                    }
+                  });
+                } catch (err) {
+                  console.error('[RETRY] Error:', err);
+                }
+              } else {
+                // Ya intentamos, marcar como fallido
+                toast.error('Trabajo trabado. Usa "Exportación Estructurada" para backups grandes.');
+                stopPollingJob(uploadToken);
+              }
+            }
+          }
+          
+          // Actualizar último progreso conocido
+          if (!lastProgress || job.progress !== lastProgress.progress) {
+            lastProgressRef.current.set(uploadToken, {
+              progress: job.progress,
+              timestamp: now
+            });
+          }
+        }
+
         // Manejar estados finales
         if (job.status === 'completed') {
           toast.success('¡Descarga persistente completada!');
@@ -111,6 +162,9 @@ export function usePersistentBackup() {
       clearInterval(pollingIntervals.current.get(uploadToken));
       pollingIntervals.current.delete(uploadToken);
     }
+    // Limpiar refs
+    lastProgressRef.current.delete(uploadToken);
+    retryCountRef.current.delete(uploadToken);
   };
 
   // ❌ CANCELAR JOB

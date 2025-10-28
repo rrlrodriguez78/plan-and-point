@@ -7,8 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const CHUNK_SIZE = 512 * 1024;
-const BATCH_SIZE = 10;
+const CHUNK_SIZE = 450 * 1024; // ~450KB chunks for better reliability
+const BATCH_SIZE = 15; // Process 15 images at a time (reduced from 10)
+const MAX_IMAGES_PER_JOB = 50; // Maximum 50 images per backup job
+const CHECKPOINT_FREQUENCY = 5; // Save progress every 5 images
 
 interface ProcessingState {
   upload_token: string;
@@ -99,11 +101,18 @@ async function persistentBackupProcessing(
     const backupData = backup.backup_data;
     const mediaFiles = backupData.media_files || [];
 
+    // 🚨 CHECK IMAGE LIMIT
+    if (mediaFiles.length > MAX_IMAGES_PER_JOB) {
+      throw new Error(`Este backup tiene ${mediaFiles.length} imágenes. El límite es ${MAX_IMAGES_PER_JOB} por trabajo. Usa "Exportación Estructurada" para backups grandes.`);
+    }
+
     await updateJobProgress(uploadToken, {
       total_images: mediaFiles.length,
       current_operation: 'preparing_data',
       progress: 10
     }, supabaseAdmin);
+
+    console.log(`[PERSISTENT] Processing backup with ${mediaFiles.length} images`);
 
     const baseBackup = {
       version: '2.0',
@@ -155,11 +164,15 @@ async function persistentBackupProcessing(
 
     for (let i = 0; i < mediaFiles.length; i += BATCH_SIZE) {
       const batch = mediaFiles.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i/BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(mediaFiles.length / BATCH_SIZE);
       
       await updateJobProgress(uploadToken, {
-        current_operation: `processing_images_batch_${Math.floor(i/BATCH_SIZE) + 1}`,
+        current_operation: `processing_images_batch_${batchNum}/${totalBatches}`,
         processed_images: i
       }, supabaseAdmin);
+
+      console.log(`[PERSISTENT] Processing batch ${batchNum}/${totalBatches} (images ${i+1}-${Math.min(i+BATCH_SIZE, mediaFiles.length)}/${mediaFiles.length})`);
 
       for (const url of batch) {
         try {
@@ -209,6 +222,16 @@ async function persistentBackupProcessing(
           
           currentChunk += (currentChunk ? ',' : '') + imageJson;
 
+          // 💾 CHECKPOINT: Save progress every N images
+          const imageIndex = i + (mediaFiles.indexOf(url) - i);
+          if (imageIndex > 0 && imageIndex % CHECKPOINT_FREQUENCY === 0) {
+            await updateJobProgress(uploadToken, {
+              processed_images: imageIndex,
+              last_activity: new Date().toISOString()
+            }, supabaseAdmin);
+            console.log(`[CHECKPOINT] Saved progress: ${imageIndex}/${mediaFiles.length} images`);
+          }
+
         } catch (err) {
           console.error(`[PERSISTENT] Error processing ${url}:`, err);
         }
@@ -220,7 +243,9 @@ async function persistentBackupProcessing(
         progress: imageProgress
       }, supabaseAdmin);
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`[PROGRESS] ${imageProgress}% complete (${i + batch.length}/${mediaFiles.length} images)`);
+
+      await new Promise(resolve => setTimeout(resolve, 100)); // Reduced delay
     }
 
     if (currentChunk) {
@@ -264,23 +289,48 @@ async function resumePendingJobs(supabaseAdmin: any, supabase: any) {
   try {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
-    const { data: stuckJobs } = await supabaseAdmin
+    // 🔍 SMART DETECTION: Check for jobs stuck in image processing phase
+    const { data: stuckImageJobs } = await supabaseAdmin
       .from('background_backup_jobs')
       .select('*')
       .eq('status', 'processing')
+      .gte('progress', 20)  // Started processing images
+      .lte('progress', 70)  // Likely stuck in image phase
       .lt('last_activity', fiveMinutesAgo);
 
-    if (stuckJobs && stuckJobs.length > 0) {
-      console.log(`[RESUME] Found ${stuckJobs.length} stuck jobs, marking as failed`);
+    if (stuckImageJobs && stuckImageJobs.length > 0) {
+      console.log(`[RESUME] Found ${stuckImageJobs.length} stuck image processing jobs, marking as failed`);
       
-      for (const job of stuckJobs) {
+      for (const job of stuckImageJobs) {
         await updateJobProgress(job.upload_token, {
           status: 'failed',
-          error_message: 'Job stuck and auto-failed by system',
+          error_message: `Job timed out at ${job.progress}% (${job.current_operation}). Intenta usar "Exportación Estructurada" para backups grandes.`,
           last_activity: new Date().toISOString()
         }, supabaseAdmin);
       }
     }
+
+    // 🧹 CLEANUP: Also mark very old jobs as failed (30+ minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    
+    const { data: oldJobs } = await supabaseAdmin
+      .from('background_backup_jobs')
+      .select('*')
+      .eq('status', 'processing')
+      .lt('last_activity', thirtyMinutesAgo);
+
+    if (oldJobs && oldJobs.length > 0) {
+      console.log(`[CLEANUP] Found ${oldJobs.length} very old jobs, marking as failed`);
+      
+      for (const job of oldJobs) {
+        await updateJobProgress(job.upload_token, {
+          status: 'failed',
+          error_message: 'Job timed out - no activity for 30 minutes',
+          last_activity: new Date().toISOString()
+        }, supabaseAdmin);
+      }
+    }
+
   } catch (error) {
     console.error('[RESUME] Error checking stuck jobs:', error);
   }
