@@ -1291,6 +1291,7 @@ export type Database = {
       }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
+      cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
       generate_share_token: { Args: never; Returns: string }
       get_queue_stats: {
         Args: never
@@ -1331,6 +1332,14 @@ export type Database = {
         Returns: {
           failed_count: number
           processed_count: number
+          total_processed: number
+        }[]
+      }
+      process_backup_queue_fallback: {
+        Args: never
+        Returns: {
+          failed: number
+          processed: number
           total_processed: number
         }[]
       }
