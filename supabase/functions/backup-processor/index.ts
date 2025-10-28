@@ -43,72 +43,59 @@ serve(async (req) => {
     
     // Get authorization header
     const authHeader = req.headers.get('Authorization');
-    console.log('🔐 Authorization header:', authHeader?.substring(0, 20) + '...');
+    console.log('🔐 Authorization header present:', !!authHeader);
     
-    if (!authHeader) {
-      console.error('❌ Missing Authorization header');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('❌ Missing or invalid Authorization header');
       return new Response(
         JSON.stringify({ 
           error: 'Not authenticated',
-          details: 'Authorization header is required'
+          details: 'Valid Authorization header is required'
         }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create admin client for service operations
+    // Extract JWT token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Create admin client for all operations (since verify_jwt=true, Supabase already validated the token)
     const adminClient = createClient(supabaseUrl!, supabaseServiceKey!);
     
-    // Create user client to verify authentication
-    const userClient = createClient(supabaseUrl!, supabaseAnonKey!, {
-      global: { 
-        headers: { 
-          Authorization: authHeader
-        } 
+    console.log('👤 Decoding JWT token...');
+    
+    // Decode JWT to get user_id (token is already verified by Supabase gateway)
+    let userId: string;
+    try {
+      // JWT format: header.payload.signature
+      const payloadBase64 = token.split('.')[1];
+      const payloadJson = atob(payloadBase64);
+      const payload = JSON.parse(payloadJson);
+      
+      userId = payload.sub; // 'sub' contains the user ID
+      console.log('✅ User authenticated:', userId);
+      
+      if (!userId) {
+        throw new Error('No user ID in token');
       }
-    });
-
-    console.log('👤 Attempting to authenticate user...');
-    
-    // Try to get user from JWT
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    
-    console.log('Auth result:', { 
-      hasUser: !!userData?.user, 
-      userId: userData?.user?.id,
-      error: userError?.message 
-    });
-    
-    if (userError) {
-      console.error('❌ User authentication error:', userError);
+    } catch (error) {
+      console.error('❌ Error decoding JWT:', error);
       return new Response(
         JSON.stringify({ 
           error: 'Not authenticated',
-          details: userError.message,
-          code: 'AUTH_ERROR'
+          details: 'Invalid token format',
+          code: 'INVALID_TOKEN'
         }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    const user = userData?.user;
-    
-    if (!user) {
-      console.error('❌ No user found in token');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Not authenticated',
-          details: 'Invalid or expired token',
-          code: 'NO_USER'
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const user = { id: userId };
 
     console.log('✅ User authenticated:', user.id);
 
     if (action === 'start') {
-      return await startBackup(tourId, backupType, user.id, userClient, adminClient);
+      return await startBackup(tourId, backupType, user.id, adminClient);
     } else if (action === 'status') {
       return await getBackupStatus(backupId, user.id, adminClient);
     } else if (action === 'cancel') {
@@ -140,14 +127,28 @@ serve(async (req) => {
   }
 });
 
-async function startBackup(tourId: string, backupType: string, userId: string, userClient: any, adminClient: any) {
+async function startBackup(tourId: string, backupType: string, userId: string, adminClient: any) {
   console.log('🎬 Starting REAL backup for tour:', tourId, 'type:', backupType, 'user:', userId);
 
   try {
-    const { data: tour, error: tourError } = await userClient
+    // First, verify user has access to this tour by checking tenant membership
+    const { data: userTenants, error: tenantError } = await adminClient
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', userId);
+
+    if (tenantError || !userTenants || userTenants.length === 0) {
+      throw new Error('User not associated with any tenant');
+    }
+
+    const tenantIds = userTenants.map((t: any) => t.tenant_id);
+
+    // Verify tour exists and user has access through tenant
+    const { data: tour, error: tourError } = await adminClient
       .from('virtual_tours')
       .select('id, title, tenant_id')
       .eq('id', tourId)
+      .in('tenant_id', tenantIds)
       .single();
 
     if (tourError || !tour) {
