@@ -1313,6 +1313,15 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      check_system_health: {
+        Args: never
+        Returns: {
+          alert_level: string
+          details: Json
+          health_status: string
+          message: string
+        }[]
+      }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
