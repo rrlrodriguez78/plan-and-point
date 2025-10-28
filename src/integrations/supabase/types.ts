@@ -153,6 +153,7 @@ export type Database = {
           created_at: string | null
           error_message: string | null
           id: string
+          locked_until: string | null
           max_attempts: number | null
           priority: number | null
           scheduled_at: string | null
@@ -166,6 +167,7 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          locked_until?: string | null
           max_attempts?: number | null
           priority?: number | null
           scheduled_at?: string | null
@@ -179,6 +181,7 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          locked_until?: string | null
           max_attempts?: number | null
           priority?: number | null
           scheduled_at?: string | null
@@ -1249,6 +1252,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
+      cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       generate_share_token: { Args: never; Returns: string }
       get_user_tenants: {
         Args: { _user_id: string }
@@ -1274,6 +1278,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      process_backup_queue: { Args: never; Returns: undefined }
       reject_user: {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
         Returns: undefined

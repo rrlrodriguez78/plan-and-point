@@ -57,6 +57,10 @@ serve(async (req) => {
       return await getBackupStatus(backupId, user.id, adminClient);
     } else if (action === 'cancel') {
       return await cancelBackup(backupId, user.id, adminClient);
+    } else if (action === 'process_queue') {
+      // Acción llamada por pg_cron - no requiere autenticación de usuario específico
+      const { queueId, backupJobId } = JSON.parse(requestBody);
+      return await processQueueItem(queueId, backupJobId, adminClient);
     } else {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
@@ -537,6 +541,83 @@ function calculateEstimatedSize(tour: any, backupType: string): number {
   const mediaSize = (photosCount * 2) + (floorPlansCount * 1);
   
   return Math.ceil(baseSize + mediaSize);
+}
+
+async function processQueueItem(queueId: string, backupJobId: string, adminClient: any) {
+  console.log('🔄 Processing queue item:', queueId, 'for backup job:', backupJobId);
+
+  try {
+    // Obtener información del backup job
+    const { data: backupJob, error: jobError } = await adminClient
+      .from('backup_jobs')
+      .select('tour_id, user_id, job_type')
+      .eq('id', backupJobId)
+      .single();
+
+    if (jobError || !backupJob) {
+      throw new Error('Backup job not found');
+    }
+
+    // Obtener datos del tour
+    const { data: fullTour, error: tourError } = await adminClient
+      .from('virtual_tours')
+      .select(`
+        *,
+        floor_plans (
+          *,
+          hotspots (
+            *,
+            panorama_photos (*)
+          )
+        )
+      `)
+      .eq('id', backupJob.tour_id)
+      .single();
+
+    if (tourError || !fullTour) {
+      throw new Error('Tour not found');
+    }
+
+    // Iniciar procesamiento en background
+    processBackupInBackground(fullTour, backupJobId, backupJob.job_type, backupJob.user_id, adminClient);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Backup processing started',
+        queueId,
+        backupJobId
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error: any) {
+    console.error('💥 Error processing queue item:', error);
+    
+    // Marcar queue item como fallido
+    await adminClient
+      .from('backup_queue')
+      .update({
+        status: 'failed',
+        error_message: error.message,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', queueId);
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 }
 
 function extractPathFromUrl(url: string): string {
