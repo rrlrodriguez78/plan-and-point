@@ -142,17 +142,19 @@ async function processBackupQueue(adminClient: any, maxJobs: number = 3) {
           .select('*')
           .eq('tour_id', tour.id);
 
-        // Obtener hotspots
+        // Obtener hotspots a través de los floor plans
+        const floorPlanIds = floorPlans?.map((fp: any) => fp.id) || [];
         const { data: hotspots } = await adminClient
           .from('hotspots')
           .select('*')
-          .eq('tour_id', tour.id);
+          .in('floor_plan_id', floorPlanIds);
 
-        // Obtener panorama photos
+        // Obtener panorama photos a través de los hotspots
+        const hotspotIds = hotspots?.map((h: any) => h.id) || [];
         const { data: panoramaPhotos } = await adminClient
           .from('panorama_photos')
           .select('*')
-          .eq('tour_id', tour.id);
+          .in('hotspot_id', hotspotIds);
 
         // Construir el objeto completo
         const completeBackupJob = {
