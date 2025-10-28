@@ -269,9 +269,18 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
   const backupType = backupJob.job_type;
   let processedItems = 0;
   
-  const IMAGES_PER_PART = 50; // 50 imágenes por archivo ZIP
+  const IMAGES_PER_PART = 20; // 20 imágenes por archivo ZIP para evitar timeouts
   
   console.log(`🔄 Starting MULTIPART backup processing for: ${tour.title}`);
+  
+  // Update status to processing at the start
+  await adminClient
+    .from('backup_jobs')
+    .update({ 
+      status: 'processing',
+      progress_percentage: 0 
+    })
+    .eq('id', backupJobId);
 
   try {
     const totalItems = calculateTotalItems(tour, backupType);
@@ -382,7 +391,8 @@ Backup Type: ${backupType}
           }
           
           processedItems++;
-          if (idx % 10 === 0) {
+          // Update progress every 5 images for better real-time feedback
+          if (idx % 5 === 0 || idx === partImages.length - 1) {
             await updateProgress(processedItems, `Part ${partNumber}/${parts.length}: ${idx + 1}/${partImages.length} images`);
           }
         } catch (error) {
