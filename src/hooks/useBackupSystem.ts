@@ -35,16 +35,48 @@ interface BackupStatus {
 export function useBackupSystem() {
   const [activeJobs, setActiveJobs] = useState<BackupStatus[]>([]);
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-  // Load active jobs on startup
+  // Check authentication on startup
   useEffect(() => {
+    checkAuth();
     loadActiveJobs();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+      console.log('Current user:', currentUser?.id, 'Error:', error);
+      
+      if (error) {
+        console.error('Auth error:', error);
+        toast.error('Please log in to use backup features');
+        return;
+      }
+      
+      if (!currentUser) {
+        console.log('No user found, user might be logged out');
+        toast.error('Please log in to use backup features');
+        return;
+      }
+      
+      setUser(currentUser);
+    } catch (error) {
+      console.error('Error checking auth:', error);
+    }
+  };
 
   const loadActiveJobs = useCallback(async () => {
     try {
       console.log('Loading active backup jobs...');
       
+      // Verify user is authenticated
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        console.log('User not authenticated, skipping job load');
+        return;
+      }
+
       // Get active jobs from database
       const { data: jobs, error } = await supabase
         .from('backup_jobs')
@@ -97,14 +129,22 @@ export function useBackupSystem() {
   }, []);
 
   const startBackup = async (tourId: string, backupType: 'full_backup' | 'media_only' = 'full_backup') => {
+    // Check authentication first
+    const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !currentUser) {
+      console.error('User not authenticated:', authError);
+      toast.error('Please log in to create backups');
+      return null;
+    }
+
+    console.log('User authenticated:', currentUser.id);
     setLoading(true);
     
     try {
       console.log('Starting backup for tour:', tourId, 'type:', backupType);
       
-      // First, let's test if we can reach the function with a simple call
-      console.log('Testing edge function connection...');
-      
+      // Test edge function with better error handling
       const { data, error } = await supabase.functions.invoke('backup-processor', {
         body: { 
           action: 'start',
@@ -116,13 +156,22 @@ export function useBackupSystem() {
       console.log('Edge function response:', { data, error });
 
       if (error) {
-        console.error('Edge function error details:', {
+        console.error('Edge function error:', {
           name: error.name,
           message: error.message,
-          stack: error.stack,
-          cause: error.cause
+          status: (error as any).status,
+          statusText: (error as any).statusText
         });
-        throw new Error(`Edge Function Error: ${error.message}`);
+        
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          toast.error('Authentication failed. Please log in again.');
+          // Try to refresh session
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          console.log('Session refresh result:', { refreshData, refreshError });
+        } else {
+          throw new Error(`Edge Function Error: ${error.message}`);
+        }
+        return null;
       }
 
       if (!data) {
