@@ -38,7 +38,8 @@ export const BackupManager: React.FC = () => {
   const [loadingTours, setLoadingTours] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [selectedBackups, setSelectedBackups] = useState<Set<string>>(new Set());
+  const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set());
+  const [expandedBackups, setExpandedBackups] = useState<Set<string>>(new Set());
   const [showCompletedBackups, setShowCompletedBackups] = useState(true);
 
   // Check authentication on mount
@@ -248,41 +249,89 @@ export const BackupManager: React.FC = () => {
   };
 
   const handleDownloadSelected = async () => {
-    const completedBackups = activeJobs.filter(
-      job => job.status === 'completed'
-    );
-    
-    const selectedJobs = completedBackups.filter(job => 
-      selectedBackups.has(job.backupId)
-    );
-    
-    if (selectedJobs.length === 0) {
-      toast.error('No backups selected');
+    if (selectedParts.size === 0) {
+      toast.error('No files selected');
       return;
     }
     
-    toast.info(`Starting download of ${selectedJobs.length} backup(s)...`);
+    toast.info(`Starting download of ${selectedParts.size} file(s)...`);
     
     let totalDownloaded = 0;
+    const completedBackups = activeJobs.filter(job => job.status === 'completed');
     
-    for (const job of selectedJobs) {
-      if (job.isMultipart && job.parts) {
-        for (const part of job.parts) {
-          if (part.file_url) {
+    for (const backup of completedBackups) {
+      if (backup.isMultipart && backup.parts) {
+        for (const part of backup.parts) {
+          if (selectedParts.has(part.id) && part.file_url) {
             window.open(part.file_url, '_blank');
             totalDownloaded++;
             await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
-      } else if (job.downloadUrl) {
-        window.open(job.downloadUrl, '_blank');
-        totalDownloaded++;
-        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        // Single file backup
+        const partId = `${backup.backupId}_single`;
+        if (selectedParts.has(partId) && backup.downloadUrl) {
+          window.open(backup.downloadUrl, '_blank');
+          totalDownloaded++;
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
     }
     
     toast.success(`Started downloading ${totalDownloaded} file(s)`);
-    setSelectedBackups(new Set());
+    setSelectedParts(new Set());
+  };
+
+  const toggleBackupExpanded = (backupId: string) => {
+    const newExpanded = new Set(expandedBackups);
+    if (newExpanded.has(backupId)) {
+      newExpanded.delete(backupId);
+    } else {
+      newExpanded.add(backupId);
+    }
+    setExpandedBackups(newExpanded);
+  };
+
+  const togglePartSelection = (partId: string) => {
+    const newSelection = new Set(selectedParts);
+    if (newSelection.has(partId)) {
+      newSelection.delete(partId);
+    } else {
+      newSelection.add(partId);
+    }
+    setSelectedParts(newSelection);
+  };
+
+  const selectAllPartsInBackup = (backup: any) => {
+    const newSelection = new Set(selectedParts);
+    if (backup.isMultipart && backup.parts) {
+      backup.parts.forEach((part: any) => {
+        newSelection.add(part.id);
+      });
+    } else {
+      newSelection.add(`${backup.backupId}_single`);
+    }
+    setSelectedParts(newSelection);
+  };
+
+  const deselectAllPartsInBackup = (backup: any) => {
+    const newSelection = new Set(selectedParts);
+    if (backup.isMultipart && backup.parts) {
+      backup.parts.forEach((part: any) => {
+        newSelection.delete(part.id);
+      });
+    } else {
+      newSelection.delete(`${backup.backupId}_single`);
+    }
+    setSelectedParts(newSelection);
+  };
+
+  const areAllPartsSelected = (backup: any): boolean => {
+    if (backup.isMultipart && backup.parts) {
+      return backup.parts.every((part: any) => selectedParts.has(part.id));
+    }
+    return selectedParts.has(`${backup.backupId}_single`);
   };
 
   // Separate backups by status
@@ -532,48 +581,16 @@ export const BackupManager: React.FC = () => {
                   <CardTitle>
                     {t('backups.completedBackups', { defaultValue: 'Completed Backups' })} ({completedBackups.length})
                   </CardTitle>
-                  {selectedBackups.size > 0 && (
+                  {selectedParts.size > 0 && (
                     <CardDescription>
-                      {(() => {
-                        const totalSelectedParts = completedBackups
-                          .filter(b => selectedBackups.has(b.backupId))
-                          .reduce((sum, b) => sum + (b.parts?.length || 1), 0);
-                        
-                        const totalSelectedSize = completedBackups
-                          .filter(b => selectedBackups.has(b.backupId))
-                          .reduce((sum, b) => {
-                            if (b.isMultipart && b.parts) {
-                              return sum + b.parts.reduce((s, p) => s + (p.file_size || 0), 0);
-                            }
-                            return sum + (b.fileSize || 0);
-                          }, 0);
-                        
-                        return `${totalSelectedParts} files selected • ${formatFileSize(totalSelectedSize)}`;
-                      })()}
+                      {selectedParts.size} {selectedParts.size === 1 ? 'file' : 'files'} selected
                     </CardDescription>
                   )}
                 </div>
               </div>
               
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (selectedBackups.size === completedBackups.length) {
-                      setSelectedBackups(new Set());
-                    } else {
-                      setSelectedBackups(new Set(completedBackups.map(b => b.backupId)));
-                    }
-                  }}
-                >
-                  {selectedBackups.size === completedBackups.length 
-                    ? t('backups.deselectAll', { defaultValue: 'Deselect All' })
-                    : t('backups.selectAll', { defaultValue: 'Select All' })}
-                </Button>
-                
-                {selectedBackups.size > 0 && (
+                {selectedParts.size > 0 && (
                   <Button
                     size="sm"
                     onClick={(e) => {
@@ -582,7 +599,7 @@ export const BackupManager: React.FC = () => {
                     }}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    {t('backups.downloadSelected', { defaultValue: 'Download Selected' })} ({selectedBackups.size})
+                    {t('backups.downloadSelected', { defaultValue: 'Download Selected' })} ({selectedParts.size})
                   </Button>
                 )}
               </div>
@@ -591,9 +608,10 @@ export const BackupManager: React.FC = () => {
           
           {showCompletedBackups && (
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {completedBackups.map((backup) => {
-                  const isSelected = selectedBackups.has(backup.backupId);
+                  const isExpanded = expandedBackups.has(backup.backupId);
+                  const allSelected = areAllPartsSelected(backup);
                   const partsCount = backup.isMultipart ? backup.parts?.length || 0 : 1;
                   const totalSize = backup.isMultipart && backup.parts
                     ? backup.parts.reduce((sum, p) => sum + (p.file_size || 0), 0)
@@ -604,63 +622,148 @@ export const BackupManager: React.FC = () => {
                   return (
                     <div 
                       key={backup.backupId}
-                      className={cn(
-                        "flex items-center gap-4 p-4 border rounded-lg transition-all hover:bg-accent/20",
-                        isSelected && "border-primary bg-primary/5"
-                      )}
+                      className="border rounded-lg overflow-hidden"
                     >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => {
-                          const newSelection = new Set(selectedBackups);
-                          if (newSelection.has(backup.backupId)) {
-                            newSelection.delete(backup.backupId);
-                          } else {
-                            newSelection.add(backup.backupId);
-                          }
-                          setSelectedBackups(newSelection);
-                        }}
-                        className="h-5 w-5"
-                      />
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{backup.tourName}</span>
-                            <Badge variant="outline">
-                              {backup.jobType === 'full_backup' ? '💾 Complete' : '🖼️ Media'}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>📦 {partsCount} {partsCount === 1 ? 'file' : 'files'}</span>
-                            <span>💾 {formatFileSize(totalSize)}</span>
-                            <span>🕐 {timeAgo}</span>
+                      {/* Backup Header */}
+                      <div className="flex items-center gap-4 p-4 bg-card hover:bg-accent/20 transition-colors">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => toggleBackupExpanded(backup.backupId)}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{backup.tourName}</span>
+                              <Badge variant="outline">
+                                {backup.jobType === 'full_backup' ? '💾 Complete' : '🖼️ Media'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>📦 {partsCount} {partsCount === 1 ? 'file' : 'files'}</span>
+                              <span>💾 {formatFileSize(totalSize)}</span>
+                              <span>🕐 {timeAgo}</span>
+                            </div>
                           </div>
                         </div>
                         
-                        {backup.isMultipart && backup.parts && (
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            {backup.parts.map((part, idx) => (
-                              <span key={part.id}>
-                                Part {part.part_number} ({formatFileSize(part.file_size || 0)})
-                                {idx < backup.parts!.length - 1 ? ' • ' : ''}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (allSelected) {
+                              deselectAllPartsInBackup(backup);
+                            } else {
+                              selectAllPartsInBackup(backup);
+                            }
+                          }}
+                        >
+                          {allSelected ? 'Deselect All' : 'Select All'}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBackup(backup.backupId, backup.status);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                       
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteBackup(backup.backupId, backup.status);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* Expandable Parts List */}
+                      {isExpanded && (
+                        <div className="border-t bg-muted/30">
+                          {backup.isMultipart && backup.parts ? (
+                            <div className="p-4 space-y-2">
+                              {backup.parts.map((part) => {
+                                const isPartSelected = selectedParts.has(part.id);
+                                return (
+                                  <div
+                                    key={part.id}
+                                    className={cn(
+                                      "flex items-center gap-3 p-3 border rounded-md bg-background transition-all",
+                                      isPartSelected && "border-primary bg-primary/5"
+                                    )}
+                                  >
+                                    <Checkbox
+                                      checked={isPartSelected}
+                                      onCheckedChange={() => togglePartSelection(part.id)}
+                                      className="h-4 w-4"
+                                    />
+                                    
+                                    <div className="flex-1 flex items-center justify-between">
+                                      <span className="text-sm font-medium">
+                                        Part {part.part_number}
+                                      </span>
+                                      <span className="text-sm text-muted-foreground">
+                                        {formatFileSize(part.file_size || 0)}
+                                      </span>
+                                    </div>
+                                    
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        if (part.file_url) {
+                                          window.open(part.file_url, '_blank');
+                                          toast.success(`Downloading part ${part.part_number}`);
+                                        }
+                                      }}
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="p-4">
+                              <div
+                                className={cn(
+                                  "flex items-center gap-3 p-3 border rounded-md bg-background transition-all",
+                                  selectedParts.has(`${backup.backupId}_single`) && "border-primary bg-primary/5"
+                                )}
+                              >
+                                <Checkbox
+                                  checked={selectedParts.has(`${backup.backupId}_single`)}
+                                  onCheckedChange={() => togglePartSelection(`${backup.backupId}_single`)}
+                                  className="h-4 w-4"
+                                />
+                                
+                                <div className="flex-1 flex items-center justify-between">
+                                  <span className="text-sm font-medium">
+                                    Backup File
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {formatFileSize(backup.fileSize || 0)}
+                                  </span>
+                                </div>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDownload(backup)}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
