@@ -254,7 +254,8 @@ export const BackupManager: React.FC = () => {
       return;
     }
     
-    toast.info(`Starting download of ${selectedParts.size} file(s)...`);
+    const totalToDownload = selectedParts.size;
+    toast.info(`Starting download of ${totalToDownload} file(s)...`);
     
     let totalDownloaded = 0;
     const completedBackups = activeJobs.filter(job => job.status === 'completed');
@@ -273,7 +274,14 @@ export const BackupManager: React.FC = () => {
             document.body.removeChild(link);
             
             totalDownloaded++;
-            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Show progress
+            if (totalDownloaded < totalToDownload) {
+              toast.info(`Downloading ${totalDownloaded}/${totalToDownload}...`, { duration: 800 });
+            }
+            
+            // Increased delay to 800ms to give browser more time between downloads
+            await new Promise(resolve => setTimeout(resolve, 800));
           }
         }
       } else {
@@ -289,12 +297,19 @@ export const BackupManager: React.FC = () => {
           document.body.removeChild(link);
           
           totalDownloaded++;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Show progress
+          if (totalDownloaded < totalToDownload) {
+            toast.info(`Downloading ${totalDownloaded}/${totalToDownload}...`, { duration: 800 });
+          }
+          
+          // Increased delay to 800ms to give browser more time between downloads
+          await new Promise(resolve => setTimeout(resolve, 800));
         }
       }
     }
     
-    toast.success(`Downloaded ${totalDownloaded} file(s)`);
+    toast.success(`Downloaded ${totalDownloaded} file(s) successfully`);
     setSelectedParts(new Set());
   };
 
