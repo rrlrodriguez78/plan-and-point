@@ -649,6 +649,9 @@
     "mediaOnlyDescription": "Incluye solo fotos 360° y planos de piso, organizados en carpetas. Ideal para entrega de archivos o migración de plataforma.",
     "loadingTours": "Cargando tours...",
     "errorLoadingTours": "Error al cargar tours",
-    "backupStarted": "Backup de {{tourName}} iniciado"
+    "backupStarted": "Backup de {{tourName}} iniciado",
+    "authRequired": "Autenticación Requerida",
+    "authRequiredMessage": "Por favor inicia sesión para acceder al sistema de backup",
+    "refreshPage": "Actualizar Página"
   }
 }

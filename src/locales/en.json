@@ -649,6 +649,9 @@
     "mediaOnlyDescription": "Includes only 360° photos and floor plans, organized in folders. Ideal for file delivery or platform migration.",
     "loadingTours": "Loading tours...",
     "errorLoadingTours": "Error loading tours",
-    "backupStarted": "Backup for {{tourName}} started"
+    "backupStarted": "Backup for {{tourName}} started",
+    "authRequired": "Authentication Required",
+    "authRequiredMessage": "Please log in to access the backup system",
+    "refreshPage": "Refresh Page"
   }
 }

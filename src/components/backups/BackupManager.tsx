@@ -32,11 +32,33 @@ export const BackupManager: React.FC = () => {
   
   const [tours, setTours] = useState<Tour[]>([]);
   const [loadingTours, setLoadingTours] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    checkAuthentication();
+  }, []);
 
   // Load available tours
   useEffect(() => {
-    loadTours();
-  }, []);
+    if (isAuthenticated) {
+      loadTours();
+    }
+  }, [isAuthenticated]);
+
+  const checkAuthentication = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+      console.log('User authenticated in component:', !!user);
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
 
   const loadTours = async () => {
     try {
@@ -171,6 +193,41 @@ export const BackupManager: React.FC = () => {
       default: return t('backups.statusPending', { defaultValue: 'Pending' });
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <RefreshCw className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Checking authentication...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
+              <span className="text-4xl">🔒</span>
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              {t('backups.authRequired', { defaultValue: 'Authentication Required' })}
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              {t('backups.authRequiredMessage', { 
+                defaultValue: 'Please log in to access the backup system' 
+              })}
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {t('backups.refreshPage', { defaultValue: 'Refresh Page' })}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loadingTours) {
     return (

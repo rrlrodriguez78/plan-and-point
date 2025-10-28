@@ -628,6 +628,9 @@
     "mediaOnlyDescription": "Comprend uniquement les photos 360° et les plans d'étage, organisés dans des dossiers. Idéal pour la livraison de fichiers ou la migration de plateforme.",
     "loadingTours": "Chargement des visites...",
     "errorLoadingTours": "Erreur lors du chargement des visites",
-    "backupStarted": "Sauvegarde de {{tourName}} démarrée"
+    "backupStarted": "Sauvegarde de {{tourName}} démarrée",
+    "authRequired": "Authentification Requise",
+    "authRequiredMessage": "Veuillez vous connecter pour accéder au système de sauvegarde",
+    "refreshPage": "Actualiser la Page"
   }
 }

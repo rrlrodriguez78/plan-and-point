@@ -628,6 +628,9 @@
     "mediaOnlyDescription": "Enthält nur 360°-Fotos und Grundrisse, organisiert in Ordnern. Ideal für Dateiauslieferung oder Plattformmigration.",
     "loadingTours": "Touren werden geladen...",
     "errorLoadingTours": "Fehler beim Laden der Touren",
-    "backupStarted": "Backup von {{tourName}} gestartet"
+    "backupStarted": "Backup von {{tourName}} gestartet",
+    "authRequired": "Authentifizierung Erforderlich",
+    "authRequiredMessage": "Bitte melden Sie sich an, um auf das Backup-System zuzugreifen",
+    "refreshPage": "Seite Aktualisieren"
   }
 }
