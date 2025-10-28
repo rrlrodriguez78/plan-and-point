@@ -1325,6 +1325,13 @@ export type Database = {
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
+      export_backup_system_config: {
+        Args: never
+        Returns: {
+          config_data: Json
+          config_type: string
+        }[]
+      }
       generate_share_token: { Args: never; Returns: string }
       get_backup_system_dashboard: {
         Args: never
