@@ -23,8 +23,6 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import TenantAdmin from "./pages/TenantAdmin";
 import TenantMembers from "./pages/TenantMembers";
 import UserApprovals from "./pages/UserApprovals";
-import Backups from "./pages/Backups";
-import BackupTest from "./pages/BackupTest";
 import FeatureManagement from "./pages/FeatureManagement";
 import CompatibilityTest from "./pages/CompatibilityTest";
 import CompatibilityReport from "./pages/CompatibilityReport";
@@ -64,8 +62,6 @@ const App = () => (
                   <Route path="/app/user-settings" element={<UserSettings />} />
                   <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
                   <Route path="/app/user-approvals" element={<UserApprovals />} />
-                  <Route path="/app/backups" element={<Backups />} />
-                  <Route path="/app/backup-test" element={<BackupTest />} />
                   <Route path="/app/tenant-admin" element={<TenantAdmin />} />
                   <Route path="/app/tenant-members" element={<TenantMembers />} />
                   <Route path="/app/feature-management" element={<FeatureManagement />} />
