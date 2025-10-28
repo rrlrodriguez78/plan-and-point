@@ -96,17 +96,21 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
   console.log('🎬 Starting backup for tour:', tourId, 'type:', backupType);
 
   try {
-    // Verify tour exists
+    // Verify tour exists and get owner info
     const { data: tour, error: tourError } = await supabase
       .from('virtual_tours')
       .select(`
         *,
+        tenants!inner (
+          id,
+          owner_id
+        ),
         floor_plans (*),
         hotspots (*),
         panorama_photos (*)
       `)
       .eq('id', tourId)
-      .single();
+      .maybeSingle();
 
     if (tourError) {
       console.error('❌ Tour query error:', tourError);
@@ -123,6 +127,14 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
     const totalItems = calculateTotalItems(tour, backupType);
     console.log('📊 Total items to process:', totalItems);
 
+    // Get user ID and tenant ID from tour
+    const tenantId = tour.tenant_id;
+    const ownerId = tour.tenants?.owner_id;
+
+    if (!ownerId) {
+      throw new Error('Could not determine tour owner');
+    }
+
     // Create backup job
     const { data: backupJob, error: jobError } = await supabase
       .from('backup_jobs')
@@ -130,10 +142,12 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
         tour_id: tourId,
         job_type: backupType,
         status: 'processing',
-        total_items: totalItems
+        total_items: totalItems,
+        user_id: ownerId,
+        tenant_id: tenantId
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (jobError) {
       console.error('❌ Backup job creation error:', jobError);
@@ -180,7 +194,7 @@ async function getBackupStatus(backupId: string, supabase: any) {
         )
       `)
       .eq('id', backupId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('❌ Backup status query error:', error);
