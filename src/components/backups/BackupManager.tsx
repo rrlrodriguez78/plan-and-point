@@ -293,7 +293,11 @@ export const BackupManager: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {tours.map((tour) => {
               const stats = getTourStats(tour);
-              const hasActiveJob = activeJobs.some(job => job.tourId === tour.id);
+              // Solo considerar como activo si está realmente en progreso
+              const hasActiveJob = activeJobs.some(
+                job => job.tourId === tour.id && 
+                (job.status === 'processing' || job.status === 'pending')
+              );
               
               return (
                 <Card key={tour.id} className="relative">
