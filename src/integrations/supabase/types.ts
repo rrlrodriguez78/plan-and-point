@@ -1323,6 +1323,13 @@ export type Database = {
         }[]
       }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
+      cleanup_orphaned_backups: {
+        Args: never
+        Returns: {
+          cancelled_count: number
+          deleted_count: number
+        }[]
+      }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
       export_backup_system_config: {

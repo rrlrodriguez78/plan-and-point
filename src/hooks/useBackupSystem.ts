@@ -78,6 +78,7 @@ export function useBackupSystem() {
       }
 
       // Get active and recent jobs from database (last 24 hours)
+      // Only show backups for tours that still exist
       const twentyFourHoursAgo = new Date();
       twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
@@ -85,7 +86,7 @@ export function useBackupSystem() {
         .from('backup_jobs')
         .select(`
           *,
-          virtual_tours (
+          virtual_tours!inner (
             title
           )
         `)
