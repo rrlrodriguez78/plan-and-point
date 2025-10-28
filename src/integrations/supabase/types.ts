@@ -55,6 +55,78 @@ export type Database = {
           },
         ]
       }
+      backup_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          job_type: string
+          metadata: Json | null
+          processed_items: number | null
+          progress_percentage: number | null
+          status: string
+          tenant_id: string
+          total_items: number | null
+          tour_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          job_type: string
+          metadata?: Json | null
+          processed_items?: number | null
+          progress_percentage?: number | null
+          status?: string
+          tenant_id: string
+          total_items?: number | null
+          tour_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          job_type?: string
+          metadata?: Json | null
+          processed_items?: number | null
+          progress_percentage?: number | null
+          status?: string
+          tenant_id?: string
+          total_items?: number | null
+          tour_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backup_jobs_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commands: {
         Row: {
           command_number: number
