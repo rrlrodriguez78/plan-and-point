@@ -304,6 +304,12 @@ export const BackupManager: React.FC = () => {
       return;
     }
 
+    // Limit to 10 files to avoid edge function timeout
+    if (selectedParts.size > 10) {
+      toast.error('Cannot combine more than 10 files at once. Please use "Download Individual" for large backups.');
+      return;
+    }
+
     try {
       toast.info('Preparing combined download...');
       
@@ -663,9 +669,12 @@ export const BackupManager: React.FC = () => {
                         e.stopPropagation();
                         handleDownloadAsZip();
                       }}
+                      disabled={selectedParts.size > 10}
+                      title={selectedParts.size > 10 ? 'Maximum 10 files can be combined. Use "Individual" for larger backups.' : ''}
                     >
                       <Package className="h-4 w-4 mr-2" />
                       Single ZIP ({selectedParts.size})
+                      {selectedParts.size > 10 && ' (Max 10)'}
                     </Button>
                   </>
                 )}
