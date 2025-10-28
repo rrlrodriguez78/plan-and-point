@@ -619,6 +619,219 @@ async function handleFailedJob(queueItem: any, error: any, adminClient: any) {
 }
 
 // FUNCIONES AUXILIARES
+
+// Obtener todas las imágenes del tour (floor plans + panorama photos)
+async function getAllTourImages(tour: any, adminClient: any): Promise<any[]> {
+  const images: any[] = [];
+  
+  // Agregar floor plans
+  for (const floorPlan of (tour.floor_plans || [])) {
+    if (floorPlan.image_url) {
+      images.push({
+        type: 'floor_plan',
+        data: floorPlan,
+        url: floorPlan.image_url
+      });
+    }
+  }
+  
+  // Agregar panorama photos
+  for (const photo of (tour.panorama_photos || [])) {
+    if (photo.photo_url) {
+      images.push({
+        type: 'panorama', 
+        data: photo,
+        url: photo.photo_url
+      });
+    }
+  }
+  
+  return images;
+}
+
+// Dividir imágenes en partes
+function splitImagesIntoParts(images: any[], maxItemsPerPart: number): any[][] {
+  const parts: any[][] = [];
+  for (let i = 0; i < images.length; i += maxItemsPerPart) {
+    parts.push(images.slice(i, i + maxItemsPerPart));
+  }
+  return parts;
+}
+
+// Crear registros de partes en la base de datos
+async function createBackupParts(backupJobId: string, totalParts: number, adminClient: any): Promise<any[]> {
+  const partRecords = [];
+  
+  for (let i = 1; i <= totalParts; i++) {
+    const { data: part, error } = await adminClient
+      .from('backup_parts')
+      .insert({
+        backup_job_id: backupJobId,
+        part_number: i,
+        status: 'pending',
+        items_count: 0
+      })
+      .select()
+      .single();
+    
+    if (!error && part) {
+      partRecords.push(part);
+    }
+  }
+  
+  return partRecords;
+}
+
+// Crear ZIP para una parte específica
+async function createPartZip(images: any[], backupType: string, partNumber: number, tourName: string, adminClient: any): Promise<Uint8Array> {
+  const zip = new JSZip();
+  const safeTourName = sanitizeFilename(tourName);
+  
+  // Agregar README
+  const readme = `BACKUP PART ${partNumber} - ${tourName}
+Created: ${new Date().toISOString()}
+Backup Type: ${backupType}
+Total images in this part: ${images.length}
+`;
+  zip.addFile('README.txt', readme);
+  
+  // Procesar cada imagen
+  for (const image of images) {
+    try {
+      if (image.type === 'floor_plan') {
+        const floorPlan = image.data;
+        const imagePath = extractPathFromUrl(floorPlan.image_url);
+        
+        const { data: imageBlob, error: imageError } = await adminClient.storage
+          .from('tour-images')
+          .download(imagePath);
+
+        if (!imageError && imageBlob) {
+          const arrayBuffer = await imageBlob.arrayBuffer();
+          const safeName = sanitizeFilename(floorPlan.name || `floorplan_${floorPlan.id}`);
+          zip.addFile(`floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
+        }
+      } else if (image.type === 'panorama') {
+        const photo = image.data;
+        const imagePath = extractPathFromUrl(photo.photo_url);
+        
+        const { data: imageBlob, error: imageError } = await adminClient.storage
+          .from('tour-images')
+          .download(imagePath);
+
+        if (!imageError && imageBlob) {
+          const arrayBuffer = await imageBlob.arrayBuffer();
+          const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
+          const safeFilename = sanitizeFilename(`photo_${photo.id}`);
+          zip.addFile(`panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to process image for part ${partNumber}:`, error);
+    }
+  }
+  
+  // Generar ZIP
+  return await zip.generateAsync({
+    type: 'uint8array',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+}
+
+// Subir parte a storage
+async function uploadPartToStorage(zipData: Uint8Array, backupJobId: string, partNumber: number, userId: string, adminClient: any): Promise<string> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const storagePath = `${userId}/${backupJobId}/part_${partNumber}_${timestamp}.zip`;
+  
+  const { error: uploadError } = await adminClient.storage
+    .from('backups')
+    .upload(storagePath, zipData, {
+      contentType: 'application/zip',
+      upsert: false
+    });
+
+  if (uploadError) {
+    throw new Error(`Failed to upload part ${partNumber}: ${uploadError.message}`);
+  }
+
+  // Generar URL firmada
+  const { data: signedUrlData } = await adminClient.storage
+    .from('backups')
+    .createSignedUrl(storagePath, 7 * 24 * 60 * 60); // 7 días
+
+  return signedUrlData?.signedUrl || '';
+}
+
+// Invocar siguiente parte
+async function invokeNextPart(backupJobId: string): Promise<void> {
+  try {
+    const workerUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/backup-worker`;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    // No esperar respuesta - ejecutar en background
+    fetch(workerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`
+      },
+      body: JSON.stringify({
+        action: 'process_job',
+        backupJobId: backupJobId
+      })
+    }).catch(err => console.error('Error invoking next part:', err));
+    
+  } catch (error) {
+    console.error('Error setting up next part invocation:', error);
+  }
+}
+
+// Marcar backup como completado
+async function markBackupAsCompleted(backupJobId: string, adminClient: any): Promise<void> {
+  // Calcular tamaño total
+  const { data: parts } = await adminClient
+    .from('backup_parts')
+    .select('file_size, items_count')
+    .eq('backup_job_id', backupJobId);
+
+  const totalSize = parts?.reduce((sum: number, part: any) => sum + (part.file_size || 0), 0) || 0;
+  const totalItems = parts?.reduce((sum: number, part: any) => sum + (part.items_count || 0), 0) || 0;
+
+  // Actualizar backup job
+  await adminClient
+    .from('backup_jobs')
+    .update({
+      status: 'completed',
+      processed_items: totalItems,
+      progress_percentage: 100,
+      file_size: totalSize,
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', backupJobId);
+
+  // Actualizar queue
+  await adminClient
+    .from('backup_queue')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString()
+    })
+    .eq('backup_job_id', backupJobId);
+
+  console.log(`🎉 Backup completed: ${backupJobId}`);
+}
+
+// Calcular tamaño total del backup
+async function calculateTotalBackupSize(backupJobId: string, adminClient: any): Promise<number> {
+  const { data: parts } = await adminClient
+    .from('backup_parts')
+    .select('file_size')
+    .eq('backup_job_id', backupJobId);
+
+  return parts?.reduce((sum: number, part: any) => sum + (part.file_size || 0), 0) || 0;
+}
+
 function calculateTotalItems(tour: any, backupType: string): number {
   const baseItems = 1; // manifest.json
   const floorPlans = tour.floor_plans?.length || 0;
