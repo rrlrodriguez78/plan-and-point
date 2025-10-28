@@ -355,195 +355,22 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
     
     console.log(`\n📦 Processing part ${currentPart}/${totalParts} (images ${startIdx + 1}-${endIdx})`);
     
-    // Crear ZIP para esta parte
-    const zip = new JSZip();
+    // Crear ZIP para esta parte usando la nueva función organizada
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeTourName = sanitizeFilename(tour.title);
     
-    // README con instrucciones detalladas de unión
-    const readme = `═══════════════════════════════════════════════════════
-VIRTUAL TOUR BACKUP - ${tour.title}
-═══════════════════════════════════════════════════════
-
-Parte: ${currentPart} de ${totalParts}
-Tipo de Backup: ${backupType}
-Creado: ${new Date().toISOString()}
-Imágenes en esta parte: ${partImages.length}
-Tour ID: ${tour.id}
-
-═══════════════════════════════════════════════════════
-INSTRUCCIONES PARA UNIR TODAS LAS PARTES
-═══════════════════════════════════════════════════════
-
-⚠️ IMPORTANTE: Debes descargar TODAS las ${totalParts} partes antes de unirlas.
-
-Archivos necesarios:
-${Array.from({length: totalParts}, (_, i) => `  - ${safeTourName}_backup_${timestamp}.zip.${String(i+1).padStart(3, '0')}`).join('\n')}
-
-───────────────────────────────────────────────────────
-MÉTODO 1 - SCRIPTS AUTOMÁTICOS (MÁS FÁCIL)
-───────────────────────────────────────────────────────
-
-1. Descarga TODAS las partes (.zip.001, .zip.002, etc.)
-2. Descarga los scripts de unión:
-   - Windows: UNIR_ARCHIVOS_WINDOWS.bat
-   - Mac/Linux: UNIR_ARCHIVOS_MAC_LINUX.sh
-3. Coloca todos los archivos en la misma carpeta
-4. Ejecuta el script correspondiente:
-   
-   WINDOWS:
-   - Doble clic en UNIR_ARCHIVOS_WINDOWS.bat
-   
-   MAC/LINUX:
-   - Abre Terminal
-   - chmod +x UNIR_ARCHIVOS_MAC_LINUX.sh
-   - ./UNIR_ARCHIVOS_MAC_LINUX.sh
-
-───────────────────────────────────────────────────────
-MÉTODO 2 - PROGRAMAS DE COMPRESIÓN (RECOMENDADO)
-───────────────────────────────────────────────────────
-
-WINDOWS - 7-Zip (Gratuito):
-1. Instala 7-Zip desde https://www.7-zip.org/
-2. Descarga todas las partes en una carpeta
-3. Clic derecho en el archivo .001
-4. Selecciona "7-Zip" → "Extraer aquí"
-5. 7-Zip unirá automáticamente todas las partes
-
-WINDOWS - WinRAR:
-1. Descarga todas las partes en una carpeta
-2. Clic derecho en el archivo .001
-3. Selecciona "Extraer aquí"
-4. WinRAR unirá automáticamente todas las partes
-
-MAC - The Unarchiver (Gratuito):
-1. Instala The Unarchiver desde App Store
-2. Descarga todas las partes en una carpeta
-3. Doble clic en el archivo .001
-4. The Unarchiver unirá y extraerá automáticamente
-
-───────────────────────────────────────────────────────
-MÉTODO 3 - LÍNEA DE COMANDOS (AVANZADO)
-───────────────────────────────────────────────────────
-
-Windows (CMD):
-cd ruta\\a\\carpeta
-copy /b "${safeTourName}_backup_${timestamp}.zip.*" "${safeTourName}_complete.zip"
-
-Windows (PowerShell):
-cd ruta\\a\\carpeta
-cmd /c copy /b "${safeTourName}_backup_${timestamp}.zip.*" "${safeTourName}_complete.zip"
-
-Mac/Linux (Terminal):
-cd /ruta/a/carpeta
-cat ${safeTourName}_backup_${timestamp}.zip.* > ${safeTourName}_complete.zip
-
-───────────────────────────────────────────────────────
-ESTRUCTURA DEL BACKUP
-───────────────────────────────────────────────────────
-
-Una vez unido y extraído, encontrarás:
-
-📁 floor_plans/
-   └── Planos de piso del tour
-   
-📁 panoramas/
-   ├── hotspot_[ID]/
-   │   └── Fotos panorámicas 360° por ubicación
-   └── general/
-       └── Fotos panorámicas sin ubicación específica
-
-───────────────────────────────────────────────────────
-SOLUCIÓN DE PROBLEMAS
-───────────────────────────────────────────────────────
-
-❌ Error: "Archivo corrupto" o "No se puede abrir"
-   → Verifica que descargaste TODAS las partes
-   → Comprueba que los archivos no estén dañados
-
-❌ Error: "Falta el archivo .00X"
-   → Descarga la parte faltante
-   → Asegúrate de que todos los archivos estén en la misma carpeta
-
-❌ El archivo unido está incompleto
-   → Vuelve a descargar las partes que puedan estar dañadas
-   → Usa un programa de compresión (7-Zip/WinRAR/The Unarchiver)
-
-🔍 Más ayuda: Revisa el archivo LEEME_INSTRUCCIONES.txt
-
-═══════════════════════════════════════════════════════
-`;
-    zip.addFile('README.txt', readme);
+    console.log(`📈 Generating organized ZIP for part ${currentPart}...`);
+    const zipBlob = await createPartZip(
+      tour,
+      backupType,
+      currentPart,
+      totalParts,
+      tour.title,
+      adminClient
+    );
     
-    // Agregar metadata JSON
-    const partMetadata = {
-      tour_name: tour.title,
-      tour_id: tour.id,
-      backup_type: backupType,
-      part_number: currentPart,
-      total_parts: totalParts,
-      total_images_in_part: partImages.length,
-      created_at: new Date().toISOString(),
-      file_sequence: `${safeTourName}_backup_${timestamp}.zip.${String(currentPart).padStart(3, '0')}`,
-      extraction_instructions: {
-        recommended_tools: {
-          windows: ["7-Zip (Free)", "WinRAR"],
-          mac: ["The Unarchiver (Free)", "Keka"],
-          linux: ["p7zip", "unzip", "cat command"]
-        },
-        auto_extraction: "Most compression tools will automatically recognize and extract all parts when you open .001"
-      }
-    };
-    zip.addFile('part_metadata.json', JSON.stringify(partMetadata, null, 2));
-    
-    // Procesar imágenes de esta parte
-    let itemsInPart = 0;
-    for (const [idx, imageItem] of partImages.entries()) {
-      try {
-        if (imageItem.type === 'floor_plan') {
-          const floorPlan = imageItem.data;
-          const imagePath = extractPathFromUrl(floorPlan.image_url);
-          
-          const { data: imageBlob, error: imageError } = await adminClient.storage
-            .from('tour-images')
-            .download(imagePath);
-
-          if (!imageError && imageBlob) {
-            const arrayBuffer = await imageBlob.arrayBuffer();
-            const safeName = sanitizeFilename(floorPlan.name);
-            zip.addFile(`floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
-            console.log(`✅ [Part ${currentPart}] Floor plan: ${floorPlan.name}`);
-            itemsInPart++;
-          }
-        } else {
-          const photo = imageItem.data;
-          const imagePath = extractPathFromUrl(photo.photo_url);
-          
-          const { data: imageBlob, error: imageError } = await adminClient.storage
-            .from('tour-images')
-            .download(imagePath);
-
-          if (!imageError && imageBlob) {
-            const arrayBuffer = await imageBlob.arrayBuffer();
-            const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
-            const safeFilename = sanitizeFilename(`photo_${photo.id}`);
-            zip.addFile(`panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
-            console.log(`✅ [Part ${currentPart}] Panorama: ${photo.id}`);
-            itemsInPart++;
-          }
-        }
-      } catch (error) {
-        console.warn(`⚠️ [Part ${currentPart}] Failed to download image:`, error);
-      }
-    }
-
-    // Generar y subir ZIP
-    console.log(`📈 Generating ZIP for part ${currentPart}...`);
-    const zipBlob = await zip.generateAsync({
-      type: 'uint8array',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 6 }
-    });
+    // Calcular items procesados en esta parte (para multipart, solo la porción correspondiente)
+    const itemsInPart = partImages.length;
 
     console.log(`✅ Part ${currentPart} ZIP generated: ${(zipBlob.length / 1024 / 1024).toFixed(2)} MB`);
 
@@ -796,28 +623,128 @@ async function handleFailedJob(queueItem: any, error: any, adminClient: any) {
 
 // FUNCIONES AUXILIARES
 
-// Obtener todas las imágenes del tour (floor plans + panorama photos)
+// Organizar backup con estructura jerárquica
+interface OrganizedFloor {
+  number: number;
+  name: string;
+  floorPlan: any;
+  hotspots: {
+    number: number;
+    title: string;
+    data: any;
+    photos: {
+      captureDate: string;
+      order: number;
+      data: any;
+    }[];
+  }[];
+}
+
+function organizeBackupStructure(tour: any): OrganizedFloor[] {
+  const floors: OrganizedFloor[] = [];
+  const floorPlans = tour.floor_plans || [];
+  const hotspots = tour.hotspots || [];
+  const photos = tour.panorama_photos || [];
+  
+  // Agrupar hotspots por floor_plan_id
+  const hotspotsByFloor = new Map<string, any[]>();
+  for (const hotspot of hotspots) {
+    if (hotspot.floor_plan_id) {
+      if (!hotspotsByFloor.has(hotspot.floor_plan_id)) {
+        hotspotsByFloor.set(hotspot.floor_plan_id, []);
+      }
+      hotspotsByFloor.get(hotspot.floor_plan_id)!.push(hotspot);
+    }
+  }
+  
+  // Agrupar fotos por hotspot_id
+  const photosByHotspot = new Map<string, any[]>();
+  for (const photo of photos) {
+    if (photo.hotspot_id) {
+      if (!photosByHotspot.has(photo.hotspot_id)) {
+        photosByHotspot.set(photo.hotspot_id, []);
+      }
+      photosByHotspot.get(photo.hotspot_id)!.push(photo);
+    }
+  }
+  
+  // Procesar cada piso
+  floorPlans.forEach((floorPlan: any, floorIndex: number) => {
+    const floorHotspots = hotspotsByFloor.get(floorPlan.id) || [];
+    
+    // Ordenar hotspots por título
+    floorHotspots.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    
+    const organizedHotspots = floorHotspots.map((hotspot, hotspotIndex) => {
+      const hotspotPhotos = photosByHotspot.get(hotspot.id) || [];
+      
+      // Ordenar fotos por fecha de captura y display_order
+      hotspotPhotos.sort((a, b) => {
+        const dateA = a.capture_date || '0000-00-00';
+        const dateB = b.capture_date || '0000-00-00';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return (a.display_order || 0) - (b.display_order || 0);
+      });
+      
+      return {
+        number: hotspotIndex + 1,
+        title: hotspot.title || `Punto ${hotspotIndex + 1}`,
+        data: hotspot,
+        photos: hotspotPhotos.map((photo, photoIndex) => ({
+          captureDate: photo.capture_date || 'sin_fecha',
+          order: photoIndex + 1,
+          data: photo
+        }))
+      };
+    });
+    
+    floors.push({
+      number: floorIndex + 1,
+      name: floorPlan.name || `Piso ${floorIndex + 1}`,
+      floorPlan,
+      hotspots: organizedHotspots
+    });
+  });
+  
+  return floors;
+}
+
+// Generar nombre de archivo con fecha
+function generatePhotoFilename(captureDate: string, order: number, description?: string): string {
+  const date = captureDate || 'sin_fecha';
+  const orderStr = String(order).padStart(3, '0');
+  const desc = description ? `_${sanitizeFilename(description).substring(0, 30)}` : '';
+  return `${date}_${orderStr}_panorama${desc}.jpg`;
+}
+
+// Obtener todas las imágenes del tour (manteniendo relaciones completas)
 async function getAllTourImages(tour: any, adminClient: any): Promise<any[]> {
   const images: any[] = [];
   
-  // Agregar floor plans
+  // Agregar floor plans con sus hotspots
   for (const floorPlan of (tour.floor_plans || [])) {
     if (floorPlan.image_url) {
+      const floorHotspots = (tour.hotspots || []).filter((h: any) => h.floor_plan_id === floorPlan.id);
+      
       images.push({
         type: 'floor_plan',
         data: floorPlan,
-        url: floorPlan.image_url
+        url: floorPlan.image_url,
+        hotspots: floorHotspots
       });
     }
   }
   
-  // Agregar panorama photos
+  // Agregar panorama photos con su hotspot
   for (const photo of (tour.panorama_photos || [])) {
     if (photo.photo_url) {
+      const hotspot = (tour.hotspots || []).find((h: any) => h.id === photo.hotspot_id);
+      
       images.push({
         type: 'panorama', 
         data: photo,
-        url: photo.photo_url
+        url: photo.photo_url,
+        hotspot: hotspot
       });
     }
   }
@@ -858,56 +785,220 @@ async function createBackupParts(backupJobId: string, totalParts: number, adminC
   return partRecords;
 }
 
-// Crear ZIP para una parte específica
-async function createPartZip(images: any[], backupType: string, partNumber: number, tourName: string, adminClient: any): Promise<Uint8Array> {
+// Crear ZIP con estructura jerárquica organizada
+async function createPartZip(
+  tour: any, 
+  backupType: string, 
+  partNumber: number, 
+  totalParts: number,
+  tourName: string, 
+  adminClient: any
+): Promise<Uint8Array> {
   const zip = new JSZip();
   const safeTourName = sanitizeFilename(tourName);
+  const timestamp = new Date().toISOString();
   
-  // Agregar README
-  const readme = `BACKUP PART ${partNumber} - ${tourName}
-Created: ${new Date().toISOString()}
-Backup Type: ${backupType}
-Total images in this part: ${images.length}
+  // Organizar estructura jerárquica
+  const organizedFloors = organizeBackupStructure(tour);
+  
+  // Calcular estadísticas
+  const totalFloors = organizedFloors.length;
+  const totalHotspots = organizedFloors.reduce((sum, f) => sum + f.hotspots.length, 0);
+  const totalPhotos = organizedFloors.reduce((sum, f) => 
+    sum + f.hotspots.reduce((hSum, h) => hSum + h.photos.length, 0), 0
+  );
+  
+  // TOUR_METADATA.json en la raíz
+  const tourMetadata = {
+    tour_name: tourName,
+    tour_id: tour.id,
+    backup_date: timestamp,
+    backup_type: backupType,
+    part_number: partNumber,
+    total_parts: totalParts,
+    total_floors: totalFloors,
+    total_hotspots: totalHotspots,
+    total_photos: totalPhotos,
+    description: tour.description || ''
+  };
+  zip.addFile('TOUR_METADATA.json', JSON.stringify(tourMetadata, null, 2));
+  
+  // README.txt mejorado
+  const readme = `╔════════════════════════════════════════════════════════════╗
+║  BACKUP DE TOUR VIRTUAL - ${tourName.substring(0, 30).padEnd(30)}  ║
+╚════════════════════════════════════════════════════════════╝
+
+📅 INFORMACIÓN DEL BACKUP
+─────────────────────────────────────────────────────────────
+  Fecha de creación: ${new Date(timestamp).toLocaleString('es-ES')}
+  Tipo de backup: ${backupType}
+  Parte: ${partNumber} de ${totalParts}
+  
+📊 CONTENIDO
+─────────────────────────────────────────────────────────────
+  Pisos: ${totalFloors}
+  Puntos de interés: ${totalHotspots}
+  Fotos panorámicas: ${totalPhotos}
+
+📁 ESTRUCTURA DEL BACKUP
+─────────────────────────────────────────────────────────────
+Este backup está organizado de la siguiente manera:
+
+📦 ${safeTourName}_backup.zip
+├── 📄 README.txt (este archivo)
+├── 📄 TOUR_METADATA.json (información general del tour)
+│
+├── 📁 01_[Nombre_Piso]/
+│   ├── 📄 FLOOR_INFO.json (metadata del piso)
+│   ├── 🖼️ plano_[nombre].jpg (imagen del plano del piso)
+│   │
+│   ├── 📁 01_[Nombre_Punto]/
+│   │   ├── 📄 HOTSPOT_INFO.json (metadata del punto)
+│   │   ├── 📸 2025-01-15_001_panorama.jpg
+│   │   ├── 📸 2025-01-15_002_panorama.jpg
+│   │   └── 📸 2025-01-20_001_panorama.jpg
+│   │
+│   └── 📁 02_[Otro_Punto]/
+│       └── ...
+│
+└── 📁 02_[Otro_Piso]/
+    └── ...
+
+🔢 CONVENCIONES DE NOMBRES
+─────────────────────────────────────────────────────────────
+  • Los pisos están numerados: 01_, 02_, 03_...
+  • Los puntos están numerados dentro de cada piso: 01_, 02_, 03_...
+  • Las fotos están ordenadas por fecha: AAAA-MM-DD_###_panorama.jpg
+  • Cada carpeta contiene un archivo JSON con información completa
+
+${totalParts > 1 ? `
+🔗 ARCHIVOS MULTIPART
+─────────────────────────────────────────────────────────────
+Este backup está dividido en ${totalParts} partes. Para unirlas:
+
+OPCIÓN 1 - Herramientas de compresión:
+  • Windows: 7-Zip o WinRAR → Click derecho en .001 → Extraer
+  • Mac: The Unarchiver → Doble click en .001
+  • Linux: 7z x ${safeTourName}_backup.zip.001
+
+OPCIÓN 2 - Línea de comandos:
+  • Windows: copy /b ${safeTourName}_backup.zip.* ${safeTourName}_complete.zip
+  • Mac/Linux: cat ${safeTourName}_backup.zip.* > ${safeTourName}_complete.zip
+
+OPCIÓN 3 - Scripts incluidos:
+  • Windows: Ejecutar merge.bat
+  • Mac/Linux: bash merge.sh
+  • PowerShell: ./merge.ps1
+` : ''}
+
+📝 ARCHIVOS JSON
+─────────────────────────────────────────────────────────────
+Cada nivel contiene archivos JSON con metadata completa:
+  • TOUR_METADATA.json - Información general del tour
+  • FLOOR_INFO.json - Detalles de cada piso
+  • HOTSPOT_INFO.json - Información de cada punto de interés
+
+💡 NOTAS
+─────────────────────────────────────────────────────────────
+  • Las fotos están organizadas cronológicamente por fecha de captura
+  • Los nombres de archivo incluyen la fecha para fácil identificación
+  • Esta estructura facilita la navegación y restauración del tour
+
+═══════════════════════════════════════════════════════════════
 `;
   zip.addFile('README.txt', readme);
   
-  // Procesar cada imagen
-  for (const image of images) {
+  // Procesar cada piso
+  for (const floor of organizedFloors) {
+    const floorNumber = String(floor.number).padStart(2, '0');
+    const safeFloorName = sanitizeFilename(floor.name);
+    const floorPath = `${floorNumber}_${safeFloorName}`;
+    
+    // FLOOR_INFO.json
+    const floorInfo = {
+      floor_id: floor.floorPlan.id,
+      floor_name: floor.name,
+      floor_number: floor.number,
+      capture_date: floor.floorPlan.capture_date || null,
+      image_dimensions: {
+        width: floor.floorPlan.width || null,
+        height: floor.floorPlan.height || null
+      },
+      total_hotspots: floor.hotspots.length
+    };
+    zip.addFile(`${floorPath}/FLOOR_INFO.json`, JSON.stringify(floorInfo, null, 2));
+    
+    // Imagen del plano del piso
     try {
-      if (image.type === 'floor_plan') {
-        const floorPlan = image.data;
-        const imagePath = extractPathFromUrl(floorPlan.image_url);
-        
+      if (floor.floorPlan.image_url) {
+        const imagePath = extractPathFromUrl(floor.floorPlan.image_url);
         const { data: imageBlob, error: imageError } = await adminClient.storage
           .from('tour-images')
           .download(imagePath);
-
-        if (!imageError && imageBlob) {
-          const arrayBuffer = await imageBlob.arrayBuffer();
-          const safeName = sanitizeFilename(floorPlan.name || `floorplan_${floorPlan.id}`);
-          zip.addFile(`floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
-        }
-      } else if (image.type === 'panorama') {
-        const photo = image.data;
-        const imagePath = extractPathFromUrl(photo.photo_url);
         
-        const { data: imageBlob, error: imageError } = await adminClient.storage
-          .from('tour-images')
-          .download(imagePath);
-
         if (!imageError && imageBlob) {
           const arrayBuffer = await imageBlob.arrayBuffer();
-          const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
-          const safeFilename = sanitizeFilename(`photo_${photo.id}`);
-          zip.addFile(`panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
+          const extension = floor.floorPlan.image_url.toLowerCase().endsWith('.png') ? 'png' : 'jpg';
+          zip.addFile(`${floorPath}/plano_${safeFloorName}.${extension}`, new Uint8Array(arrayBuffer));
         }
       }
     } catch (error) {
-      console.warn(`⚠️ Failed to process image for part ${partNumber}:`, error);
+      console.warn(`⚠️ Failed to process floor plan for ${floor.name}:`, error);
+    }
+    
+    // Procesar cada hotspot del piso
+    for (const hotspot of floor.hotspots) {
+      const hotspotNumber = String(hotspot.number).padStart(2, '0');
+      const safeHotspotTitle = sanitizeFilename(hotspot.title);
+      const hotspotPath = `${floorPath}/${hotspotNumber}_${safeHotspotTitle}`;
+      
+      // HOTSPOT_INFO.json
+      const dates = hotspot.photos.map(p => p.captureDate).filter(d => d !== 'sin_fecha');
+      const hotspotInfo = {
+        hotspot_id: hotspot.data.id,
+        title: hotspot.title,
+        description: hotspot.data.description || '',
+        position: {
+          x: hotspot.data.x_position,
+          y: hotspot.data.y_position
+        },
+        total_photos: hotspot.photos.length,
+        date_range: dates.length > 0 ? {
+          first: dates[0],
+          last: dates[dates.length - 1]
+        } : null
+      };
+      zip.addFile(`${hotspotPath}/HOTSPOT_INFO.json`, JSON.stringify(hotspotInfo, null, 2));
+      
+      // Procesar cada foto del hotspot
+      for (const photo of hotspot.photos) {
+        try {
+          if (photo.data.photo_url) {
+            const imagePath = extractPathFromUrl(photo.data.photo_url);
+            const { data: imageBlob, error: imageError } = await adminClient.storage
+              .from('tour-images')
+              .download(imagePath);
+            
+            if (!imageError && imageBlob) {
+              const arrayBuffer = await imageBlob.arrayBuffer();
+              const filename = generatePhotoFilename(
+                photo.captureDate, 
+                photo.order,
+                photo.data.description
+              );
+              zip.addFile(`${hotspotPath}/${filename}`, new Uint8Array(arrayBuffer));
+            }
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to process photo in ${hotspot.title}:`, error);
+        }
+      }
     }
   }
   
-  // Generar ZIP
+  // Generar ZIP con compresión óptima
+  console.log(`📦 Generating ZIP for part ${partNumber} with ${totalFloors} floors, ${totalHotspots} hotspots, ${totalPhotos} photos`);
+  
   return await zip.generateAsync({
     type: 'uint8array',
     compression: 'DEFLATE',
