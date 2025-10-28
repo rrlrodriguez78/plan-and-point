@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBackupSystem } from '@/hooks/useBackupSystem';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ interface Tour {
 }
 
 export const BackupManager: React.FC = () => {
+  const { t } = useTranslation();
   const { 
     activeJobs, 
     loading, 
@@ -110,7 +112,7 @@ export const BackupManager: React.FC = () => {
       setTours(toursWithCounts);
     } catch (error: any) {
       console.error('Error loading tours:', error);
-      toast.error('Error loading tours');
+      toast.error(t('backups.errorLoadingTours', { defaultValue: 'Error loading tours' }));
     } finally {
       setLoadingTours(false);
     }
@@ -122,7 +124,10 @@ export const BackupManager: React.FC = () => {
 
     const backupId = await startBackup(tourId, backupType);
     if (backupId) {
-      toast.success(`Backup for ${tour.title} started`);
+      toast.success(t('backups.backupStarted', { 
+        defaultValue: 'Backup for {{tourName}} started',
+        tourName: tour.title 
+      }));
     }
   };
 
@@ -160,10 +165,10 @@ export const BackupManager: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'processing': return 'Processing';
-      case 'completed': return 'Completed';
-      case 'failed': return 'Failed';
-      default: return 'Pending';
+      case 'processing': return t('backups.statusProcessing', { defaultValue: 'Processing' });
+      case 'completed': return t('backups.statusCompleted', { defaultValue: 'Completed' });
+      case 'failed': return t('backups.statusFailed', { defaultValue: 'Failed' });
+      default: return t('backups.statusPending', { defaultValue: 'Pending' });
     }
   };
 
@@ -171,7 +176,7 @@ export const BackupManager: React.FC = () => {
     return (
       <div className="flex justify-center items-center p-8">
         <RefreshCw className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading tours...</span>
+        <span className="ml-2">{t('backups.loadingTours', { defaultValue: 'Loading tours...' })}</span>
       </div>
     );
   }
@@ -180,18 +185,18 @@ export const BackupManager: React.FC = () => {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Backup System</h1>
+        <h1 className="text-3xl font-bold">{t('backups.title', { defaultValue: 'Backup System' })}</h1>
         <p className="text-muted-foreground mt-2">
-          Create complete backups or media-only exports for your virtual tours
+          {t('backups.subtitle', { defaultValue: 'Create complete backups or media-only exports for your virtual tours' })}
         </p>
       </div>
 
       {/* Available Tours */}
       <Card>
         <CardHeader>
-          <CardTitle>Available Tours</CardTitle>
+          <CardTitle>{t('backups.availableTours', { defaultValue: 'Available Tours' })}</CardTitle>
           <CardDescription>
-            Select a tour to create a backup
+            {t('backups.selectTourDescription', { defaultValue: 'Select a tour to create a backup' })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,7 +232,7 @@ export const BackupManager: React.FC = () => {
                           className="flex-1"
                         >
                           <Archive className="h-4 w-4 mr-2" />
-                          Complete
+                          {t('backups.complete', { defaultValue: 'Complete' })}
                         </Button>
                         
                         <Button
@@ -238,14 +243,14 @@ export const BackupManager: React.FC = () => {
                           className="flex-1"
                         >
                           <Image className="h-4 w-4 mr-2" />
-                          Media Only
+                          {t('backups.mediaOnly', { defaultValue: 'Media Only' })}
                         </Button>
                       </div>
 
                       {hasActiveJob && (
                         <Badge variant="secondary" className="w-full justify-center">
                           <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                          Backup in progress
+                          {t('backups.backupInProgress', { defaultValue: 'Backup in progress' })}
                         </Badge>
                       )}
                     </div>
@@ -258,7 +263,7 @@ export const BackupManager: React.FC = () => {
           {tours.length === 0 && (
             <div className="text-center py-8">
               <Archive className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No tours available for backup</p>
+              <p className="text-muted-foreground">{t('backups.noToursAvailable', { defaultValue: 'No tours available for backup' })}</p>
             </div>
           )}
         </CardContent>
@@ -268,9 +273,9 @@ export const BackupManager: React.FC = () => {
       {activeJobs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Active Backups</CardTitle>
+            <CardTitle>{t('backups.activeBackups', { defaultValue: 'Active Backups' })}</CardTitle>
             <CardDescription>
-              Track backups currently being processed
+              {t('backups.trackBackupsDescription', { defaultValue: 'Track backups currently being processed' })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -288,7 +293,9 @@ export const BackupManager: React.FC = () => {
                           {getStatusText(job.status)}
                         </Badge>
                         <Badge variant="outline">
-                          {job.jobType === 'full_backup' ? '💾 Complete' : '🖼️ Media Only'}
+                          {job.jobType === 'full_backup' 
+                            ? `💾 ${t('backups.complete', { defaultValue: 'Complete' })}` 
+                            : `🖼️ ${t('backups.mediaOnly', { defaultValue: 'Media Only' })}`}
                         </Badge>
                       </div>
                       
@@ -304,7 +311,11 @@ export const BackupManager: React.FC = () => {
                         <Progress value={job.progress} className="h-2" />
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>
-                            {job.processedItems} of {job.totalItems} items
+                            {t('backups.itemsProgress', { 
+                              defaultValue: '{{processed}} of {{total}} items',
+                              processed: job.processedItems,
+                              total: job.totalItems
+                            })}
                           </span>
                           <span>{job.progress}%</span>
                         </div>
@@ -323,7 +334,7 @@ export const BackupManager: React.FC = () => {
                         onClick={() => handleDownload(job)}
                       >
                         <Download className="h-4 w-4 mr-2" />
-                        Download
+                        {t('backups.download', { defaultValue: 'Download' })}
                       </Button>
                     )}
                     
@@ -334,7 +345,7 @@ export const BackupManager: React.FC = () => {
                         onClick={() => handleCancel(job.backupId)}
                       >
                         <X className="h-4 w-4 mr-2" />
-                        Cancel
+                        {t('backups.cancel', { defaultValue: 'Cancel' })}
                       </Button>
                     )}
                   </div>
@@ -348,29 +359,31 @@ export const BackupManager: React.FC = () => {
       {/* Information */}
       <Card>
         <CardHeader>
-          <CardTitle>Backup Types</CardTitle>
+          <CardTitle>{t('backups.backupTypes', { defaultValue: 'Backup Types' })}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Archive className="h-5 w-5 text-blue-500" />
-                <h4 className="font-semibold">Complete Backup</h4>
+                <h4 className="font-semibold">{t('backups.completeBackup', { defaultValue: 'Complete Backup' })}</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Includes the entire tour structure: metadata, floor plans, hotspots, and all 360° photos.
-                Ideal for complete restoration.
+                {t('backups.completeBackupDescription', { 
+                  defaultValue: 'Includes the entire tour structure: metadata, floor plans, hotspots, and all 360° photos. Ideal for complete restoration.' 
+                })}
               </p>
             </div>
             
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Image className="h-5 w-5 text-green-500" />
-                <h4 className="font-semibold">Media Only</h4>
+                <h4 className="font-semibold">{t('backups.mediaOnlyBackup', { defaultValue: 'Media Only' })}</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Includes only 360° photos and floor plans, organized in folders.
-                Ideal for file delivery or platform migration.
+                {t('backups.mediaOnlyDescription', { 
+                  defaultValue: 'Includes only 360° photos and floor plans, organized in folders. Ideal for file delivery or platform migration.' 
+                })}
               </p>
             </div>
           </div>
