@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,25 +8,22 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
-console.log('🚀 Backup processor function started');
+console.log('🚀 Backup processor with REAL file generation started');
 
 serve(async (req) => {
   console.log('📨 Request received:', req.method, req.url);
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Parse request body
     const requestBody = await req.text();
     console.log('📦 Request body:', requestBody);
     
     const { action, tourId, backupType = 'full_backup', backupId } = JSON.parse(requestBody);
     console.log('🔍 Parsed request:', { action, tourId, backupType, backupId });
 
-    // Validate required fields
     if (!action) {
       return new Response(
         JSON.stringify({ error: 'Action is required' }),
@@ -33,133 +31,72 @@ serve(async (req) => {
       );
     }
 
-    // Create TWO Supabase clients:
-    // 1. Service role for admin operations (bypasses RLS)
-    // 2. User-scoped client for proper attribution
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    console.log('🔧 Environment check:', {
-      hasUrl: !!supabaseUrl,
-      hasServiceKey: !!supabaseServiceKey,
-      hasAnonKey: !!supabaseAnonKey
+    const userClient = createClient(supabaseUrl!, supabaseAnonKey!, {
+      global: { headers: { Authorization: req.headers.get('Authorization')! } }
     });
 
-    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
+    const adminClient = createClient(supabaseUrl!, supabaseServiceKey!);
 
-    // Service role client for admin operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // User-scoped client for proper user attribution
-    const authHeader = req.headers.get('Authorization') || '';
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader
-        }
-      }
-    });
-
-    // Verify auth header exists
-    if (!authHeader) {
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
       return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Missing authorization header',
-          code: 'UNAUTHORIZED'
-        }),
+        JSON.stringify({ error: 'Not authenticated' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('🔑 Auth header present: true');
+    console.log('✅ User authenticated:', user.id);
 
-    // Route to appropriate handler
     if (action === 'start') {
-      if (!tourId) {
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'Tour ID is required',
-            code: 'MISSING_TOUR_ID'
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      const result = await startBackup(tourId, backupType, supabaseClient, supabaseAdmin);
-      
-      if (!result.success) {
-        return new Response(
-          JSON.stringify(result),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify(result),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return await startBackup(tourId, backupType, user.id, userClient, adminClient);
     } else if (action === 'status') {
-      if (!backupId) {
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'Backup ID is required',
-            code: 'MISSING_BACKUP_ID'
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      return await getBackupStatus(backupId, supabaseAdmin);
+      return await getBackupStatus(backupId, user.id, adminClient);
+    } else if (action === 'cancel') {
+      return await cancelBackup(backupId, user.id, adminClient);
     } else {
       return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Invalid action. Use "start" or "status"',
-          code: 'INVALID_ACTION'
-        }),
+        JSON.stringify({ error: 'Invalid action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
   } catch (error: any) {
     console.error('💥 Error in backup processor:', error);
+    
     return new Response(
       JSON.stringify({ 
-        success: false,
-        error: error.message || 'Internal server error',
-        code: error.code || 'INTERNAL_ERROR',
-        details: error.details,
-        stack: error.stack 
+        error: 'Internal server error',
+        details: error.message 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });
 
-async function startBackup(tourId: string, backupType: string, supabaseClient: any, supabaseAdmin: any) {
-  console.log(`🎬 Starting backup for tour: ${tourId} type: ${backupType}`);
-  
+async function startBackup(tourId: string, backupType: string, userId: string, userClient: any, adminClient: any) {
+  console.log('🎬 Starting REAL backup for tour:', tourId, 'type:', backupType, 'user:', userId);
+
   try {
-    // Get authenticated user from the user-scoped client
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
-    if (userError || !user) {
-      console.error('❌ Authentication failed:', userError);
-      return {
-        success: false,
-        error: 'Unauthorized: Invalid or missing authentication token',
-        code: 'UNAUTHORIZED'
-      };
+    const { data: tour, error: tourError } = await userClient
+      .from('virtual_tours')
+      .select('id, title, tenant_id')
+      .eq('id', tourId)
+      .single();
+
+    if (tourError || !tour) {
+      throw new Error('Tour not found or access denied');
     }
-    
-    console.log(`✅ User authenticated: ${user.id}`);
-    
-    // Fetch tour with related data using admin client (bypasses RLS for nested queries)
-    const { data: tour, error: tourError } = await supabaseAdmin
+
+    console.log('✅ Tour found:', tour.title);
+
+    const { data: fullTour, error: fullTourError } = await adminClient
       .from('virtual_tours')
       .select(`
         *,
@@ -172,130 +109,79 @@ async function startBackup(tourId: string, backupType: string, supabaseClient: a
         )
       `)
       .eq('id', tourId)
-      .maybeSingle();
+      .single();
 
-    if (tourError) {
-      console.error('❌ Tour query error:', {
-        code: tourError.code,
-        message: tourError.message,
-        details: tourError.details,
-        hint: tourError.hint
-      });
-      return {
-        success: false,
-        error: `Tour query failed: ${tourError.message}`,
-        code: 'TOUR_QUERY_ERROR',
-        details: tourError.details
-      };
+    if (fullTourError || !fullTour) {
+      throw new Error('Failed to load tour data');
     }
 
-    if (!tour) {
-      return {
-        success: false,
-        error: `Tour with ID ${tourId} not found in database`,
-        code: 'TOUR_NOT_FOUND'
-      };
-    }
+    const estimatedSize = calculateEstimatedSize(fullTour, backupType);
+    console.log('📊 Estimated backup size:', estimatedSize, 'MB');
 
-    console.log(`✅ Tour found: ${tour.title}`);
-    console.log(`📊 Data structure:`, {
-      floorPlans: tour.floor_plans?.length || 0,
-      totalHotspots: tour.floor_plans?.reduce((sum: number, fp: any) => sum + (fp.hotspots?.length || 0), 0),
-      totalPhotos: tour.floor_plans?.reduce((sum: number, fp: any) => 
-        sum + fp.hotspots?.reduce((hSum: number, h: any) => hSum + (h.panorama_photos?.length || 0), 0), 0)
-    });
-
-    // Verify user has access to this tour's tenant using user-scoped client
-    const { data: tenantAccess, error: accessError } = await supabaseClient
-      .from('tenant_users')
-      .select('tenant_id')
-      .eq('tenant_id', tour.tenant_id)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (accessError || !tenantAccess) {
-      console.error('❌ Access denied:', { userId: user.id, tenantId: tour.tenant_id, error: accessError });
-      return {
-        success: false,
-        error: 'Access denied: User does not have permission to backup this tour',
-        code: 'ACCESS_DENIED'
-      };
-    }
-
-    console.log(`✅ User has access to tenant: ${tour.tenant_id}`);
-
-    // Calculate total items
-    const totalItems = calculateTotalItems(tour, backupType);
-    console.log('📊 Total items to process:', totalItems);
-
-    // Create backup job record using user-scoped client for proper attribution
-    const { data: backupJob, error: jobError } = await supabaseClient
+    const { data: backupJob, error: jobError } = await adminClient
       .from('backup_jobs')
       .insert({
-        user_id: user.id,
-        tenant_id: tour.tenant_id,
         tour_id: tourId,
+        user_id: userId,
+        tenant_id: tour.tenant_id,
         job_type: backupType,
-        status: 'processing',
-        total_items: totalItems,
-        processed_items: 0,
-        progress_percentage: 0,
-        metadata: {
-          tour_title: tour.title,
-          started_at: new Date().toISOString(),
-          user_email: user.email,
-          initiated_by: user.id
-        }
+        status: 'pending',
+        total_items: calculateTotalItems(fullTour, backupType),
+        estimated_size_mb: estimatedSize
       })
       .select()
       .single();
 
     if (jobError) {
-      console.error('❌ Error creating backup job:', {
-        code: jobError.code,
-        message: jobError.message,
-        details: jobError.details
-      });
-      return {
-        success: false,
-        error: `Failed to create backup job: ${jobError.message}`,
-        code: 'JOB_CREATION_ERROR',
-        details: jobError.details
-      };
+      throw new Error(`Error creating backup job: ${jobError.message}`);
     }
 
-    console.log(`✅ Backup job created: ${backupJob.id}`);
+    console.log('✅ Backup job created:', backupJob.id);
 
-    // Start backup process in background
-    // The Edge Function instance will stay alive until this promise completes
-    // Use admin client for background processing (can update job status without RLS)
-    processBackup(tour, backupJob.id, backupType, supabaseAdmin).catch(err => {
-      console.error('💥 Error in processBackup:', err);
-    });
+    const { error: queueError } = await adminClient
+      .from('backup_queue')
+      .insert({
+        backup_job_id: backupJob.id,
+        status: 'pending',
+        priority: estimatedSize > 500 ? 2 : 1
+      });
 
-    return {
-      success: true,
-      backupId: backupJob.id,
-      tourName: tour.title,
-      totalItems,
-      backupType
-    };
+    if (queueError) {
+      console.error('❌ Error adding to queue:', queueError);
+      processBackupInBackground(fullTour, backupJob.id, backupType, userId, adminClient);
+    } else {
+      console.log('✅ Backup added to processing queue');
+      processBackupInBackground(fullTour, backupJob.id, backupType, userId, adminClient);
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        backupId: backupJob.id,
+        backupType,
+        status: 'queued',
+        totalItems: backupJob.total_items,
+        estimatedSize: backupJob.estimated_size_mb,
+        tourName: tour.title,
+        message: 'Backup added to processing queue'
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
   } catch (error: any) {
     console.error('💥 Error in startBackup:', error);
-    return {
-      success: false,
-      error: error.message,
-      code: error.code || 'UNKNOWN_ERROR',
-      details: error.details || error.stack
-    };
+    throw error;
   }
 }
 
-async function getBackupStatus(backupId: string, supabase: any) {
+async function getBackupStatus(backupId: string, userId: string, adminClient: any) {
   console.log('📊 Getting backup status for:', backupId);
 
   try {
-    const { data: backupJob, error } = await supabase
+    const { data: backupJob, error } = await adminClient
       .from('backup_jobs')
       .select(`
         *,
@@ -305,20 +191,33 @@ async function getBackupStatus(backupId: string, supabase: any) {
         )
       `)
       .eq('id', backupId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !backupJob) {
+      throw new Error('Backup not found or access denied');
+    }
+
+    const { data: queueData } = await adminClient
+      .from('backup_queue')
+      .select('status, attempts, error_message')
+      .eq('backup_job_id', backupId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
-
-    if (error) {
-      console.error('❌ Backup status query error:', error);
-      throw new Error(`Backup not found: ${error.message}`);
-    }
-
-    if (!backupJob) {
-      throw new Error('Backup not found');
-    }
 
     const progress = backupJob.total_items > 0 
       ? Math.round((backupJob.processed_items / backupJob.total_items) * 100)
       : 0;
+
+    let downloadUrl = null;
+    if (backupJob.status === 'completed' && backupJob.storage_path) {
+      const { data: signedUrl } = await adminClient.storage
+        .from('backups')
+        .createSignedUrl(backupJob.storage_path, 3600);
+      
+      downloadUrl = signedUrl?.signedUrl;
+    }
 
     const response = {
       backupId: backupJob.id,
@@ -326,14 +225,18 @@ async function getBackupStatus(backupId: string, supabase: any) {
       tourName: backupJob.virtual_tours?.title || 'Unknown Tour',
       jobType: backupJob.job_type,
       status: backupJob.status,
-      downloadUrl: backupJob.file_url,
+      queueStatus: queueData?.status,
+      downloadUrl,
       fileSize: backupJob.file_size,
+      fileHash: backupJob.file_hash,
       progress,
       processedItems: backupJob.processed_items,
       totalItems: backupJob.total_items,
+      estimatedSize: backupJob.estimated_size_mb,
       createdAt: backupJob.created_at,
       completedAt: backupJob.completed_at,
-      error: backupJob.error_message
+      error: backupJob.error_message || queueData?.error_message,
+      attempts: queueData?.attempts
     };
 
     console.log('✅ Backup status:', response);
@@ -346,50 +249,96 @@ async function getBackupStatus(backupId: string, supabase: any) {
       }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Error in getBackupStatus:', error);
     throw error;
   }
 }
 
-function calculateTotalItems(tour: any, backupType: string): number {
-  const floorPlansCount = tour.floor_plans?.length || 0;
-  
-  // Count all hotspots across all floor plans
-  let hotspotsCount = 0;
-  let photosCount = 0;
-  
-  tour.floor_plans?.forEach((floorPlan: any) => {
-    hotspotsCount += floorPlan.hotspots?.length || 0;
-    
-    // Count all photos across all hotspots
-    floorPlan.hotspots?.forEach((hotspot: any) => {
-      photosCount += hotspot.panorama_photos?.length || 0;
-    });
-  });
+async function cancelBackup(backupId: string, userId: string, adminClient: any) {
+  console.log('🛑 Canceling backup:', backupId);
 
-  if (backupType === 'media_only') {
-    return photosCount + floorPlansCount;
+  try {
+    const { data: backupJob, error: checkError } = await adminClient
+      .from('backup_jobs')
+      .select('id, status')
+      .eq('id', backupId)
+      .eq('user_id', userId)
+      .single();
+
+    if (checkError || !backupJob) {
+      throw new Error('Backup not found or access denied');
+    }
+
+    if (backupJob.status === 'completed') {
+      throw new Error('Cannot cancel completed backup');
+    }
+
+    const { error: jobError } = await adminClient
+      .from('backup_jobs')
+      .update({ 
+        status: 'cancelled',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', backupId);
+
+    const { error: queueError } = await adminClient
+      .from('backup_queue')
+      .update({ 
+        status: 'failed',
+        error_message: 'Cancelled by user',
+        completed_at: new Date().toISOString()
+      })
+      .eq('backup_job_id', backupId)
+      .in('status', ['pending', 'processing', 'retry']);
+
+    if (jobError && queueError) {
+      throw new Error('Failed to cancel backup');
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Backup cancelled successfully'
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error: any) {
+    console.error('💥 Error in cancelBackup:', error);
+    throw error;
   }
-  
-  // full_backup includes everything + 1 for metadata
-  return photosCount + floorPlansCount + hotspotsCount + 1;
 }
 
-async function processBackup(tour: any, backupJobId: string, backupType: string, supabase: any) {
+async function processBackupInBackground(tour: any, backupJobId: string, backupType: string, userId: string, adminClient: any) {
+  console.log(`🔄 Processing REAL backup for: ${tour.title}, job: ${backupJobId}`);
+
   try {
-    console.log(`🔄 Processing ${backupType} backup for: ${tour.title}, job: ${backupJobId}`);
-    
-    // Simulate processing for now
+    await adminClient
+      .from('backup_queue')
+      .update({ 
+        status: 'processing',
+        started_at: new Date().toISOString()
+      })
+      .eq('backup_job_id', backupJobId);
+
+    await adminClient
+      .from('backup_jobs')
+      .update({ status: 'processing' })
+      .eq('id', backupJobId);
+
+    const zip = new JSZip();
     let processedItems = 0;
     const totalItems = calculateTotalItems(tour, backupType);
-    
-    // Update progress in chunks
-    const updateProgress = async (count: number) => {
+
+    const updateProgress = async (count: number, message?: string) => {
       processedItems = count;
       const progress = Math.round((processedItems / totalItems) * 100);
       
-      await supabase
+      await adminClient
         .from('backup_jobs')
         .update({
           processed_items: processedItems,
@@ -397,47 +346,209 @@ async function processBackup(tour: any, backupJobId: string, backupType: string,
         })
         .eq('id', backupJobId);
       
-      console.log(`📈 Progress update: ${progress}% (${processedItems}/${totalItems})`);
+      console.log(`📈 Progress: ${progress}% (${processedItems}/${totalItems}) - ${message || ''}`);
     };
 
-    // Simulate processing steps
-    await updateProgress(1); // Starting
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    await updateProgress(Math.floor(totalItems * 0.3)); // 30%
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    await updateProgress(Math.floor(totalItems * 0.7)); // 70%
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    await updateProgress(totalItems); // 100%
+    await updateProgress(0, 'Preparing metadata');
 
-    // Mark as completed
-    await supabase
+    const tourMetadata = {
+      tour: {
+        id: tour.id,
+        title: tour.title,
+        description: tour.description,
+        created_at: tour.created_at,
+        updated_at: tour.updated_at
+      },
+      floor_plans: tour.floor_plans?.map((plan: any) => ({
+        id: plan.id,
+        name: plan.name,
+        image_url: plan.image_url
+      })),
+      hotspots: tour.floor_plans?.flatMap((plan: any) => 
+        plan.hotspots?.map((hotspot: any) => ({
+          id: hotspot.id,
+          title: hotspot.title,
+          floor_plan_id: hotspot.floor_plan_id,
+          x_position: hotspot.x_position,
+          y_position: hotspot.y_position
+        })) || []
+      ),
+      export_info: {
+        type: backupType,
+        created_at: new Date().toISOString(),
+        version: '1.0',
+        total_items: totalItems
+      }
+    };
+
+    zip.file('tour_metadata.json', JSON.stringify(tourMetadata, null, 2));
+    await updateProgress(1, 'Metadata added');
+
+    if (backupType === 'full_backup') {
+      for (const floorPlan of tour.floor_plans || []) {
+        if (floorPlan.image_url) {
+          try {
+            const imagePath = extractPathFromUrl(floorPlan.image_url);
+            const { data: imageBlob, error: imageError } = await adminClient.storage
+              .from('tour-images')
+              .download(imagePath);
+
+            if (!imageError && imageBlob) {
+              const arrayBuffer = await imageBlob.arrayBuffer();
+              zip.file(`floor_plans/${floorPlan.name || floorPlan.id}.jpg`, new Uint8Array(arrayBuffer));
+              console.log(`✅ Downloaded floor plan: ${floorPlan.name}`);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Could not download floor plan: ${floorPlan.name}`, error);
+          }
+        }
+        processedItems++;
+        await updateProgress(processedItems, 'Processing floor plans');
+      }
+
+      for (const floorPlan of tour.floor_plans || []) {
+        for (const hotspot of floorPlan.hotspots || []) {
+          for (const photo of hotspot.panorama_photos || []) {
+            try {
+              const imagePath = extractPathFromUrl(photo.photo_url);
+              const { data: imageBlob, error: imageError } = await adminClient.storage
+                .from('tour-images')
+                .download(imagePath);
+
+              if (!imageError && imageBlob) {
+                const arrayBuffer = await imageBlob.arrayBuffer();
+                const hotspotFolder = `hotspot_${hotspot.id}`;
+                const fileName = photo.original_filename || `photo_${photo.id}.jpg`;
+                zip.file(`panorama_photos/${hotspotFolder}/${fileName}`, new Uint8Array(arrayBuffer));
+              }
+            } catch (error) {
+              console.warn(`⚠️ Could not download photo: ${photo.id}`, error);
+            }
+            processedItems++;
+            if (processedItems % 5 === 0) {
+              await updateProgress(processedItems, 'Downloading photos');
+            }
+          }
+        }
+      }
+    }
+
+    await updateProgress(totalItems - 1, 'Generating ZIP');
+
+    const zipBlob = await zip.generateAsync({
+      type: 'uint8array',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
+
+    console.log(`✅ ZIP generated: ${zipBlob.length} bytes`);
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const storagePath = `${userId}/${backupJobId}/tour_backup_${tour.title.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.zip`;
+    
+    const { error: uploadError } = await adminClient.storage
+      .from('backups')
+      .upload(storagePath, zipBlob, {
+        contentType: 'application/zip',
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(`Upload failed: ${uploadError.message}`);
+    }
+
+    console.log(`✅ Backup uploaded: ${storagePath}`);
+
+    await adminClient
       .from('backup_jobs')
       .update({
         status: 'completed',
         processed_items: totalItems,
         progress_percentage: 100,
-        completed_at: new Date().toISOString(),
-        file_url: `https://example.com/backup-${backupJobId}.zip`, // Simulated URL
-        file_size: 1024 * 1024 // Simulated 1MB file
-      })
-      .eq('id', backupJobId);
-
-    console.log(`✅ Backup completed: ${backupJobId}`);
-
-  } catch (error) {
-    console.error(`💥 Error in backup ${backupJobId}:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    await supabase
-      .from('backup_jobs')
-      .update({
-        status: 'failed',
-        error_message: errorMessage,
+        file_size: zipBlob.length,
+        storage_path: storagePath,
         completed_at: new Date().toISOString()
       })
       .eq('id', backupJobId);
+
+    await adminClient
+      .from('backup_queue')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('backup_job_id', backupJobId);
+
+    console.log(`✅ Backup completed: ${backupJobId}`);
+
+  } catch (error: any) {
+    console.error(`💥 Backup error ${backupJobId}:`, error);
+    
+    await adminClient
+      .from('backup_jobs')
+      .update({
+        status: 'failed',
+        error_message: error.message,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', backupJobId);
+
+    await adminClient
+      .from('backup_queue')
+      .update({
+        status: 'failed',
+        error_message: error.message,
+        completed_at: new Date().toISOString()
+      })
+      .eq('backup_job_id', backupJobId);
+  }
+}
+
+function calculateTotalItems(tour: any, backupType: string): number {
+  const floorPlansCount = tour.floor_plans?.length || 0;
+  let hotspotsCount = 0;
+  let photosCount = 0;
+
+  tour.floor_plans?.forEach((plan: any) => {
+    hotspotsCount += plan.hotspots?.length || 0;
+    plan.hotspots?.forEach((hotspot: any) => {
+      photosCount += hotspot.panorama_photos?.length || 0;
+    });
+  });
+
+  if (backupType === 'media_only') {
+    return 1 + photosCount + floorPlansCount;
+  }
+  
+  return 1 + photosCount + floorPlansCount + hotspotsCount;
+}
+
+function calculateEstimatedSize(tour: any, backupType: string): number {
+  const baseSize = 1;
+  let photosCount = 0;
+  const floorPlansCount = tour.floor_plans?.length || 0;
+  
+  tour.floor_plans?.forEach((plan: any) => {
+    plan.hotspots?.forEach((hotspot: any) => {
+      photosCount += hotspot.panorama_photos?.length || 0;
+    });
+  });
+  
+  const mediaSize = (photosCount * 2) + (floorPlansCount * 1);
+  
+  return Math.ceil(baseSize + mediaSize);
+}
+
+function extractPathFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    const objectIndex = pathParts.indexOf('object');
+    if (objectIndex !== -1 && objectIndex + 2 < pathParts.length) {
+      return pathParts.slice(objectIndex + 2).join('/');
+    }
+    return pathParts[pathParts.length - 1];
+  } catch {
+    return url.split('/').pop() || '';
   }
 }
