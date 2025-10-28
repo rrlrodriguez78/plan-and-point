@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Download, X, RefreshCw, Archive, Image } from 'lucide-react';
+import { Download, X, RefreshCw, Archive, Image, Trash2 } from 'lucide-react';
 
 interface Tour {
   id: string;
@@ -27,7 +27,8 @@ export const BackupManager: React.FC = () => {
     loading, 
     startBackup, 
     downloadBackup, 
-    cancelBackup 
+    cancelBackup,
+    refreshJobs
   } = useBackupSystem();
   
   const [tours, setTours] = useState<Tour[]>([]);
@@ -159,6 +160,38 @@ export const BackupManager: React.FC = () => {
 
   const handleCancel = (backupId: string) => {
     cancelBackup(backupId);
+  };
+
+  const handleDeleteBackup = async (backupId: string, status: string) => {
+    try {
+      // Si está en progreso, cancelar primero
+      if (status === 'processing' || status === 'pending') {
+        await cancelBackup(backupId);
+      }
+
+      // Eliminar de la base de datos
+      const { error } = await supabase
+        .from('backup_jobs')
+        .delete()
+        .eq('id', backupId);
+
+      if (error) throw error;
+
+      // Remover de la lista local
+      const updatedJobs = activeJobs.filter(job => job.backupId !== backupId);
+      
+      toast.success(t('backups.backupDeleted', { 
+        defaultValue: 'Backup deleted successfully' 
+      }));
+      
+      // Recargar la lista
+      refreshJobs();
+    } catch (error: any) {
+      console.error('Error deleting backup:', error);
+      toast.error(t('backups.errorDeletingBackup', { 
+        defaultValue: 'Error deleting backup' 
+      }));
+    }
   };
 
   const getTourStats = (tour: Tour) => {
@@ -405,6 +438,15 @@ export const BackupManager: React.FC = () => {
                         {t('backups.cancel', { defaultValue: 'Cancel' })}
                       </Button>
                     )}
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDeleteBackup(job.backupId, job.status)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('backups.delete', { defaultValue: 'Delete' })}
+                    </Button>
                   </div>
                 </div>
               ))}
