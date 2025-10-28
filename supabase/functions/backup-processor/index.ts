@@ -33,23 +33,37 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with service role key (bypasses JWT verification)
+    // Create TWO Supabase clients:
+    // 1. Service role for admin operations (bypasses RLS)
+    // 2. User-scoped client for proper attribution
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     
     console.log('🔧 Environment check:', {
       hasUrl: !!supabaseUrl,
-      hasServiceKey: !!supabaseServiceKey
+      hasServiceKey: !!supabaseServiceKey,
+      hasAnonKey: !!supabaseAnonKey
     });
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       throw new Error('Missing Supabase environment variables');
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    // Service role client for admin operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // User-scoped client for proper user attribution
+    const authHeader = req.headers.get('Authorization') || '';
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader
+        }
+      }
+    });
 
     // Verify auth header exists
-    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
         JSON.stringify({ 
@@ -75,7 +89,7 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      const result = await startBackup(tourId, backupType, supabaseClient, authHeader);
+      const result = await startBackup(tourId, backupType, supabaseClient, supabaseAdmin);
       
       if (!result.success) {
         return new Response(
@@ -99,7 +113,7 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      return await getBackupStatus(backupId, supabaseClient);
+      return await getBackupStatus(backupId, supabaseAdmin);
     } else {
       return new Response(
         JSON.stringify({ 
@@ -126,13 +140,12 @@ serve(async (req) => {
   }
 });
 
-async function startBackup(tourId: string, backupType: string, supabase: any, authHeader: string) {
+async function startBackup(tourId: string, backupType: string, supabaseClient: any, supabaseAdmin: any) {
   console.log(`🎬 Starting backup for tour: ${tourId} type: ${backupType}`);
   
   try {
-    // Get authenticated user from JWT
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Get authenticated user from the user-scoped client
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
     if (userError || !user) {
       console.error('❌ Authentication failed:', userError);
@@ -145,8 +158,8 @@ async function startBackup(tourId: string, backupType: string, supabase: any, au
     
     console.log(`✅ User authenticated: ${user.id}`);
     
-    // Fetch tour with related data using the correct hierarchy
-    const { data: tour, error: tourError } = await supabase
+    // Fetch tour with related data using admin client (bypasses RLS for nested queries)
+    const { data: tour, error: tourError } = await supabaseAdmin
       .from('virtual_tours')
       .select(`
         *,
@@ -192,8 +205,8 @@ async function startBackup(tourId: string, backupType: string, supabase: any, au
         sum + fp.hotspots?.reduce((hSum: number, h: any) => hSum + (h.panorama_photos?.length || 0), 0), 0)
     });
 
-    // Verify user has access to this tour's tenant
-    const { data: tenantAccess, error: accessError } = await supabase
+    // Verify user has access to this tour's tenant using user-scoped client
+    const { data: tenantAccess, error: accessError } = await supabaseClient
       .from('tenant_users')
       .select('tenant_id')
       .eq('tenant_id', tour.tenant_id)
@@ -201,6 +214,7 @@ async function startBackup(tourId: string, backupType: string, supabase: any, au
       .maybeSingle();
 
     if (accessError || !tenantAccess) {
+      console.error('❌ Access denied:', { userId: user.id, tenantId: tour.tenant_id, error: accessError });
       return {
         success: false,
         error: 'Access denied: User does not have permission to backup this tour',
@@ -214,8 +228,8 @@ async function startBackup(tourId: string, backupType: string, supabase: any, au
     const totalItems = calculateTotalItems(tour, backupType);
     console.log('📊 Total items to process:', totalItems);
 
-    // Create backup job record
-    const { data: backupJob, error: jobError } = await supabase
+    // Create backup job record using user-scoped client for proper attribution
+    const { data: backupJob, error: jobError } = await supabaseClient
       .from('backup_jobs')
       .insert({
         user_id: user.id,
@@ -229,6 +243,8 @@ async function startBackup(tourId: string, backupType: string, supabase: any, au
         metadata: {
           tour_title: tour.title,
           started_at: new Date().toISOString(),
+          user_email: user.email,
+          initiated_by: user.id
         }
       })
       .select()
@@ -250,8 +266,10 @@ async function startBackup(tourId: string, backupType: string, supabase: any, au
 
     console.log(`✅ Backup job created: ${backupJob.id}`);
 
-    // Start backup process (async, don't await)
-    processBackup(tour, backupJob.id, backupType, supabase).catch(err => {
+    // Start backup process in background
+    // The Edge Function instance will stay alive until this promise completes
+    // Use admin client for background processing (can update job status without RLS)
+    processBackup(tour, backupJob.id, backupType, supabaseAdmin).catch(err => {
       console.error('💥 Error in processBackup:', err);
     });
 

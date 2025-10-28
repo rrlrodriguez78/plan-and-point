@@ -1175,6 +1175,7 @@ export type Database = {
         Args: { _approved_by: string; _notes?: string; _user_id: string }
         Returns: undefined
       }
+      auto_cleanup_old_backup_jobs: { Args: never; Returns: undefined }
       belongs_to_tenant: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
