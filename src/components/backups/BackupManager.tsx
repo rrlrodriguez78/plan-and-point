@@ -263,23 +263,38 @@ export const BackupManager: React.FC = () => {
       if (backup.isMultipart && backup.parts) {
         for (const part of backup.parts) {
           if (selectedParts.has(part.id) && part.file_url) {
-            window.open(part.file_url, '_blank');
+            // Crear elemento <a> temporal para descargar sin ser bloqueado
+            const link = document.createElement('a');
+            link.href = part.file_url;
+            link.download = `${backup.tourName}_part${part.part_number}.zip`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
             totalDownloaded++;
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
       } else {
         // Single file backup
         const partId = `${backup.backupId}_single`;
         if (selectedParts.has(partId) && backup.downloadUrl) {
-          window.open(backup.downloadUrl, '_blank');
+          const link = document.createElement('a');
+          link.href = backup.downloadUrl;
+          link.download = `${backup.tourName}_backup.zip`;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
           totalDownloaded++;
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
     }
     
-    toast.success(`Started downloading ${totalDownloaded} file(s)`);
+    toast.success(`Downloaded ${totalDownloaded} file(s)`);
     setSelectedParts(new Set());
   };
 
