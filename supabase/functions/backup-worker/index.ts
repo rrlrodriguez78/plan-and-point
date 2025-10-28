@@ -290,46 +290,60 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
 
     await updateProgress(0, 'Initializing backup');
 
-    // 1. METADATOS ESTRUCTURADOS
-    const tourMetadata = {
-      export_info: {
-        version: '2.0',
-        type: 'virtual_tour_backup',
-        created_at: new Date().toISOString(),
-        backup_type: backupType,
-        total_items: totalItems
-      },
-      tour: {
-        id: tour.id,
-        title: tour.title,
-        description: tour.description,
-        created_at: tour.created_at,
-        updated_at: tour.updated_at
-      },
-      floor_plans: tour.floor_plans?.map((plan: any) => ({
-        id: plan.id,
-        name: plan.name,
-        image_url: plan.image_url
-      })) || [],
-      hotspots: tour.hotspots?.map((hotspot: any) => ({
-        id: hotspot.id,
-        title: hotspot.title,
-        floor_plan_id: hotspot.floor_plan_id,
-        x_position: hotspot.x_position,
-        y_position: hotspot.y_position
-      })) || [],
-      panorama_photos: tour.panorama_photos?.map((photo: any) => ({
-        id: photo.id,
-        photo_url: photo.photo_url,
-        hotspot_id: photo.hotspot_id
-      })) || []
-    };
-
-    zip.addFile('backup_manifest.json', JSON.stringify(tourMetadata, null, 2));
-    await updateProgress(1, 'Metadata added to archive');
-
-    // 2. DESCARGAR Y AGREGAR MEDIA (para backup completo)
+    // 1. SOLO AGREGAR METADATA COMPLEJA PARA FULL BACKUP
     if (backupType === 'full_backup') {
+      const tourMetadata = {
+        export_info: {
+          version: '2.0',
+          type: 'virtual_tour_backup',
+          created_at: new Date().toISOString(),
+          backup_type: backupType,
+          total_items: totalItems
+        },
+        tour: {
+          id: tour.id,
+          title: tour.title,
+          description: tour.description,
+          created_at: tour.created_at,
+          updated_at: tour.updated_at
+        },
+        floor_plans: tour.floor_plans?.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          image_url: plan.image_url
+        })) || [],
+        hotspots: tour.hotspots?.map((hotspot: any) => ({
+          id: hotspot.id,
+          title: hotspot.title,
+          floor_plan_id: hotspot.floor_plan_id,
+          x_position: hotspot.x_position,
+          y_position: hotspot.y_position
+        })) || [],
+        panorama_photos: tour.panorama_photos?.map((photo: any) => ({
+          id: photo.id,
+          photo_url: photo.photo_url,
+          hotspot_id: photo.hotspot_id
+        })) || []
+      };
+      zip.addFile('backup_manifest.json', JSON.stringify(tourMetadata, null, 2));
+      await updateProgress(1, 'Metadata added to archive');
+    } else if (backupType === 'media_only') {
+      // Para media_only, solo un README simple
+      const readme = `MEDIA BACKUP - ${tour.title}
+Created: ${new Date().toISOString()}
+
+This backup contains only media files from the virtual tour:
+- floor_plans/ - Floor plan images
+- panoramas/ - 360° panorama photos organized by hotspot
+
+Tour ID: ${tour.id}
+`;
+      zip.addFile('README.txt', readme);
+      await updateProgress(1, 'README created');
+    }
+
+    // 2. DESCARGAR IMÁGENES (para ambos tipos)
+    if (backupType === 'full_backup' || backupType === 'media_only') {
       // Descargar planos
       await updateProgress(2, 'Downloading floor plans');
       for (const [index, floorPlan] of (tour.floor_plans || []).entries()) {
@@ -350,7 +364,8 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
             } else {
               const arrayBuffer = await imageBlob.arrayBuffer();
               const safeName = sanitizeFilename(floorPlan.name);
-              zip.addFile(`media/floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
+              const folder = backupType === 'media_only' ? 'floor_plans' : 'media/floor_plans';
+              zip.addFile(`${folder}/${safeName}.jpg`, new Uint8Array(arrayBuffer));
               console.log(`✅ Downloaded floor plan: ${floorPlan.name} (${arrayBuffer.byteLength} bytes)`);
             }
           } catch (error) {
@@ -379,7 +394,11 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
             const arrayBuffer = await imageBlob.arrayBuffer();
             const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
             const safeFilename = sanitizeFilename(`photo_${photo.id}`);
-            zip.addFile(`media/panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
+            const folder = backupType === 'media_only' ? 'panoramas' : 'media/panoramas';
+            zip.addFile(`${folder}/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
+            console.log(`✅ Downloaded panorama: ${photo.id} (${arrayBuffer.byteLength} bytes)`);
+          } else if (imageError) {
+            console.error(`❌ Storage error for panorama ${photo.id}:`, imageError);
           }
         } catch (error) {
           console.warn(`⚠️ Could not download panorama: ${photo.id}`, error);
