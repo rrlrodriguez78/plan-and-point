@@ -1381,6 +1381,15 @@ export type Database = {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
         Returns: undefined
       }
+      run_backup_system_tests: {
+        Args: never
+        Returns: {
+          details: Json
+          duration_ms: number
+          test_name: string
+          test_result: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
