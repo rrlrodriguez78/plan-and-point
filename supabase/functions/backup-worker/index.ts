@@ -114,29 +114,61 @@ async function processBackupQueue(adminClient: any, maxJobs: number = 3) {
           })
           .eq('id', queueItem.id);
 
-        // Obtener datos completos del tour
+        // Obtener datos completos del tour manualmente
         const { data: backupJob, error: jobError } = await adminClient
           .from('backup_jobs')
-          .select(`
-            *,
-            virtual_tours (
-              *,
-              floor_plans (*),
-              hotspots (*),
-              panorama_photos (*)
-            )
-          `)
+          .select('*')
           .eq('id', queueItem.backup_job_id)
           .single();
 
         if (jobError || !backupJob) {
-          throw new Error('Backup job not found');
+          throw new Error(`Backup job not found: ${jobError?.message || 'No data'}`);
         }
 
-        // Procesar el backup
+        // Obtener tour y sus relaciones de forma explícita
+        const { data: tour, error: tourError } = await adminClient
+          .from('virtual_tours')
+          .select('*')
+          .eq('id', backupJob.tour_id)
+          .single();
+
+        if (tourError || !tour) {
+          throw new Error(`Tour not found: ${tourError?.message || 'No data'}`);
+        }
+
+        // Obtener floor plans
+        const { data: floorPlans } = await adminClient
+          .from('floor_plans')
+          .select('*')
+          .eq('tour_id', tour.id);
+
+        // Obtener hotspots
+        const { data: hotspots } = await adminClient
+          .from('hotspots')
+          .select('*')
+          .eq('tour_id', tour.id);
+
+        // Obtener panorama photos
+        const { data: panoramaPhotos } = await adminClient
+          .from('panorama_photos')
+          .select('*')
+          .eq('tour_id', tour.id);
+
+        // Construir el objeto completo
+        const completeBackupJob = {
+          ...backupJob,
+          virtual_tours: {
+            ...tour,
+            floor_plans: floorPlans || [],
+            hotspots: hotspots || [],
+            panorama_photos: panoramaPhotos || []
+          }
+        };
+
+        // Procesar el backup con los datos completos
         const result = await processBackupJob(
           queueItem.backup_job_id,
-          backupJob,
+          completeBackupJob,
           adminClient
         );
 
@@ -303,20 +335,29 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
       for (const [index, floorPlan] of (tour.floor_plans || []).entries()) {
         if (floorPlan.image_url) {
           try {
-            const imagePath = extractFilenameFromUrl(floorPlan.image_url);
+            console.log(`🔍 Processing floor plan: ${floorPlan.name}, URL: ${floorPlan.image_url}`);
+            const imagePath = extractPathFromUrl(floorPlan.image_url);
+            console.log(`📂 Extracted path: ${imagePath}`);
+            
             const { data: imageBlob, error: imageError } = await adminClient.storage
               .from('tour-images')
               .download(imagePath);
 
-            if (!imageError && imageBlob) {
+            if (imageError) {
+              console.error(`❌ Storage error for ${floorPlan.name}:`, imageError);
+            } else if (!imageBlob) {
+              console.error(`❌ No blob returned for ${floorPlan.name}`);
+            } else {
               const arrayBuffer = await imageBlob.arrayBuffer();
               const safeName = sanitizeFilename(floorPlan.name);
               zip.addFile(`media/floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
-              console.log(`✅ Downloaded floor plan: ${floorPlan.name}`);
+              console.log(`✅ Downloaded floor plan: ${floorPlan.name} (${arrayBuffer.byteLength} bytes)`);
             }
           } catch (error) {
-            console.warn(`⚠️ Could not download floor plan: ${floorPlan.name}`, error);
+            console.error(`⚠️ Exception downloading floor plan: ${floorPlan.name}`, error);
           }
+        } else {
+          console.log(`⚠️ Floor plan ${floorPlan.name} has no image_url`);
         }
         processedItems++;
         await updateProgress(processedItems, `Processing floor plans (${index + 1}/${tour.floor_plans?.length || 0})`);
@@ -326,7 +367,10 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
       await updateProgress(processedItems, 'Downloading panorama photos');
       for (const [index, photo] of (tour.panorama_photos || []).entries()) {
         try {
-          const imagePath = extractFilenameFromUrl(photo.photo_url);
+          console.log(`🔍 Processing panorama: ${photo.id}, URL: ${photo.photo_url}`);
+          const imagePath = extractPathFromUrl(photo.photo_url);
+          console.log(`📂 Extracted path: ${imagePath}`);
+          
           const { data: imageBlob, error: imageError } = await adminClient.storage
             .from('tour-images')
             .download(imagePath);
@@ -546,16 +590,42 @@ function calculateTotalItems(tour: any, backupType: string): number {
   return baseItems + floorPlans + photos + (tour.hotspots?.length || 0);
 }
 
-function extractFilenameFromUrl(url: string): string {
+// Extrae el path completo de una URL de storage
+function extractPathFromUrl(url: string): string {
   try {
+    // Si la URL contiene 'public/', extraer todo después de 'public/'
+    if (url.includes('/public/')) {
+      const parts = url.split('/public/');
+      if (parts.length > 1) {
+        // Remover el nombre del bucket del path
+        const pathAfterPublic = parts[1];
+        const pathParts = pathAfterPublic.split('/');
+        // Saltar el nombre del bucket (primer elemento) y tomar el resto
+        return pathParts.slice(1).join('/');
+      }
+    }
+    
+    // Fallback: extraer después de 'object/'
     const urlObj = new URL(url);
     const pathParts = urlObj.pathname.split('/');
-    // Remove empty strings and get the last part
-    const cleanParts = pathParts.filter(p => p);
-    return cleanParts.slice(4).join('/'); // Skip /storage/v1/object/public/bucket-name
-  } catch {
-    return url.split('/').slice(-1)[0] || '';
+    const objectIndex = pathParts.indexOf('object');
+    if (objectIndex !== -1 && objectIndex + 2 < pathParts.length) {
+      const pathAfterObject = pathParts.slice(objectIndex + 2).join('/');
+      // Si empieza con el nombre del bucket, removerlo
+      const bucketRemoved = pathAfterObject.split('/').slice(1).join('/');
+      return bucketRemoved || pathAfterObject;
+    }
+    
+    return pathParts[pathParts.length - 1];
+  } catch (error) {
+    console.error('Error extracting path from URL:', url, error);
+    return url.split('/').pop() || '';
   }
+}
+
+// Alias para backward compatibility
+function extractFilenameFromUrl(url: string): string {
+  return extractPathFromUrl(url);
 }
 
 function sanitizeFilename(name: string): string {
