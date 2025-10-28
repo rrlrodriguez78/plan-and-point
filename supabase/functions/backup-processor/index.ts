@@ -271,13 +271,23 @@ async function getBackupStatus(backupId: string, userId: string, adminClient: an
       ? Math.round((backupJob.processed_items / backupJob.total_items) * 100)
       : 0;
 
-    let downloadUrl = null;
-    if (backupJob.status === 'completed' && backupJob.storage_path) {
+    let downloadUrl = backupJob.file_url; // Use stored URL first
+    
+    // If no stored URL but has storage_path, generate new signed URL
+    if (!downloadUrl && backupJob.status === 'completed' && backupJob.storage_path) {
       const { data: signedUrl } = await adminClient.storage
         .from('backups')
         .createSignedUrl(backupJob.storage_path, 3600);
       
       downloadUrl = signedUrl?.signedUrl;
+      
+      // Update the backup_jobs with the new URL
+      if (downloadUrl) {
+        await adminClient
+          .from('backup_jobs')
+          .update({ file_url: downloadUrl })
+          .eq('id', backupId);
+      }
     }
 
     const response = {
@@ -554,6 +564,14 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
 
     console.log(`✅ Backup uploaded: ${storagePath}`);
 
+    // Generate signed URL for download (valid for 7 days)
+    const { data: signedUrlData } = await adminClient.storage
+      .from('backups')
+      .createSignedUrl(storagePath, 604800); // 7 days in seconds
+
+    const downloadUrl = signedUrlData?.signedUrl || null;
+    console.log(`🔗 Generated download URL: ${downloadUrl ? 'YES' : 'NO'}`);
+
     await adminClient
       .from('backup_jobs')
       .update({
@@ -562,6 +580,7 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
         progress_percentage: 100,
         file_size: zipBlob.length,
         storage_path: storagePath,
+        file_url: downloadUrl,
         completed_at: new Date().toISOString()
       })
       .eq('id', backupJobId);

@@ -77,7 +77,10 @@ export function useBackupSystem() {
         return;
       }
 
-      // Get active jobs from database
+      // Get active and recent jobs from database (last 24 hours)
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
       const { data: jobs, error } = await supabase
         .from('backup_jobs')
         .select(`
@@ -86,7 +89,8 @@ export function useBackupSystem() {
             title
           )
         `)
-        .in('status', ['pending', 'processing'])
+        .in('status', ['pending', 'processing', 'completed', 'failed'])
+        .gte('created_at', twentyFourHoursAgo.toISOString())
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -266,10 +270,7 @@ export function useBackupSystem() {
           setTimeout(checkStatus, 3000); // Every 3 seconds
         } else if (data.status === 'completed') {
           toast.success(`Backup completed: ${data.tourName}`);
-          // Remove from active after 30 seconds
-          setTimeout(() => {
-            setActiveJobs(prev => prev.filter(job => job.backupId !== backupId));
-          }, 30000);
+          // Keep completed backups visible (don't auto-remove)
         } else if (data.status === 'failed') {
           toast.error(`Backup failed: ${data.error}`);
         }
