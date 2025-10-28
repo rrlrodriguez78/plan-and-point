@@ -267,215 +267,240 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
   const tour = backupJob.virtual_tours;
   const userId = backupJob.user_id;
   const backupType = backupJob.job_type;
-  let processedItems = 0;
   
-  const IMAGES_PER_PART = 20; // 20 imágenes por archivo ZIP para evitar timeouts
+  const IMAGES_PER_PART = 10; // Reducido a 10 imágenes por parte para evitar timeouts
   
   console.log(`🔄 Starting MULTIPART backup processing for: ${tour.title}`);
-  
-  // Update status to processing at the start
-  await adminClient
-    .from('backup_jobs')
-    .update({ 
-      status: 'processing',
-      progress_percentage: 0 
-    })
-    .eq('id', backupJobId);
 
   try {
-    const totalItems = calculateTotalItems(tour, backupType);
-
-    // Función para actualizar progreso
-    const updateProgress = async (count: number, message?: string) => {
-      processedItems = count;
-      const progress = Math.round((processedItems / totalItems) * 100);
-      
-      await adminClient
-        .from('backup_jobs')
-        .update({
-          processed_items: processedItems,
-          progress_percentage: progress
-        })
-        .eq('id', backupJobId);
-      
-      console.log(`📈 Progress: ${progress}% - ${message}`);
-    };
-
-    await updateProgress(0, 'Initializing multipart backup');
-
-    // Recopilar todas las imágenes que necesitamos descargar
+    // Recopilar todas las imágenes
     const allImages: Array<{type: 'floor_plan' | 'panorama', data: any}> = [];
     
-    // Agregar floor plans
     for (const floorPlan of (tour.floor_plans || [])) {
       if (floorPlan.image_url) {
         allImages.push({ type: 'floor_plan', data: floorPlan });
       }
     }
     
-    // Agregar panoramas
     for (const photo of (tour.panorama_photos || [])) {
       if (photo.photo_url) {
         allImages.push({ type: 'panorama', data: photo });
       }
     }
 
-    console.log(`📦 Total images to backup: ${allImages.length}`);
-    console.log(`📊 Will create ${Math.ceil(allImages.length / IMAGES_PER_PART)} parts`);
-
-    // Dividir imágenes en partes
-    const parts: Array<Array<typeof allImages[0]>> = [];
-    for (let i = 0; i < allImages.length; i += IMAGES_PER_PART) {
-      parts.push(allImages.slice(i, i + IMAGES_PER_PART));
+    const totalImages = allImages.length;
+    const totalParts = Math.ceil(totalImages / IMAGES_PER_PART);
+    
+    // Obtener metadata actual o inicializar
+    const metadata = (backupJob.metadata || {}) as any;
+    const currentPart = metadata.current_part || 1;
+    
+    console.log(`📦 Total images: ${totalImages}, Total parts: ${totalParts}, Current part: ${currentPart}`);
+    
+    // Si es la primera parte, inicializar metadata
+    if (currentPart === 1) {
+      await adminClient
+        .from('backup_jobs')
+        .update({
+          status: 'processing',
+          progress_percentage: 0,
+          metadata: {
+            multipart: true,
+            current_part: 1,
+            total_parts: totalParts,
+            images_per_part: IMAGES_PER_PART
+          }
+        })
+        .eq('id', backupJobId);
     }
 
+    // Calcular índices para esta parte
+    const startIdx = (currentPart - 1) * IMAGES_PER_PART;
+    const endIdx = Math.min(startIdx + IMAGES_PER_PART, totalImages);
+    const partImages = allImages.slice(startIdx, endIdx);
+    
+    console.log(`\n📦 Processing part ${currentPart}/${totalParts} (images ${startIdx + 1}-${endIdx})`);
+    
+    // Crear ZIP para esta parte
+    const zip = new JSZip();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeTourName = sanitizeFilename(tour.title);
     
-    // Procesar cada parte
-    for (let partIndex = 0; partIndex < parts.length; partIndex++) {
-      const partNumber = partIndex + 1;
-      const partImages = parts[partIndex];
-      
-      console.log(`\n📦 Processing part ${partNumber}/${parts.length} (${partImages.length} images)`);
-      
-      const zip = new JSZip();
-      
-      // Agregar README para esta parte
-      const readme = `BACKUP PART ${partNumber}/${parts.length} - ${tour.title}
+    const readme = `BACKUP PART ${currentPart}/${totalParts} - ${tour.title}
 Created: ${new Date().toISOString()}
 
-This is part ${partNumber} of ${parts.length} of the backup.
+This is part ${currentPart} of ${totalParts} of the backup.
 Contains ${partImages.length} images from the virtual tour.
 
 Tour ID: ${tour.id}
 Backup Type: ${backupType}
 `;
-      zip.addFile('README.txt', readme);
-      
-      // Descargar y agregar imágenes de esta parte
-      let itemsInPart = 0;
-      for (const [idx, imageItem] of partImages.entries()) {
-        try {
-          if (imageItem.type === 'floor_plan') {
-            const floorPlan = imageItem.data;
-            const imagePath = extractPathFromUrl(floorPlan.image_url);
-            
-            const { data: imageBlob, error: imageError } = await adminClient.storage
-              .from('tour-images')
-              .download(imagePath);
-
-            if (!imageError && imageBlob) {
-              const arrayBuffer = await imageBlob.arrayBuffer();
-              const safeName = sanitizeFilename(floorPlan.name);
-              zip.addFile(`floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
-              console.log(`✅ [Part ${partNumber}] Floor plan: ${floorPlan.name}`);
-              itemsInPart++;
-            }
-          } else {
-            const photo = imageItem.data;
-            const imagePath = extractPathFromUrl(photo.photo_url);
-            
-            const { data: imageBlob, error: imageError } = await adminClient.storage
-              .from('tour-images')
-              .download(imagePath);
-
-            if (!imageError && imageBlob) {
-              const arrayBuffer = await imageBlob.arrayBuffer();
-              const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
-              const safeFilename = sanitizeFilename(`photo_${photo.id}`);
-              zip.addFile(`panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
-              console.log(`✅ [Part ${partNumber}] Panorama: ${photo.id}`);
-              itemsInPart++;
-            }
-          }
+    zip.addFile('README.txt', readme);
+    
+    // Procesar imágenes de esta parte
+    let itemsInPart = 0;
+    for (const [idx, imageItem] of partImages.entries()) {
+      try {
+        if (imageItem.type === 'floor_plan') {
+          const floorPlan = imageItem.data;
+          const imagePath = extractPathFromUrl(floorPlan.image_url);
           
-          processedItems++;
-          // Update progress every 5 images for better real-time feedback
-          if (idx % 5 === 0 || idx === partImages.length - 1) {
-            await updateProgress(processedItems, `Part ${partNumber}/${parts.length}: ${idx + 1}/${partImages.length} images`);
+          const { data: imageBlob, error: imageError } = await adminClient.storage
+            .from('tour-images')
+            .download(imagePath);
+
+          if (!imageError && imageBlob) {
+            const arrayBuffer = await imageBlob.arrayBuffer();
+            const safeName = sanitizeFilename(floorPlan.name);
+            zip.addFile(`floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
+            console.log(`✅ [Part ${currentPart}] Floor plan: ${floorPlan.name}`);
+            itemsInPart++;
           }
-        } catch (error) {
-          console.warn(`⚠️ [Part ${partNumber}] Failed to download image:`, error);
+        } else {
+          const photo = imageItem.data;
+          const imagePath = extractPathFromUrl(photo.photo_url);
+          
+          const { data: imageBlob, error: imageError } = await adminClient.storage
+            .from('tour-images')
+            .download(imagePath);
+
+          if (!imageError && imageBlob) {
+            const arrayBuffer = await imageBlob.arrayBuffer();
+            const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
+            const safeFilename = sanitizeFilename(`photo_${photo.id}`);
+            zip.addFile(`panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
+            console.log(`✅ [Part ${currentPart}] Panorama: ${photo.id}`);
+            itemsInPart++;
+          }
         }
+      } catch (error) {
+        console.warn(`⚠️ [Part ${currentPart}] Failed to download image:`, error);
       }
-
-      // Generar ZIP de esta parte
-      await updateProgress(processedItems, `Generating ZIP for part ${partNumber}/${parts.length}`);
-      const zipBlob = await zip.generateAsync({
-        type: 'uint8array',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 }
-      });
-
-      console.log(`✅ Part ${partNumber} ZIP generated: ${(zipBlob.length / 1024 / 1024).toFixed(2)} MB`);
-
-      // Subir esta parte
-      const partStoragePath = `${userId}/${backupJobId}/${safeTourName}_part${partNumber}_${timestamp}.zip`;
-      
-      const { error: uploadError } = await adminClient.storage
-        .from('backups')
-        .upload(partStoragePath, zipBlob, {
-          contentType: 'application/zip',
-          upsert: false
-        });
-
-      if (uploadError) {
-        throw new Error(`Failed to upload part ${partNumber}: ${uploadError.message}`);
-      }
-
-      console.log(`✅ Part ${partNumber} uploaded to: ${partStoragePath}`);
-
-      // Generar URL firmada para esta parte
-      const { data: signedUrlData } = await adminClient.storage
-        .from('backups')
-        .createSignedUrl(partStoragePath, 7 * 24 * 60 * 60); // 7 días
-
-      // Registrar esta parte en backup_parts
-      await adminClient
-        .from('backup_parts')
-        .insert({
-          backup_job_id: backupJobId,
-          part_number: partNumber,
-          file_url: signedUrlData?.signedUrl,
-          storage_path: partStoragePath,
-          file_size: zipBlob.length,
-          file_hash: await generateFileHash(zipBlob),
-          items_count: itemsInPart,
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        });
-
-      console.log(`✅ Part ${partNumber} registered in database`);
     }
 
-    // Todas las partes completadas - actualizar el backup job como completado
-    await updateProgress(totalItems, 'All parts completed!');
+    // Generar y subir ZIP
+    console.log(`📈 Generating ZIP for part ${currentPart}...`);
+    const zipBlob = await zip.generateAsync({
+      type: 'uint8array',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
 
-    // Contar el tamaño total de todas las partes
+    console.log(`✅ Part ${currentPart} ZIP generated: ${(zipBlob.length / 1024 / 1024).toFixed(2)} MB`);
+
+    const partStoragePath = `${userId}/${backupJobId}/${safeTourName}_part${currentPart}_${timestamp}.zip`;
+    
+    const { error: uploadError } = await adminClient.storage
+      .from('backups')
+      .upload(partStoragePath, zipBlob, {
+        contentType: 'application/zip',
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload part ${currentPart}: ${uploadError.message}`);
+    }
+
+    console.log(`✅ Part ${currentPart} uploaded`);
+
+    // Generar URL firmada
+    const { data: signedUrlData } = await adminClient.storage
+      .from('backups')
+      .createSignedUrl(partStoragePath, 7 * 24 * 60 * 60);
+
+    // Registrar parte en la base de datos
+    await adminClient
+      .from('backup_parts')
+      .insert({
+        backup_job_id: backupJobId,
+        part_number: currentPart,
+        file_url: signedUrlData?.signedUrl,
+        storage_path: partStoragePath,
+        file_size: zipBlob.length,
+        file_hash: await generateFileHash(zipBlob),
+        items_count: itemsInPart,
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      });
+
+    // Actualizar progreso
+    const progress = Math.round((currentPart / totalParts) * 100);
+    await adminClient
+      .from('backup_jobs')
+      .update({
+        processed_items: endIdx,
+        progress_percentage: progress
+      })
+      .eq('id', backupJobId);
+
+    console.log(`✅ Part ${currentPart}/${totalParts} completed (${progress}%)`);
+
+    // Si hay más partes, invocar el worker para la siguiente parte
+    if (currentPart < totalParts) {
+      // Actualizar metadata con la siguiente parte
+      await adminClient
+        .from('backup_jobs')
+        .update({
+          metadata: {
+            multipart: true,
+            current_part: currentPart + 1,
+            total_parts: totalParts,
+            images_per_part: IMAGES_PER_PART
+          }
+        })
+        .eq('id', backupJobId);
+
+      console.log(`🔄 Invoking worker for part ${currentPart + 1}/${totalParts}`);
+      
+      // NO ESPERAR la respuesta - dejar que se ejecute en background
+      const workerUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/backup-worker`;
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      fetch(workerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceKey}`
+        },
+        body: JSON.stringify({
+          action: 'process_job',
+          backupJobId: backupJobId
+        })
+      }).catch(err => console.error('Error invoking worker:', err));
+
+      return {
+        success: true,
+        backupId: backupJobId,
+        partsCount: totalParts,
+        currentPart: currentPart,
+        totalSize: zipBlob.length,
+        totalItems: totalImages,
+        inProgress: true
+      };
+    }
+
+    // Todas las partes completadas
     const { data: allParts } = await adminClient
       .from('backup_parts')
       .select('file_size, items_count')
       .eq('backup_job_id', backupJobId);
 
     const totalSize = allParts?.reduce((sum: number, part: any) => sum + (part.file_size || 0), 0) || 0;
-    const totalImagesInParts = allParts?.reduce((sum: number, part: any) => sum + (part.items_count || 0), 0) || 0;
 
-    // Actualizar backup_jobs
     await adminClient
       .from('backup_jobs')
       .update({
         status: 'completed',
-        processed_items: totalItems,
+        processed_items: totalImages,
         progress_percentage: 100,
         file_size: totalSize,
         storage_path: `${userId}/${backupJobId}/`,
         completed_at: new Date().toISOString(),
         metadata: {
           multipart: true,
-          parts_count: parts.length,
-          total_images: totalImagesInParts,
-          images_per_part: IMAGES_PER_PART
+          total_parts: totalParts,
+          images_per_part: IMAGES_PER_PART,
+          completed: true
         }
       })
       .eq('id', backupJobId);
@@ -488,71 +513,41 @@ Backup Type: ${backupType}
       })
       .eq('backup_job_id', backupJobId);
 
-    // Registrar éxito
-    await adminClient
-      .from('backup_logs')
-      .insert({
-        backup_job_id: backupJobId,
-        event_type: 'backup_completed',
-        message: `Multipart backup completed successfully (${parts.length} parts)`,
-        details: {
-          parts_count: parts.length,
-          total_size_mb: (totalSize / 1024 / 1024).toFixed(2),
-          total_items: totalItems,
-          total_images: totalImagesInParts,
-          processing_time: 'completed'
-        }
-      });
-
-    console.log(`🎉 Multipart backup completed: ${backupJobId} (${parts.length} parts)`);
+    console.log(`🎉 Multipart backup completed: ${backupJobId} (${totalParts} parts)`);
 
     return {
       success: true,
       backupId: backupJobId,
-      partsCount: parts.length,
+      partsCount: totalParts,
       totalSize: totalSize,
-      totalItems: totalItems
+      totalItems: totalImages
     };
 
   } catch (error) {
-    console.error(`💥 Backup processing failed for ${backupJobId}:`, error);
+    console.error(`💥 Backup processing failed:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     
-    // Detectar si fue un timeout y personalizar el mensaje
-    const isTimeout = errorMessage.includes('TIMEOUT_LIMIT') || errorMessage.includes('CPU Time exceeded');
-    const finalErrorMessage = isTimeout 
-      ? `Backup demasiado grande: Este tour tiene ${tour.panorama_photos?.length || 0} imágenes. Backups con más de 150 imágenes no pueden procesarse en una sola ejecución. Por favor, contacta a soporte para tours grandes.`
-      : errorMessage;
-    
-    // Registrar error
-    await adminClient
-      .from('backup_logs')
-      .insert({
-        backup_job_id: backupJobId,
-        event_type: 'backup_failed',
-        message: 'Backup processing failed',
-        details: {
-          error: finalErrorMessage,
-          processed_items: processedItems
-        },
-        is_error: true
-      });
-
-    // Actualizar estado de fallo
     await adminClient
       .from('backup_jobs')
       .update({
         status: 'failed',
-        error_message: finalErrorMessage,
+        error_message: errorMessage,
         completed_at: new Date().toISOString()
       })
       .eq('id', backupJobId);
 
+    await adminClient
+      .from('backup_queue')
+      .update({
+        status: 'failed',
+        error_message: errorMessage,
+        completed_at: new Date().toISOString()
+      })
+      .eq('backup_job_id', backupJobId);
+
     return {
       success: false,
-      error: finalErrorMessage,
-      backupId: backupJobId,
-      processedItems: processedItems
+      error: errorMessage
     };
   }
 }
