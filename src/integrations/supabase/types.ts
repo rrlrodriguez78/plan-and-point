@@ -207,6 +207,59 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_parts: {
+        Row: {
+          backup_job_id: string
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          file_hash: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          items_count: number
+          part_number: number
+          status: string
+          storage_path: string | null
+        }
+        Insert: {
+          backup_job_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_hash?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          items_count?: number
+          part_number: number
+          status?: string
+          storage_path?: string | null
+        }
+        Update: {
+          backup_job_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_hash?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          items_count?: number
+          part_number?: number
+          status?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_parts_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "backup_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_queue: {
         Row: {
           attempts: number | null

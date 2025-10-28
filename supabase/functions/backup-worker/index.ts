@@ -179,8 +179,9 @@ async function processBackupQueue(adminClient: any, maxJobs: number = 3) {
           results.details.push({
             jobId: queueItem.backup_job_id,
             status: 'completed',
-            fileSize: result.fileSize,
-            downloadUrl: result.downloadUrl
+            partsCount: result.partsCount,
+            totalSize: result.totalSize,
+            totalItems: result.totalItems
           });
         } else {
           throw new Error(result.error);
@@ -261,28 +262,18 @@ async function processSingleBackupJob(backupJobId: string, adminClient: any) {
   }
 }
 
-// FUNCIÓN PRINCIPAL DE PROCESAMIENTO DE BACKUP
+// FUNCIÓN PRINCIPAL DE PROCESAMIENTO DE BACKUP CON MULTIPART
 async function processBackupJob(backupJobId: string, backupJob: any, adminClient: any) {
   const tour = backupJob.virtual_tours;
   const userId = backupJob.user_id;
   const backupType = backupJob.job_type;
-  let processedItems = 0; // Declarar aquí para que esté en scope de catch
+  let processedItems = 0;
   
-  // ⏱️ TIMEOUT PROTECTION: Edge Functions tienen ~120s de CPU time
-  const startTime = Date.now();
-  const MAX_EXECUTION_TIME = 100000; // 100 segundos, dejando 20s de margen
+  const IMAGES_PER_PART = 50; // 50 imágenes por archivo ZIP
   
-  const checkTimeout = () => {
-    const elapsed = Date.now() - startTime;
-    if (elapsed > MAX_EXECUTION_TIME) {
-      throw new Error(`TIMEOUT_LIMIT: Backup excedió el límite de tiempo de ejecución (${Math.round(elapsed/1000)}s). Tours con más de 150 imágenes requieren procesamiento especial.`);
-    }
-  };
-
-  console.log(`🔄 Starting REAL backup processing for: ${tour.title}`);
+  console.log(`🔄 Starting MULTIPART backup processing for: ${tour.title}`);
 
   try {
-    const zip = new JSZip();
     const totalItems = calculateTotalItems(tour, backupType);
 
     // Función para actualizar progreso
@@ -301,179 +292,181 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
       console.log(`📈 Progress: ${progress}% - ${message}`);
     };
 
-    await updateProgress(0, 'Initializing backup');
+    await updateProgress(0, 'Initializing multipart backup');
 
-    // 1. SOLO AGREGAR METADATA COMPLEJA PARA FULL BACKUP
-    if (backupType === 'full_backup') {
-      const tourMetadata = {
-        export_info: {
-          version: '2.0',
-          type: 'virtual_tour_backup',
-          created_at: new Date().toISOString(),
-          backup_type: backupType,
-          total_items: totalItems
-        },
-        tour: {
-          id: tour.id,
-          title: tour.title,
-          description: tour.description,
-          created_at: tour.created_at,
-          updated_at: tour.updated_at
-        },
-        floor_plans: tour.floor_plans?.map((plan: any) => ({
-          id: plan.id,
-          name: plan.name,
-          image_url: plan.image_url
-        })) || [],
-        hotspots: tour.hotspots?.map((hotspot: any) => ({
-          id: hotspot.id,
-          title: hotspot.title,
-          floor_plan_id: hotspot.floor_plan_id,
-          x_position: hotspot.x_position,
-          y_position: hotspot.y_position
-        })) || [],
-        panorama_photos: tour.panorama_photos?.map((photo: any) => ({
-          id: photo.id,
-          photo_url: photo.photo_url,
-          hotspot_id: photo.hotspot_id
-        })) || []
-      };
-      zip.addFile('backup_manifest.json', JSON.stringify(tourMetadata, null, 2));
-      await updateProgress(1, 'Metadata added to archive');
-    } else if (backupType === 'media_only') {
-      // Para media_only, solo un README simple
-      const readme = `MEDIA BACKUP - ${tour.title}
-Created: ${new Date().toISOString()}
-
-This backup contains only media files from the virtual tour:
-- floor_plans/ - Floor plan images
-- panoramas/ - 360° panorama photos organized by hotspot
-
-Tour ID: ${tour.id}
-`;
-      zip.addFile('README.txt', readme);
-      await updateProgress(1, 'README created');
+    // Recopilar todas las imágenes que necesitamos descargar
+    const allImages: Array<{type: 'floor_plan' | 'panorama', data: any}> = [];
+    
+    // Agregar floor plans
+    for (const floorPlan of (tour.floor_plans || [])) {
+      if (floorPlan.image_url) {
+        allImages.push({ type: 'floor_plan', data: floorPlan });
+      }
+    }
+    
+    // Agregar panoramas
+    for (const photo of (tour.panorama_photos || [])) {
+      if (photo.photo_url) {
+        allImages.push({ type: 'panorama', data: photo });
+      }
     }
 
-    // 2. DESCARGAR IMÁGENES (para ambos tipos)
-    if (backupType === 'full_backup' || backupType === 'media_only') {
-      // Descargar planos
-      await updateProgress(2, 'Downloading floor plans');
-      for (const [index, floorPlan] of (tour.floor_plans || []).entries()) {
-        if (floorPlan.image_url) {
-          try {
-            console.log(`🔍 Processing floor plan: ${floorPlan.name}, URL: ${floorPlan.image_url}`);
+    console.log(`📦 Total images to backup: ${allImages.length}`);
+    console.log(`📊 Will create ${Math.ceil(allImages.length / IMAGES_PER_PART)} parts`);
+
+    // Dividir imágenes en partes
+    const parts: Array<Array<typeof allImages[0]>> = [];
+    for (let i = 0; i < allImages.length; i += IMAGES_PER_PART) {
+      parts.push(allImages.slice(i, i + IMAGES_PER_PART));
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeTourName = sanitizeFilename(tour.title);
+    
+    // Procesar cada parte
+    for (let partIndex = 0; partIndex < parts.length; partIndex++) {
+      const partNumber = partIndex + 1;
+      const partImages = parts[partIndex];
+      
+      console.log(`\n📦 Processing part ${partNumber}/${parts.length} (${partImages.length} images)`);
+      
+      const zip = new JSZip();
+      
+      // Agregar README para esta parte
+      const readme = `BACKUP PART ${partNumber}/${parts.length} - ${tour.title}
+Created: ${new Date().toISOString()}
+
+This is part ${partNumber} of ${parts.length} of the backup.
+Contains ${partImages.length} images from the virtual tour.
+
+Tour ID: ${tour.id}
+Backup Type: ${backupType}
+`;
+      zip.addFile('README.txt', readme);
+      
+      // Descargar y agregar imágenes de esta parte
+      let itemsInPart = 0;
+      for (const [idx, imageItem] of partImages.entries()) {
+        try {
+          if (imageItem.type === 'floor_plan') {
+            const floorPlan = imageItem.data;
             const imagePath = extractPathFromUrl(floorPlan.image_url);
-            console.log(`📂 Extracted path: ${imagePath}`);
             
             const { data: imageBlob, error: imageError } = await adminClient.storage
               .from('tour-images')
               .download(imagePath);
 
-            if (imageError) {
-              console.error(`❌ Storage error for ${floorPlan.name}:`, imageError);
-            } else if (!imageBlob) {
-              console.error(`❌ No blob returned for ${floorPlan.name}`);
-            } else {
+            if (!imageError && imageBlob) {
               const arrayBuffer = await imageBlob.arrayBuffer();
               const safeName = sanitizeFilename(floorPlan.name);
-              const folder = backupType === 'media_only' ? 'floor_plans' : 'media/floor_plans';
-              zip.addFile(`${folder}/${safeName}.jpg`, new Uint8Array(arrayBuffer));
-              console.log(`✅ Downloaded floor plan: ${floorPlan.name} (${arrayBuffer.byteLength} bytes)`);
+              zip.addFile(`floor_plans/${safeName}.jpg`, new Uint8Array(arrayBuffer));
+              console.log(`✅ [Part ${partNumber}] Floor plan: ${floorPlan.name}`);
+              itemsInPart++;
             }
-          } catch (error) {
-            console.error(`⚠️ Exception downloading floor plan: ${floorPlan.name}`, error);
+          } else {
+            const photo = imageItem.data;
+            const imagePath = extractPathFromUrl(photo.photo_url);
+            
+            const { data: imageBlob, error: imageError } = await adminClient.storage
+              .from('tour-images')
+              .download(imagePath);
+
+            if (!imageError && imageBlob) {
+              const arrayBuffer = await imageBlob.arrayBuffer();
+              const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
+              const safeFilename = sanitizeFilename(`photo_${photo.id}`);
+              zip.addFile(`panoramas/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
+              console.log(`✅ [Part ${partNumber}] Panorama: ${photo.id}`);
+              itemsInPart++;
+            }
           }
-        } else {
-          console.log(`⚠️ Floor plan ${floorPlan.name} has no image_url`);
-        }
-        processedItems++;
-        await updateProgress(processedItems, `Processing floor plans (${index + 1}/${tour.floor_plans?.length || 0})`);
-      }
-
-      // Descargar fotos panorámicas
-      await updateProgress(processedItems, 'Downloading panorama photos');
-      for (const [index, photo] of (tour.panorama_photos || []).entries()) {
-        // ⏱️ Check timeout cada 10 imágenes para no impactar performance
-        if (index % 10 === 0) {
-          checkTimeout();
-        }
-        
-        try {
-          console.log(`🔍 Processing panorama: ${photo.id}, URL: ${photo.photo_url}`);
-          const imagePath = extractPathFromUrl(photo.photo_url);
-          console.log(`📂 Extracted path: ${imagePath}`);
           
-          const { data: imageBlob, error: imageError } = await adminClient.storage
-            .from('tour-images')
-            .download(imagePath);
-
-          if (!imageError && imageBlob) {
-            const arrayBuffer = await imageBlob.arrayBuffer();
-            const hotspotFolder = photo.hotspot_id ? `hotspot_${photo.hotspot_id}` : 'general';
-            const safeFilename = sanitizeFilename(`photo_${photo.id}`);
-            const folder = backupType === 'media_only' ? 'panoramas' : 'media/panoramas';
-            zip.addFile(`${folder}/${hotspotFolder}/${safeFilename}.jpg`, new Uint8Array(arrayBuffer));
-            console.log(`✅ Downloaded panorama: ${photo.id} (${arrayBuffer.byteLength} bytes)`);
-          } else if (imageError) {
-            console.error(`❌ Storage error for panorama ${photo.id}:`, imageError);
+          processedItems++;
+          if (idx % 10 === 0) {
+            await updateProgress(processedItems, `Part ${partNumber}/${parts.length}: ${idx + 1}/${partImages.length} images`);
           }
         } catch (error) {
-          console.warn(`⚠️ Could not download panorama: ${photo.id}`, error);
-        }
-        processedItems++;
-        if (processedItems % 5 === 0) {
-          await updateProgress(processedItems, `Downloading photos (${processedItems}/${tour.panorama_photos?.length || 0})`);
+          console.warn(`⚠️ [Part ${partNumber}] Failed to download image:`, error);
         }
       }
-    }
 
-    await updateProgress(totalItems - 1, 'Finalizing archive');
-
-    // 3. GENERAR ARCHIVO ZIP
-    const zipBlob = await zip.generateAsync({
-      type: 'uint8array',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 6 }
-    });
-
-    console.log(`✅ ZIP archive generated: ${(zipBlob.length / 1024 / 1024).toFixed(2)} MB`);
-
-    // 4. SUBIR A ALMACENAMIENTO
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const safeTourName = sanitizeFilename(tour.title);
-    const storagePath = `${userId}/${backupJobId}/${safeTourName}_${timestamp}.zip`;
-    
-    const { error: uploadError } = await adminClient.storage
-      .from('backups')
-      .upload(storagePath, zipBlob, {
-        contentType: 'application/zip',
-        upsert: false
+      // Generar ZIP de esta parte
+      await updateProgress(processedItems, `Generating ZIP for part ${partNumber}/${parts.length}`);
+      const zipBlob = await zip.generateAsync({
+        type: 'uint8array',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
       });
 
-    if (uploadError) {
-      throw new Error(`Failed to upload backup: ${uploadError.message}`);
+      console.log(`✅ Part ${partNumber} ZIP generated: ${(zipBlob.length / 1024 / 1024).toFixed(2)} MB`);
+
+      // Subir esta parte
+      const partStoragePath = `${userId}/${backupJobId}/${safeTourName}_part${partNumber}_${timestamp}.zip`;
+      
+      const { error: uploadError } = await adminClient.storage
+        .from('backups')
+        .upload(partStoragePath, zipBlob, {
+          contentType: 'application/zip',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw new Error(`Failed to upload part ${partNumber}: ${uploadError.message}`);
+      }
+
+      console.log(`✅ Part ${partNumber} uploaded to: ${partStoragePath}`);
+
+      // Generar URL firmada para esta parte
+      const { data: signedUrlData } = await adminClient.storage
+        .from('backups')
+        .createSignedUrl(partStoragePath, 7 * 24 * 60 * 60); // 7 días
+
+      // Registrar esta parte en backup_parts
+      await adminClient
+        .from('backup_parts')
+        .insert({
+          backup_job_id: backupJobId,
+          part_number: partNumber,
+          file_url: signedUrlData?.signedUrl,
+          storage_path: partStoragePath,
+          file_size: zipBlob.length,
+          file_hash: await generateFileHash(zipBlob),
+          items_count: itemsInPart,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        });
+
+      console.log(`✅ Part ${partNumber} registered in database`);
     }
 
-    console.log(`✅ Backup uploaded to: ${storagePath}`);
+    // Todas las partes completadas - actualizar el backup job como completado
+    await updateProgress(totalItems, 'All parts completed!');
 
-    // 5. GENERAR URL FIRMADA
-    const { data: signedUrlData } = await adminClient.storage
-      .from('backups')
-      .createSignedUrl(storagePath, 7 * 24 * 60 * 60); // 7 días de validez
+    // Contar el tamaño total de todas las partes
+    const { data: allParts } = await adminClient
+      .from('backup_parts')
+      .select('file_size, items_count')
+      .eq('backup_job_id', backupJobId);
 
-    // 6. ACTUALIZAR BASE DE DATOS
+    const totalSize = allParts?.reduce((sum: number, part: any) => sum + (part.file_size || 0), 0) || 0;
+    const totalImagesInParts = allParts?.reduce((sum: number, part: any) => sum + (part.items_count || 0), 0) || 0;
+
+    // Actualizar backup_jobs
     await adminClient
       .from('backup_jobs')
       .update({
         status: 'completed',
         processed_items: totalItems,
         progress_percentage: 100,
-        file_size: zipBlob.length,
-        storage_path: storagePath,
-        file_hash: await generateFileHash(zipBlob),
-        file_url: signedUrlData?.signedUrl,
-        completed_at: new Date().toISOString()
+        file_size: totalSize,
+        storage_path: `${userId}/${backupJobId}/`,
+        completed_at: new Date().toISOString(),
+        metadata: {
+          multipart: true,
+          parts_count: parts.length,
+          total_images: totalImagesInParts,
+          images_per_part: IMAGES_PER_PART
+        }
       })
       .eq('id', backupJobId);
 
@@ -491,23 +484,23 @@ Tour ID: ${tour.id}
       .insert({
         backup_job_id: backupJobId,
         event_type: 'backup_completed',
-        message: 'Backup completed successfully',
+        message: `Multipart backup completed successfully (${parts.length} parts)`,
         details: {
-          file_size_mb: (zipBlob.length / 1024 / 1024).toFixed(2),
+          parts_count: parts.length,
+          total_size_mb: (totalSize / 1024 / 1024).toFixed(2),
           total_items: totalItems,
-          storage_path: storagePath,
+          total_images: totalImagesInParts,
           processing_time: 'completed'
         }
       });
 
-    console.log(`🎉 Backup completed successfully: ${backupJobId}`);
+    console.log(`🎉 Multipart backup completed: ${backupJobId} (${parts.length} parts)`);
 
     return {
       success: true,
       backupId: backupJobId,
-      fileSize: zipBlob.length,
-      downloadUrl: signedUrlData?.signedUrl,
-      storagePath: storagePath,
+      partsCount: parts.length,
+      totalSize: totalSize,
       totalItems: totalItems
     };
 

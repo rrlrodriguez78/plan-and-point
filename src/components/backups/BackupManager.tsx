@@ -442,7 +442,30 @@ export const BackupManager: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2 ml-4">
-                    {job.status === 'completed' && job.downloadUrl && (
+                    {job.status === 'completed' && job.isMultipart && job.parts && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium">
+                          {job.parts.length} {t('backups.parts', { defaultValue: 'parts' })}
+                        </span>
+                        {job.parts.map((part) => (
+                          <Button
+                            key={part.id}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (part.file_url) {
+                                window.open(part.file_url, '_blank');
+                                toast.success(`Downloading part ${part.part_number}`);
+                              }
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Part {part.part_number} ({formatFileSize(part.file_size || 0)})
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    {job.status === 'completed' && !job.isMultipart && job.downloadUrl && (
                       <Button
                         size="sm"
                         onClick={() => handleDownload(job)}

@@ -14,6 +14,21 @@ interface BackupJob {
   processed_items: number;
   created_at: string;
   completed_at?: string;
+  metadata?: any;
+}
+
+interface BackupPart {
+  id: string;
+  backup_job_id: string;
+  part_number: number;
+  file_url?: string;
+  storage_path?: string;
+  file_size?: number;
+  items_count: number;
+  status: string;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
 }
 
 interface BackupStatus {
@@ -30,6 +45,8 @@ interface BackupStatus {
   createdAt: string;
   completedAt?: string;
   error?: string;
+  parts?: BackupPart[];
+  isMultipart?: boolean;
 }
 
 export function useBackupSystem() {
@@ -101,23 +118,50 @@ export function useBackupSystem() {
 
       console.log('Found active jobs:', jobs?.length || 0);
 
-      const activeJobsData: BackupStatus[] = (jobs || []).map(job => ({
-        backupId: job.id,
-        tourId: job.tour_id,
-        tourName: job.virtual_tours?.title || 'Unknown Tour',
-        jobType: job.job_type,
-        status: job.status,
-        downloadUrl: job.file_url,
-        fileSize: job.file_size,
-        progress: job.total_items > 0 
-          ? Math.round((job.processed_items / job.total_items) * 100)
-          : 0,
-        processedItems: job.processed_items,
-        totalItems: job.total_items,
-        createdAt: job.created_at,
-        completedAt: job.completed_at,
-        error: job.error_message
-      }));
+      // Para cada backup completado, cargar sus partes si es multipart
+      const activeJobsData: BackupStatus[] = await Promise.all(
+        (jobs || []).map(async (job) => {
+          const metadata = job.metadata as any;
+          const baseJob: BackupStatus = {
+            backupId: job.id,
+            tourId: job.tour_id,
+            tourName: job.virtual_tours?.title || 'Unknown Tour',
+            jobType: job.job_type,
+            status: job.status,
+            downloadUrl: job.file_url,
+            fileSize: job.file_size,
+            progress: job.total_items > 0 
+              ? Math.round((job.processed_items / job.total_items) * 100)
+              : 0,
+            processedItems: job.processed_items,
+            totalItems: job.total_items,
+            createdAt: job.created_at,
+            completedAt: job.completed_at,
+            error: job.error_message,
+            isMultipart: metadata?.multipart || false
+          };
+
+          // Si el backup está completado y es multipart, cargar las partes
+          if (job.status === 'completed' && metadata?.multipart) {
+            try {
+              const { data: parts, error: partsError } = await supabase
+                .from('backup_parts')
+                .select('*')
+                .eq('backup_job_id', job.id)
+                .order('part_number', { ascending: true });
+
+              if (!partsError && parts) {
+                baseJob.parts = parts;
+                console.log(`✅ Loaded ${parts.length} parts for backup ${job.id}`);
+              }
+            } catch (error) {
+              console.error(`⚠️ Failed to load parts for backup ${job.id}:`, error);
+            }
+          }
+
+          return baseJob;
+        })
+      );
 
       setActiveJobs(activeJobsData);
 
