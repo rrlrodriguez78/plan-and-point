@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.backup-processor]
 verify_jwt = true
+
+[functions.backup-worker]
+verify_jwt = false
