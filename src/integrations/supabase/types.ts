@@ -1433,6 +1433,14 @@ export type Database = {
           test_type: string
         }[]
       }
+      verify_production_readiness: {
+        Args: never
+        Returns: {
+          check_item: string
+          details: string
+          status: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
