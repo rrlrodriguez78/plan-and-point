@@ -1333,6 +1333,13 @@ export type Database = {
         }[]
       }
       generate_share_token: { Args: never; Returns: string }
+      generate_system_documentation: {
+        Args: never
+        Returns: {
+          content: string
+          section: string
+        }[]
+      }
       get_backup_system_dashboard: {
         Args: never
         Returns: {
