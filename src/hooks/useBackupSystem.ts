@@ -156,26 +156,45 @@ export function useBackupSystem() {
       console.log('Edge function response:', { data, error });
 
       if (error) {
-        console.error('Edge function error:', {
-          name: error.name,
-          message: error.message,
-          status: (error as any).status,
-          statusText: (error as any).statusText
-        });
+        console.error('Edge function error:', error);
         
+        // Handle different error types
         if (error.message.includes('401') || error.message.includes('Unauthorized')) {
           toast.error('Authentication failed. Please log in again.');
-          // Try to refresh session
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          console.log('Session refresh result:', { refreshData, refreshError });
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('Session refresh failed:', refreshError);
+          }
+        } else if (error.message.includes('Failed to fetch')) {
+          toast.error('Network error: Cannot connect to backup service');
         } else {
-          throw new Error(`Edge Function Error: ${error.message}`);
+          toast.error(`Backup service error: ${error.message}`);
         }
         return null;
       }
 
       if (!data) {
-        throw new Error('No response data from edge function');
+        toast.error('No response from backup service');
+        return null;
+      }
+
+      // Check if the response indicates an error
+      if (!data.success) {
+        const errorMsg = data.error || 'Unknown error occurred';
+        console.error('Backup failed:', {
+          error: errorMsg,
+          code: data.code,
+          details: data.details
+        });
+        
+        if (data.code === 'UNAUTHORIZED') {
+          toast.error('Authentication error. Please log in again.');
+        } else if (data.code === 'ACCESS_DENIED') {
+          toast.error('You do not have permission to backup this tour');
+        } else {
+          toast.error(`Backup failed: ${errorMsg}`);
+        }
+        return null;
       }
 
       if (data.success) {
@@ -201,19 +220,11 @@ export function useBackupSystem() {
       }
 
     } catch (error: any) {
-      console.error('Error starting backup:', {
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause
-      });
+      console.error('Error starting backup:', error);
       
-      // More specific error messages
-      if (error.message.includes('Failed to fetch')) {
-        toast.error('Network error: Cannot connect to backup service');
-      } else if (error.message.includes('JWT')) {
-        toast.error('Authentication error: Please log in again');
-      } else {
-        toast.error(`Failed to start backup: ${error.message}`);
+      // Only show toast if we haven't already shown one above
+      if (!error.message.includes('Backup failed') && !error.message.includes('Authentication')) {
+        toast.error(`Unexpected error: ${error.message}`);
       }
       return null;
     } finally {

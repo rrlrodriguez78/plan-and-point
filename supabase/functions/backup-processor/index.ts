@@ -48,55 +48,104 @@ serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // For JWT verification, we would use the auth header, but we're using service role for now
+    // Verify auth header exists
     const authHeader = req.headers.get('Authorization');
-    console.log('🔑 Auth header present:', !!authHeader);
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Missing authorization header',
+          code: 'UNAUTHORIZED'
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
+    console.log('🔑 Auth header present: true');
+
+    // Route to appropriate handler
     if (action === 'start') {
       if (!tourId) {
         return new Response(
-          JSON.stringify({ error: 'Tour ID is required' }),
+          JSON.stringify({ 
+            success: false,
+            error: 'Tour ID is required',
+            code: 'MISSING_TOUR_ID'
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      return await startBackup(tourId, backupType, supabaseClient);
+      const result = await startBackup(tourId, backupType, supabaseClient, authHeader);
+      
+      if (!result.success) {
+        return new Response(
+          JSON.stringify(result),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else if (action === 'status') {
       if (!backupId) {
         return new Response(
-          JSON.stringify({ error: 'Backup ID is required' }),
+          JSON.stringify({ 
+            success: false,
+            error: 'Backup ID is required',
+            code: 'MISSING_BACKUP_ID'
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       return await getBackupStatus(backupId, supabaseClient);
     } else {
       return new Response(
-        JSON.stringify({ error: 'Invalid action' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid action. Use "start" or "status"',
+          code: 'INVALID_ACTION'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Error in backup processor:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error',
-        details: errorMessage 
+        success: false,
+        error: error.message || 'Internal server error',
+        code: error.code || 'INTERNAL_ERROR',
+        details: error.details,
+        stack: error.stack 
       }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
 
-async function startBackup(tourId: string, backupType: string, supabase: any) {
-  console.log('🎬 Starting backup for tour:', tourId, 'type:', backupType);
-
+async function startBackup(tourId: string, backupType: string, supabase: any, authHeader: string) {
+  console.log(`🎬 Starting backup for tour: ${tourId} type: ${backupType}`);
+  
   try {
-    // Verify tour exists
+    // Get authenticated user from JWT
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error('❌ Authentication failed:', userError);
+      return {
+        success: false,
+        error: 'Unauthorized: Invalid or missing authentication token',
+        code: 'UNAUTHORIZED'
+      };
+    }
+    
+    console.log(`✅ User authenticated: ${user.id}`);
+    
+    // Fetch tour with related data using the correct hierarchy
     const { data: tour, error: tourError } = await supabase
       .from('virtual_tours')
       .select(`
@@ -113,80 +162,114 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
       .maybeSingle();
 
     if (tourError) {
-      console.error('❌ Tour query error:', tourError);
-      throw new Error(`Tour not found: ${tourError.message}`);
+      console.error('❌ Tour query error:', {
+        code: tourError.code,
+        message: tourError.message,
+        details: tourError.details,
+        hint: tourError.hint
+      });
+      return {
+        success: false,
+        error: `Tour query failed: ${tourError.message}`,
+        code: 'TOUR_QUERY_ERROR',
+        details: tourError.details
+      };
     }
 
     if (!tour) {
-      throw new Error('Tour not found');
+      return {
+        success: false,
+        error: `Tour with ID ${tourId} not found in database`,
+        code: 'TOUR_NOT_FOUND'
+      };
     }
 
-    console.log('✅ Tour found:', tour.title);
+    console.log(`✅ Tour found: ${tour.title}`);
+    console.log(`📊 Data structure:`, {
+      floorPlans: tour.floor_plans?.length || 0,
+      totalHotspots: tour.floor_plans?.reduce((sum: number, fp: any) => sum + (fp.hotspots?.length || 0), 0),
+      totalPhotos: tour.floor_plans?.reduce((sum: number, fp: any) => 
+        sum + fp.hotspots?.reduce((hSum: number, h: any) => hSum + (h.panorama_photos?.length || 0), 0), 0)
+    });
 
-    // Get tenant info
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id, owner_id')
-      .eq('id', tour.tenant_id)
+    // Verify user has access to this tour's tenant
+    const { data: tenantAccess, error: accessError } = await supabase
+      .from('tenant_users')
+      .select('tenant_id')
+      .eq('tenant_id', tour.tenant_id)
+      .eq('user_id', user.id)
       .maybeSingle();
 
-    if (tenantError) {
-      console.error('❌ Tenant query error:', tenantError);
-      throw new Error(`Tenant not found: ${tenantError.message}`);
+    if (accessError || !tenantAccess) {
+      return {
+        success: false,
+        error: 'Access denied: User does not have permission to backup this tour',
+        code: 'ACCESS_DENIED'
+      };
     }
 
-    if (!tenant) {
-      throw new Error('Tenant not found');
-    }
-
-    console.log('✅ Tenant found:', tenant.id, 'Owner:', tenant.owner_id);
+    console.log(`✅ User has access to tenant: ${tour.tenant_id}`);
 
     // Calculate total items
     const totalItems = calculateTotalItems(tour, backupType);
     console.log('📊 Total items to process:', totalItems);
 
-    // Create backup job
+    // Create backup job record
     const { data: backupJob, error: jobError } = await supabase
       .from('backup_jobs')
       .insert({
+        user_id: user.id,
+        tenant_id: tour.tenant_id,
         tour_id: tourId,
         job_type: backupType,
         status: 'processing',
         total_items: totalItems,
-        user_id: tenant.owner_id,
-        tenant_id: tenant.id
+        processed_items: 0,
+        progress_percentage: 0,
+        metadata: {
+          tour_title: tour.title,
+          started_at: new Date().toISOString(),
+        }
       })
       .select()
-      .maybeSingle();
+      .single();
 
     if (jobError) {
-      console.error('❌ Backup job creation error:', jobError);
-      throw new Error(`Error creating backup job: ${jobError.message}`);
+      console.error('❌ Error creating backup job:', {
+        code: jobError.code,
+        message: jobError.message,
+        details: jobError.details
+      });
+      return {
+        success: false,
+        error: `Failed to create backup job: ${jobError.message}`,
+        code: 'JOB_CREATION_ERROR',
+        details: jobError.details
+      };
     }
 
-    console.log('✅ Backup job created:', backupJob.id);
+    console.log(`✅ Backup job created: ${backupJob.id}`);
 
-    // Start background processing (don't wait)
-    processBackup(tour, backupJob.id, backupType, supabase);
+    // Start backup process (async, don't await)
+    processBackup(tour, backupJob.id, backupType, supabase).catch(err => {
+      console.error('💥 Error in processBackup:', err);
+    });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        backupId: backupJob.id,
-        backupType,
-        status: 'processing',
-        totalItems,
-        tourName: tour.title
-      }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-
-  } catch (error) {
+    return {
+      success: true,
+      backupId: backupJob.id,
+      tourName: tour.title,
+      totalItems,
+      backupType
+    };
+  } catch (error: any) {
     console.error('💥 Error in startBackup:', error);
-    throw error;
+    return {
+      success: false,
+      error: error.message,
+      code: error.code || 'UNKNOWN_ERROR',
+      details: error.details || error.stack
+    };
   }
 }
 
