@@ -101,9 +101,13 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
       .from('virtual_tours')
       .select(`
         *,
-        floor_plans (*),
-        hotspots (*),
-        panorama_photos (*)
+        floor_plans (
+          *,
+          hotspots (
+            *,
+            panorama_photos (*)
+          )
+        )
       `)
       .eq('id', tourId)
       .maybeSingle();
@@ -249,8 +253,19 @@ async function getBackupStatus(backupId: string, supabase: any) {
 
 function calculateTotalItems(tour: any, backupType: string): number {
   const floorPlansCount = tour.floor_plans?.length || 0;
-  const hotspotsCount = tour.hotspots?.length || 0;
-  const photosCount = tour.panorama_photos?.length || 0;
+  
+  // Count all hotspots across all floor plans
+  let hotspotsCount = 0;
+  let photosCount = 0;
+  
+  tour.floor_plans?.forEach((floorPlan: any) => {
+    hotspotsCount += floorPlan.hotspots?.length || 0;
+    
+    // Count all photos across all hotspots
+    floorPlan.hotspots?.forEach((hotspot: any) => {
+      photosCount += hotspot.panorama_photos?.length || 0;
+    });
+  });
 
   if (backupType === 'media_only') {
     return photosCount + floorPlansCount;
