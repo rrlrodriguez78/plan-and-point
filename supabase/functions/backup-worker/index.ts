@@ -422,7 +422,10 @@ Backup Type: ${backupType}
 
     console.log(`✅ Part ${currentPart} ZIP generated: ${(zipBlob.length / 1024 / 1024).toFixed(2)} MB`);
 
-    const partStoragePath = `${userId}/${backupJobId}/${safeTourName}_part${currentPart}_${timestamp}.zip`;
+    // Formato: TourName_backup_timestamp.zip.001, .zip.002, etc.
+    const paddedPartNumber = String(currentPart).padStart(3, '0');
+    const baseFilename = `${safeTourName}_backup_${timestamp}`;
+    const partStoragePath = `${userId}/${backupJobId}/${baseFilename}.zip.${paddedPartNumber}`;
     
     const { error: uploadError } = await adminClient.storage
       .from('backups')
@@ -433,6 +436,11 @@ Backup Type: ${backupType}
 
     if (uploadError) {
       throw new Error(`Failed to upload part ${currentPart}: ${uploadError.message}`);
+    }
+
+    // Si es la primera parte, crear scripts de unión e instrucciones
+    if (currentPart === 1) {
+      await createMergeScripts(userId, backupJobId, baseFilename, totalParts, adminClient);
     }
 
     console.log(`✅ Part ${currentPart} uploaded`);
@@ -928,4 +936,209 @@ async function generateFileHash(data: Uint8Array): Promise<string> {
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash).toString(16).padStart(8, '0');
+}
+
+// Crear scripts de unión para Windows y Unix/Mac
+async function createMergeScripts(userId: string, backupJobId: string, baseFilename: string, totalParts: number, adminClient: any): Promise<void> {
+  console.log('📝 Creating merge scripts and instructions...');
+  
+  // Script para Windows (batch)
+  let windowsScript = `@echo off
+echo ========================================
+echo   UNIR ARCHIVOS DE BACKUP
+echo ========================================
+echo.
+echo Nombre del archivo: ${baseFilename}.zip
+echo Total de partes: ${totalParts}
+echo.
+
+REM Verificar que todas las partes existen
+set MISSING=0
+`;
+
+  for (let i = 1; i <= totalParts; i++) {
+    const paddedNum = String(i).padStart(3, '0');
+    windowsScript += `if not exist "${baseFilename}.zip.${paddedNum}" (\n  echo ERROR: Falta ${baseFilename}.zip.${paddedNum}\n  set MISSING=1\n)\n`;
+  }
+
+  windowsScript += `
+if %MISSING%==1 (
+  echo.
+  echo Por favor descarga todas las partes antes de continuar.
+  pause
+  exit /b 1
+)
+
+echo Todas las partes encontradas. Uniendo archivos...
+echo.
+
+REM Unir todos los archivos
+copy /b "${baseFilename}.zip.001`;
+  
+  for (let i = 2; i <= totalParts; i++) {
+    const paddedNum = String(i).padStart(3, '0');
+    windowsScript += `+${baseFilename}.zip.${paddedNum}`;
+  }
+  
+  windowsScript += `" "${baseFilename}.zip"
+
+if exist "${baseFilename}.zip" (
+  echo.
+  echo ========================================
+  echo   BACKUP UNIDO EXITOSAMENTE!
+  echo ========================================
+  echo.
+  echo Archivo creado: ${baseFilename}.zip
+  echo Ahora puedes extraer el archivo ZIP.
+  echo.
+) else (
+  echo.
+  echo ERROR: No se pudo crear el archivo.
+  echo.
+)
+pause
+`;
+
+  // Script para Unix/Mac (shell)
+  let unixScript = `#!/bin/bash
+
+echo "========================================"
+echo "  UNIR ARCHIVOS DE BACKUP"
+echo "========================================"
+echo ""
+echo "Nombre del archivo: ${baseFilename}.zip"
+echo "Total de partes: ${totalParts}"
+echo ""
+
+# Verificar que todas las partes existen
+MISSING=0
+`;
+
+  for (let i = 1; i <= totalParts; i++) {
+    const paddedNum = String(i).padStart(3, '0');
+    unixScript += `if [ ! -f "${baseFilename}.zip.${paddedNum}" ]; then\n  echo "ERROR: Falta ${baseFilename}.zip.${paddedNum}"\n  MISSING=1\nfi\n`;
+  }
+
+  unixScript += `
+if [ $MISSING -eq 1 ]; then
+  echo ""
+  echo "Por favor descarga todas las partes antes de continuar."
+  exit 1
+fi
+
+echo "Todas las partes encontradas. Uniendo archivos..."
+echo ""
+
+# Unir todos los archivos
+cat ${baseFilename}.zip.* > ${baseFilename}.zip
+
+if [ -f "${baseFilename}.zip" ]; then
+  echo ""
+  echo "========================================"
+  echo "  BACKUP UNIDO EXITOSAMENTE!"
+  echo "========================================"
+  echo ""
+  echo "Archivo creado: ${baseFilename}.zip"
+  echo "Ahora puedes extraer el archivo ZIP."
+  echo ""
+else
+  echo ""
+  echo "ERROR: No se pudo crear el archivo."
+  echo ""
+fi
+`;
+
+  // README con instrucciones detalladas
+  const readme = `========================================
+  INSTRUCCIONES DE USO
+========================================
+
+Este backup está dividido en ${totalParts} partes para facilitar la descarga.
+
+PASOS PARA RESTAURAR:
+
+1. DESCARGAR TODOS LOS ARCHIVOS
+   Descarga TODAS las partes del backup en la misma carpeta:
+   ${baseFilename}.zip.001
+   ${baseFilename}.zip.002
+   ${baseFilename}.zip.003
+   ...hasta...
+   ${baseFilename}.zip.${String(totalParts).padStart(3, '0')}
+
+2. DESCARGAR SCRIPT DE UNIÓN
+   Descarga el script según tu sistema operativo:
+   - Windows: UNIR_ARCHIVOS_WINDOWS.bat
+   - Mac/Linux: UNIR_ARCHIVOS_MAC_LINUX.sh
+
+3. EJECUTAR EL SCRIPT
+
+   WINDOWS:
+   - Doble click en UNIR_ARCHIVOS_WINDOWS.bat
+   - O desde CMD: UNIR_ARCHIVOS_WINDOWS.bat
+   
+   MAC/LINUX:
+   - Abre Terminal en la carpeta donde están los archivos
+   - Dale permisos de ejecución: chmod +x UNIR_ARCHIVOS_MAC_LINUX.sh
+   - Ejecuta: ./UNIR_ARCHIVOS_MAC_LINUX.sh
+
+   MÉTODO MANUAL (si los scripts no funcionan):
+   
+   Windows (CMD):
+   copy /b ${baseFilename}.zip.* ${baseFilename}.zip
+   
+   Mac/Linux (Terminal):
+   cat ${baseFilename}.zip.* > ${baseFilename}.zip
+
+4. EXTRAER EL ZIP
+   Se creará el archivo: ${baseFilename}.zip
+   Extraelo con tu programa favorito (WinRAR, 7-Zip, etc.)
+
+========================================
+  NOTAS IMPORTANTES
+========================================
+
+✓ Todos los archivos deben estar en la misma carpeta
+✓ No cambies los nombres de los archivos
+✓ Verifica que descargaste todas las partes antes de unirlas
+✓ El archivo final tendrá todos los contenidos del tour
+
+========================================
+  CONTENIDO DEL BACKUP
+========================================
+
+- floor_plans/: Planos de planta del tour
+- panoramas/: Fotos panorámicas organizadas por hotspot
+- README.txt: Información de cada parte
+
+Creado: ${new Date().toISOString()}
+Total de partes: ${totalParts}
+`;
+
+  // Subir archivos
+  try {
+    await adminClient.storage
+      .from('backups')
+      .upload(`${userId}/${backupJobId}/UNIR_ARCHIVOS_WINDOWS.bat`, new TextEncoder().encode(windowsScript), {
+        contentType: 'text/plain',
+        upsert: true
+      });
+
+    await adminClient.storage
+      .from('backups')
+      .upload(`${userId}/${backupJobId}/UNIR_ARCHIVOS_MAC_LINUX.sh`, new TextEncoder().encode(unixScript), {
+        contentType: 'text/plain',
+        upsert: true
+      });
+
+    await adminClient.storage
+      .from('backups')
+      .upload(`${userId}/${backupJobId}/LEEME_INSTRUCCIONES.txt`, new TextEncoder().encode(readme), {
+        contentType: 'text/plain',
+        upsert: true
+      });
+
+    console.log('✅ Scripts de unión e instrucciones creados');
+  } catch (error) {
+    console.warn('⚠️ Error creando scripts de unión:', error);
+  }
 }
