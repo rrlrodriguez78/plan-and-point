@@ -360,16 +360,141 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeTourName = sanitizeFilename(tour.title);
     
-    const readme = `BACKUP PART ${currentPart}/${totalParts} - ${tour.title}
-Created: ${new Date().toISOString()}
+    // README con instrucciones detalladas de unión
+    const readme = `═══════════════════════════════════════════════════════
+VIRTUAL TOUR BACKUP - ${tour.title}
+═══════════════════════════════════════════════════════
 
-This is part ${currentPart} of ${totalParts} of the backup.
-Contains ${partImages.length} images from the virtual tour.
-
+Parte: ${currentPart} de ${totalParts}
+Tipo de Backup: ${backupType}
+Creado: ${new Date().toISOString()}
+Imágenes en esta parte: ${partImages.length}
 Tour ID: ${tour.id}
-Backup Type: ${backupType}
+
+═══════════════════════════════════════════════════════
+INSTRUCCIONES PARA UNIR TODAS LAS PARTES
+═══════════════════════════════════════════════════════
+
+⚠️ IMPORTANTE: Debes descargar TODAS las ${totalParts} partes antes de unirlas.
+
+Archivos necesarios:
+${Array.from({length: totalParts}, (_, i) => `  - ${safeTourName}_backup_${timestamp}.zip.${String(i+1).padStart(3, '0')}`).join('\n')}
+
+───────────────────────────────────────────────────────
+MÉTODO 1 - SCRIPTS AUTOMÁTICOS (MÁS FÁCIL)
+───────────────────────────────────────────────────────
+
+1. Descarga TODAS las partes (.zip.001, .zip.002, etc.)
+2. Descarga los scripts de unión:
+   - Windows: UNIR_ARCHIVOS_WINDOWS.bat
+   - Mac/Linux: UNIR_ARCHIVOS_MAC_LINUX.sh
+3. Coloca todos los archivos en la misma carpeta
+4. Ejecuta el script correspondiente:
+   
+   WINDOWS:
+   - Doble clic en UNIR_ARCHIVOS_WINDOWS.bat
+   
+   MAC/LINUX:
+   - Abre Terminal
+   - chmod +x UNIR_ARCHIVOS_MAC_LINUX.sh
+   - ./UNIR_ARCHIVOS_MAC_LINUX.sh
+
+───────────────────────────────────────────────────────
+MÉTODO 2 - PROGRAMAS DE COMPRESIÓN (RECOMENDADO)
+───────────────────────────────────────────────────────
+
+WINDOWS - 7-Zip (Gratuito):
+1. Instala 7-Zip desde https://www.7-zip.org/
+2. Descarga todas las partes en una carpeta
+3. Clic derecho en el archivo .001
+4. Selecciona "7-Zip" → "Extraer aquí"
+5. 7-Zip unirá automáticamente todas las partes
+
+WINDOWS - WinRAR:
+1. Descarga todas las partes en una carpeta
+2. Clic derecho en el archivo .001
+3. Selecciona "Extraer aquí"
+4. WinRAR unirá automáticamente todas las partes
+
+MAC - The Unarchiver (Gratuito):
+1. Instala The Unarchiver desde App Store
+2. Descarga todas las partes en una carpeta
+3. Doble clic en el archivo .001
+4. The Unarchiver unirá y extraerá automáticamente
+
+───────────────────────────────────────────────────────
+MÉTODO 3 - LÍNEA DE COMANDOS (AVANZADO)
+───────────────────────────────────────────────────────
+
+Windows (CMD):
+cd ruta\\a\\carpeta
+copy /b "${safeTourName}_backup_${timestamp}.zip.*" "${safeTourName}_complete.zip"
+
+Windows (PowerShell):
+cd ruta\\a\\carpeta
+cmd /c copy /b "${safeTourName}_backup_${timestamp}.zip.*" "${safeTourName}_complete.zip"
+
+Mac/Linux (Terminal):
+cd /ruta/a/carpeta
+cat ${safeTourName}_backup_${timestamp}.zip.* > ${safeTourName}_complete.zip
+
+───────────────────────────────────────────────────────
+ESTRUCTURA DEL BACKUP
+───────────────────────────────────────────────────────
+
+Una vez unido y extraído, encontrarás:
+
+📁 floor_plans/
+   └── Planos de piso del tour
+   
+📁 panoramas/
+   ├── hotspot_[ID]/
+   │   └── Fotos panorámicas 360° por ubicación
+   └── general/
+       └── Fotos panorámicas sin ubicación específica
+
+───────────────────────────────────────────────────────
+SOLUCIÓN DE PROBLEMAS
+───────────────────────────────────────────────────────
+
+❌ Error: "Archivo corrupto" o "No se puede abrir"
+   → Verifica que descargaste TODAS las partes
+   → Comprueba que los archivos no estén dañados
+
+❌ Error: "Falta el archivo .00X"
+   → Descarga la parte faltante
+   → Asegúrate de que todos los archivos estén en la misma carpeta
+
+❌ El archivo unido está incompleto
+   → Vuelve a descargar las partes que puedan estar dañadas
+   → Usa un programa de compresión (7-Zip/WinRAR/The Unarchiver)
+
+🔍 Más ayuda: Revisa el archivo LEEME_INSTRUCCIONES.txt
+
+═══════════════════════════════════════════════════════
 `;
     zip.addFile('README.txt', readme);
+    
+    // Agregar metadata JSON
+    const partMetadata = {
+      tour_name: tour.title,
+      tour_id: tour.id,
+      backup_type: backupType,
+      part_number: currentPart,
+      total_parts: totalParts,
+      total_images_in_part: partImages.length,
+      created_at: new Date().toISOString(),
+      file_sequence: `${safeTourName}_backup_${timestamp}.zip.${String(currentPart).padStart(3, '0')}`,
+      extraction_instructions: {
+        recommended_tools: {
+          windows: ["7-Zip (Free)", "WinRAR"],
+          mac: ["The Unarchiver (Free)", "Keka"],
+          linux: ["p7zip", "unzip", "cat command"]
+        },
+        auto_extraction: "Most compression tools will automatically recognize and extract all parts when you open .001"
+      }
+    };
+    zip.addFile('part_metadata.json', JSON.stringify(partMetadata, null, 2));
     
     // Procesar imágenes de esta parte
     let itemsInPart = 0;
