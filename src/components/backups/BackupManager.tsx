@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Download, X, RefreshCw, Archive, Image, Trash2 } from 'lucide-react';
+import { Download, X, RefreshCw, Archive, Image, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Tour {
   id: string;
@@ -36,6 +38,8 @@ export const BackupManager: React.FC = () => {
   const [loadingTours, setLoadingTours] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [selectedBackups, setSelectedBackups] = useState<Set<string>>(new Set());
+  const [showCompletedBackups, setShowCompletedBackups] = useState(true);
 
   // Check authentication on mount
   useEffect(() => {
@@ -228,6 +232,72 @@ export const BackupManager: React.FC = () => {
     }
   };
 
+  const getRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  const handleDownloadSelected = async () => {
+    const completedBackups = activeJobs.filter(
+      job => job.status === 'completed'
+    );
+    
+    const selectedJobs = completedBackups.filter(job => 
+      selectedBackups.has(job.backupId)
+    );
+    
+    if (selectedJobs.length === 0) {
+      toast.error('No backups selected');
+      return;
+    }
+    
+    toast.info(`Starting download of ${selectedJobs.length} backup(s)...`);
+    
+    let totalDownloaded = 0;
+    
+    for (const job of selectedJobs) {
+      if (job.isMultipart && job.parts) {
+        for (const part of job.parts) {
+          if (part.file_url) {
+            window.open(part.file_url, '_blank');
+            totalDownloaded++;
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      } else if (job.downloadUrl) {
+        window.open(job.downloadUrl, '_blank');
+        totalDownloaded++;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    toast.success(`Started downloading ${totalDownloaded} file(s)`);
+    setSelectedBackups(new Set());
+  };
+
+  // Separate backups by status
+  const activeBackups = activeJobs.filter(
+    job => job.status === 'processing' || job.status === 'pending'
+  );
+
+  const completedBackups = activeJobs.filter(
+    job => job.status === 'completed'
+  );
+
+  const failedBackups = activeJobs.filter(
+    job => job.status === 'failed'
+  );
+
   if (checkingAuth) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -364,15 +434,15 @@ export const BackupManager: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Active Backups */}
-      {activeJobs.length > 0 && (
+      {/* Active Backups (Processing/Pending) */}
+      {activeBackups.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{t('backups.activeBackups', { defaultValue: 'Active Backups' })}</CardTitle>
+                <CardTitle>{t('backups.activeBackups', { defaultValue: 'Active Backups' })} ({activeBackups.length})</CardTitle>
                 <CardDescription>
-                  {t('backups.trackBackupsDescription', { defaultValue: 'Track backups currently being processed' })}
+                  {t('backups.trackBackupsDescription', { defaultValue: 'Currently processing or queued backups' })}
                 </CardDescription>
               </div>
               <Button
@@ -394,16 +464,13 @@ export const BackupManager: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {activeJobs.map((job) => (
+              {activeBackups.map((job) => (
                 <div key={job.backupId} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <span className="font-medium">{job.tourName}</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={getStatusColor(job.status)}
-                        >
+                        <Badge variant="secondary">
                           {getStatusText(job.status)}
                         </Badge>
                         <Badge variant="outline">
@@ -412,12 +479,6 @@ export const BackupManager: React.FC = () => {
                             : `🖼️ ${t('backups.mediaOnly', { defaultValue: 'Media Only' })}`}
                         </Badge>
                       </div>
-                      
-                      {job.fileSize && (
-                        <span className="text-sm text-muted-foreground">
-                          {formatFileSize(job.fileSize)}
-                        </span>
-                      )}
                     </div>
 
                     {job.status === 'processing' && (
@@ -435,66 +496,218 @@ export const BackupManager: React.FC = () => {
                         </div>
                       </div>
                     )}
-
-                    {job.error && (
-                      <p className="text-sm text-red-600">{job.error}</p>
-                    )}
                   </div>
 
                   <div className="flex items-center space-x-2 ml-4">
-                    {job.status === 'completed' && job.isMultipart && job.parts && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium">
-                          {job.parts.length} {t('backups.parts', { defaultValue: 'parts' })}
-                        </span>
-                        {job.parts.map((part) => (
-                          <Button
-                            key={part.id}
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              if (part.file_url) {
-                                window.open(part.file_url, '_blank');
-                                toast.success(`Downloading part ${part.part_number}`);
-                              }
-                            }}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Part {part.part_number} ({formatFileSize(part.file_size || 0)})
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                    {job.status === 'completed' && !job.isMultipart && job.downloadUrl && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleDownload(job)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        {t('backups.download', { defaultValue: 'Download' })}
-                      </Button>
-                    )}
-                    
-                    {job.status === 'processing' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleCancel(job.backupId)}
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        {t('backups.cancel', { defaultValue: 'Cancel' })}
-                      </Button>
-                    )}
-
                     <Button
                       size="sm"
-                      variant="destructive"
-                      onClick={() => handleDeleteBackup(job.backupId, job.status)}
+                      variant="ghost"
+                      onClick={() => handleCancel(job.backupId)}
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {t('backups.delete', { defaultValue: 'Delete' })}
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Completed Backups (Collapsible with Multi-Select) */}
+      {completedBackups.length > 0 && (
+        <Card>
+          <CardHeader 
+            className="cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => setShowCompletedBackups(!showCompletedBackups)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {showCompletedBackups ? (
+                  <ChevronDown className="h-5 w-5" />
+                ) : (
+                  <ChevronRight className="h-5 w-5" />
+                )}
+                <div>
+                  <CardTitle>
+                    {t('backups.completedBackups', { defaultValue: 'Completed Backups' })} ({completedBackups.length})
+                  </CardTitle>
+                  {selectedBackups.size > 0 && (
+                    <CardDescription>
+                      {(() => {
+                        const totalSelectedParts = completedBackups
+                          .filter(b => selectedBackups.has(b.backupId))
+                          .reduce((sum, b) => sum + (b.parts?.length || 1), 0);
+                        
+                        const totalSelectedSize = completedBackups
+                          .filter(b => selectedBackups.has(b.backupId))
+                          .reduce((sum, b) => {
+                            if (b.isMultipart && b.parts) {
+                              return sum + b.parts.reduce((s, p) => s + (p.file_size || 0), 0);
+                            }
+                            return sum + (b.fileSize || 0);
+                          }, 0);
+                        
+                        return `${totalSelectedParts} files selected • ${formatFileSize(totalSelectedSize)}`;
+                      })()}
+                    </CardDescription>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (selectedBackups.size === completedBackups.length) {
+                      setSelectedBackups(new Set());
+                    } else {
+                      setSelectedBackups(new Set(completedBackups.map(b => b.backupId)));
+                    }
+                  }}
+                >
+                  {selectedBackups.size === completedBackups.length 
+                    ? t('backups.deselectAll', { defaultValue: 'Deselect All' })
+                    : t('backups.selectAll', { defaultValue: 'Select All' })}
+                </Button>
+                
+                {selectedBackups.size > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadSelected();
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {t('backups.downloadSelected', { defaultValue: 'Download Selected' })} ({selectedBackups.size})
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          
+          {showCompletedBackups && (
+            <CardContent>
+              <div className="space-y-2">
+                {completedBackups.map((backup) => {
+                  const isSelected = selectedBackups.has(backup.backupId);
+                  const partsCount = backup.isMultipart ? backup.parts?.length || 0 : 1;
+                  const totalSize = backup.isMultipart && backup.parts
+                    ? backup.parts.reduce((sum, p) => sum + (p.file_size || 0), 0)
+                    : backup.fileSize || 0;
+                  
+                  const timeAgo = getRelativeTime(backup.completedAt || backup.createdAt);
+                  
+                  return (
+                    <div 
+                      key={backup.backupId}
+                      className={cn(
+                        "flex items-center gap-4 p-4 border rounded-lg transition-all hover:bg-accent/20",
+                        isSelected && "border-primary bg-primary/5"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => {
+                          const newSelection = new Set(selectedBackups);
+                          if (newSelection.has(backup.backupId)) {
+                            newSelection.delete(backup.backupId);
+                          } else {
+                            newSelection.add(backup.backupId);
+                          }
+                          setSelectedBackups(newSelection);
+                        }}
+                        className="h-5 w-5"
+                      />
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{backup.tourName}</span>
+                            <Badge variant="outline">
+                              {backup.jobType === 'full_backup' ? '💾 Complete' : '🖼️ Media'}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>📦 {partsCount} {partsCount === 1 ? 'file' : 'files'}</span>
+                            <span>💾 {formatFileSize(totalSize)}</span>
+                            <span>🕐 {timeAgo}</span>
+                          </div>
+                        </div>
+                        
+                        {backup.isMultipart && backup.parts && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            {backup.parts.map((part, idx) => (
+                              <span key={part.id}>
+                                Part {part.part_number} ({formatFileSize(part.file_size || 0)})
+                                {idx < backup.parts!.length - 1 ? ' • ' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteBackup(backup.backupId, backup.status);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Failed Backups */}
+      {failedBackups.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-destructive">
+              {t('backups.failedBackups', { defaultValue: 'Failed Backups' })} ({failedBackups.length})
+            </CardTitle>
+            <CardDescription>
+              {t('backups.failedBackupsDescription', { defaultValue: 'Backups that encountered errors' })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {failedBackups.map((job) => (
+                <div key={job.backupId} className="flex items-center justify-between p-4 border border-destructive/50 rounded-lg bg-destructive/5">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">{job.tourName}</span>
+                        <Badge variant="destructive">
+                          {getStatusText(job.status)}
+                        </Badge>
+                        <Badge variant="outline">
+                          {job.jobType === 'full_backup' ? '💾 Complete' : '🖼️ Media'}
+                        </Badge>
+                      </div>
+                    </div>
+                    {job.error && (
+                      <p className="text-sm text-destructive">{job.error}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDeleteBackup(job.backupId, job.status)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
