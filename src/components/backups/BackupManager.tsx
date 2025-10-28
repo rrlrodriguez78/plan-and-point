@@ -28,7 +28,8 @@ export const BackupManager: React.FC = () => {
     startBackup, 
     downloadBackup, 
     cancelBackup,
-    refreshJobs
+    refreshJobs,
+    processQueue
   } = useBackupSystem();
   
   const [tours, setTours] = useState<Tour[]>([]);
@@ -367,10 +368,29 @@ export const BackupManager: React.FC = () => {
       {activeJobs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>{t('backups.activeBackups', { defaultValue: 'Active Backups' })}</CardTitle>
-            <CardDescription>
-              {t('backups.trackBackupsDescription', { defaultValue: 'Track backups currently being processed' })}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{t('backups.activeBackups', { defaultValue: 'Active Backups' })}</CardTitle>
+                <CardDescription>
+                  {t('backups.trackBackupsDescription', { defaultValue: 'Track backups currently being processed' })}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  toast.info('Processing backup queue...');
+                  const result = await processQueue();
+                  if (result) {
+                    toast.success(`Processed ${result.processed} backups successfully`);
+                    refreshJobs();
+                  }
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {t('backups.processQueue', { defaultValue: 'Process Queue' })}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

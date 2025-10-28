@@ -311,6 +311,46 @@ export function useBackupSystem() {
     return activeJobs.find(job => job.backupId === backupId);
   };
 
+  const processQueue = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/backup-worker`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'process_queue',
+            maxJobs: 3
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to process queue');
+      }
+
+      const result = await response.json();
+      console.log('Queue processing result:', result);
+      
+      // Refresh jobs after processing
+      await loadActiveJobs();
+      
+      return result;
+    } catch (error) {
+      console.error('Error processing queue:', error);
+      toast.error('Failed to process backup queue');
+      return null;
+    }
+  };
+
   return {
     activeJobs,
     loading,
@@ -318,6 +358,7 @@ export function useBackupSystem() {
     downloadBackup,
     cancelBackup,
     getJobProgress,
-    refreshJobs: loadActiveJobs
+    refreshJobs: loadActiveJobs,
+    processQueue
   };
 }
