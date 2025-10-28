@@ -318,21 +318,32 @@ async function cancelBackup(backupId: string, userId: string, adminClient: any) 
 }
 
 async function processBackupInBackground(tour: any, backupJobId: string, backupType: string, userId: string, adminClient: any) {
-  console.log(`🔄 Processing REAL backup for: ${tour.title}, job: ${backupJobId}`);
+  console.log(`🔄 Processing REAL backup via queue: ${tour.title}, job: ${backupJobId}`);
 
   try {
-    await adminClient
-      .from('backup_queue')
-      .update({ 
-        status: 'processing',
-        started_at: new Date().toISOString()
-      })
-      .eq('backup_job_id', backupJobId);
-
+    // Actualizar estado a procesando
     await adminClient
       .from('backup_jobs')
-      .update({ status: 'processing' })
+      .update({
+        status: 'processing',
+        processed_items: 0,
+        progress_percentage: 0
+      })
       .eq('id', backupJobId);
+
+    // Registrar inicio en logs
+    await adminClient
+      .from('backup_logs')
+      .insert({
+        backup_job_id: backupJobId,
+        event_type: 'processing_started',
+        message: 'Backup processing started',
+        details: {
+          tour_name: tour.title,
+          backup_type: backupType,
+          total_items: calculateTotalItems(tour, backupType)
+        }
+      });
 
     const zip = new JSZip();
     let processedItems = 0;
@@ -387,6 +398,16 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
 
     zip.file('tour_metadata.json', JSON.stringify(tourMetadata, null, 2));
     await updateProgress(1, 'Metadata added');
+
+    // Registrar progreso en logs
+    await adminClient
+      .from('backup_logs')
+      .insert({
+        backup_job_id: backupJobId,
+        event_type: 'metadata_created',
+        message: 'Tour metadata JSON generated',
+        details: { items_count: totalItems }
+      });
 
     if (backupType === 'full_backup') {
       for (const floorPlan of tour.floor_plans || []) {
@@ -447,6 +468,19 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
 
     console.log(`✅ ZIP generated: ${zipBlob.length} bytes`);
 
+    // Registrar generación de ZIP
+    await adminClient
+      .from('backup_logs')
+      .insert({
+        backup_job_id: backupJobId,
+        event_type: 'zip_generated',
+        message: 'ZIP archive generated successfully',
+        details: { 
+          file_size_bytes: zipBlob.length,
+          file_size_mb: (zipBlob.length / (1024 * 1024)).toFixed(2)
+        }
+      });
+
     const timestamp = new Date().toISOString().split('T')[0];
     const storagePath = `${userId}/${backupJobId}/tour_backup_${tour.title.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.zip`;
     
@@ -475,6 +509,7 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
       })
       .eq('id', backupJobId);
 
+    // Actualizar la cola
     await adminClient
       .from('backup_queue')
       .update({
@@ -483,28 +518,86 @@ async function processBackupInBackground(tour: any, backupJobId: string, backupT
       })
       .eq('backup_job_id', backupJobId);
 
-    console.log(`✅ Backup completed: ${backupJobId}`);
+    // Registrar finalización exitosa
+    await adminClient
+      .from('backup_logs')
+      .insert({
+        backup_job_id: backupJobId,
+        event_type: 'processing_completed',
+        message: 'Backup completed successfully',
+        details: {
+          storage_path: storagePath,
+          file_size_bytes: zipBlob.length,
+          processing_time_seconds: Math.round((Date.now() - new Date(tour.created_at).getTime()) / 1000)
+        }
+      });
+
+    console.log(`✅ Backup completed via queue: ${backupJobId}`);
 
   } catch (error: any) {
-    console.error(`💥 Backup error ${backupJobId}:`, error);
+    console.error(`💥 Error in queue backup ${backupJobId}:`, error);
     
+    // Registrar error en logs
     await adminClient
-      .from('backup_jobs')
-      .update({
-        status: 'failed',
-        error_message: error.message,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', backupJobId);
+      .from('backup_logs')
+      .insert({
+        backup_job_id: backupJobId,
+        event_type: 'processing_error',
+        message: 'Backup processing failed',
+        details: {
+          error_message: error.message,
+          error_stack: error.stack,
+          tour_name: tour.title
+        },
+        is_error: true
+      });
 
-    await adminClient
+    // Determinar si debe reintentar
+    const { data: queueItem } = await adminClient
       .from('backup_queue')
-      .update({
-        status: 'failed',
-        error_message: error.message,
-        completed_at: new Date().toISOString()
-      })
-      .eq('backup_job_id', backupJobId);
+      .select('attempts, max_attempts')
+      .eq('backup_job_id', backupJobId)
+      .maybeSingle();
+
+    if (queueItem && queueItem.attempts >= queueItem.max_attempts) {
+      // Máximo de reintentos alcanzado
+      await adminClient
+        .from('backup_jobs')
+        .update({
+          status: 'failed',
+          error_message: error.message,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', backupJobId);
+
+      await adminClient
+        .from('backup_queue')
+        .update({
+          status: 'failed',
+          error_message: error.message,
+          completed_at: new Date().toISOString()
+        })
+        .eq('backup_job_id', backupJobId);
+    } else {
+      // Programar reintento con backoff exponencial
+      const delayMinutes = 5 * (queueItem?.attempts || 1);
+      await adminClient
+        .from('backup_jobs')
+        .update({
+          status: 'pending',
+          error_message: error.message
+        })
+        .eq('id', backupJobId);
+
+      await adminClient
+        .from('backup_queue')
+        .update({
+          status: 'retry',
+          error_message: error.message,
+          scheduled_at: new Date(Date.now() + delayMinutes * 60 * 1000).toISOString()
+        })
+        .eq('backup_job_id', backupJobId);
+    }
   }
 }
 
