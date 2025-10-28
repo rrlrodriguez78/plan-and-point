@@ -1360,6 +1360,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      optimize_backup_system: { Args: never; Returns: string }
       process_backup_queue: {
         Args: never
         Returns: {
