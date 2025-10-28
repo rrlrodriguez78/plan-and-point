@@ -623,5 +623,32 @@
     "startPlacement": "Comenzar Colocación",
     "groupUpdated": "actualizado",
     "withoutPhoto": "sin foto"
+  },
+  "backups": {
+    "title": "Sistema de Backup",
+    "subtitle": "Crea backups completos o solo de medios para tus tours virtuales",
+    "availableTours": "Tours Disponibles",
+    "selectTourDescription": "Selecciona un tour para crear un backup",
+    "complete": "Completo",
+    "mediaOnly": "Solo Medios",
+    "backupInProgress": "Backup en progreso",
+    "noToursAvailable": "No hay tours disponibles para backup",
+    "activeBackups": "Backups Activos",
+    "trackBackupsDescription": "Seguimiento de backups actualmente en procesamiento",
+    "statusPending": "Pendiente",
+    "statusProcessing": "Procesando",
+    "statusCompleted": "Completado",
+    "statusFailed": "Falló",
+    "itemsProgress": "{{processed}} de {{total}} elementos",
+    "download": "Descargar",
+    "cancel": "Cancelar",
+    "backupTypes": "Tipos de Backup",
+    "completeBackup": "Backup Completo",
+    "completeBackupDescription": "Incluye la estructura completa del tour: metadatos, planos de piso, hotspots y todas las fotos 360°. Ideal para restauración completa.",
+    "mediaOnlyBackup": "Solo Medios",
+    "mediaOnlyDescription": "Incluye solo fotos 360° y planos de piso, organizados en carpetas. Ideal para entrega de archivos o migración de plataforma.",
+    "loadingTours": "Cargando tours...",
+    "errorLoadingTours": "Error al cargar tours",
+    "backupStarted": "Backup de {{tourName}} iniciado"
   }
 }

@@ -602,5 +602,32 @@
     "startPlacement": "Platzierung Starten",
     "groupUpdated": "aktualisiert",
     "withoutPhoto": "ohne Foto"
+  },
+  "backups": {
+    "title": "Backup-System",
+    "subtitle": "Erstellen Sie vollständige Backups oder reine Medien-Exporte für Ihre virtuellen Touren",
+    "availableTours": "Verfügbare Touren",
+    "selectTourDescription": "Wählen Sie eine Tour aus, um ein Backup zu erstellen",
+    "complete": "Vollständig",
+    "mediaOnly": "Nur Medien",
+    "backupInProgress": "Backup läuft",
+    "noToursAvailable": "Keine Touren für Backup verfügbar",
+    "activeBackups": "Aktive Backups",
+    "trackBackupsDescription": "Verfolgung der aktuell in Bearbeitung befindlichen Backups",
+    "statusPending": "Ausstehend",
+    "statusProcessing": "In Bearbeitung",
+    "statusCompleted": "Abgeschlossen",
+    "statusFailed": "Fehlgeschlagen",
+    "itemsProgress": "{{processed}} von {{total}} Elementen",
+    "download": "Herunterladen",
+    "cancel": "Abbrechen",
+    "backupTypes": "Backup-Typen",
+    "completeBackup": "Vollständiges Backup",
+    "completeBackupDescription": "Enthält die gesamte Tour-Struktur: Metadaten, Grundrisse, Hotspots und alle 360°-Fotos. Ideal für vollständige Wiederherstellung.",
+    "mediaOnlyBackup": "Nur Medien",
+    "mediaOnlyDescription": "Enthält nur 360°-Fotos und Grundrisse, organisiert in Ordnern. Ideal für Dateiauslieferung oder Plattformmigration.",
+    "loadingTours": "Touren werden geladen...",
+    "errorLoadingTours": "Fehler beim Laden der Touren",
+    "backupStarted": "Backup von {{tourName}} gestartet"
   }
 }

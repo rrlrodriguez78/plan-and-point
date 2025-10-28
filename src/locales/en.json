@@ -623,5 +623,32 @@
     "startPlacement": "Start Placement",
     "groupUpdated": "updated",
     "withoutPhoto": "without photo"
+  },
+  "backups": {
+    "title": "Backup System",
+    "subtitle": "Create complete backups or media-only exports for your virtual tours",
+    "availableTours": "Available Tours",
+    "selectTourDescription": "Select a tour to create a backup",
+    "complete": "Complete",
+    "mediaOnly": "Media Only",
+    "backupInProgress": "Backup in progress",
+    "noToursAvailable": "No tours available for backup",
+    "activeBackups": "Active Backups",
+    "trackBackupsDescription": "Track backups currently being processed",
+    "statusPending": "Pending",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "itemsProgress": "{{processed}} of {{total}} items",
+    "download": "Download",
+    "cancel": "Cancel",
+    "backupTypes": "Backup Types",
+    "completeBackup": "Complete Backup",
+    "completeBackupDescription": "Includes the entire tour structure: metadata, floor plans, hotspots, and all 360° photos. Ideal for complete restoration.",
+    "mediaOnlyBackup": "Media Only",
+    "mediaOnlyDescription": "Includes only 360° photos and floor plans, organized in folders. Ideal for file delivery or platform migration.",
+    "loadingTours": "Loading tours...",
+    "errorLoadingTours": "Error loading tours",
+    "backupStarted": "Backup for {{tourName}} started"
   }
 }

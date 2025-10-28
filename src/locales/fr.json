@@ -602,5 +602,32 @@
     "startPlacement": "Commencer le Placement",
     "groupUpdated": "mis à jour",
     "withoutPhoto": "sans photo"
+  },
+  "backups": {
+    "title": "Système de Sauvegarde",
+    "subtitle": "Créez des sauvegardes complètes ou uniquement des médias pour vos visites virtuelles",
+    "availableTours": "Visites Disponibles",
+    "selectTourDescription": "Sélectionnez une visite pour créer une sauvegarde",
+    "complete": "Complet",
+    "mediaOnly": "Médias Seulement",
+    "backupInProgress": "Sauvegarde en cours",
+    "noToursAvailable": "Aucune visite disponible pour la sauvegarde",
+    "activeBackups": "Sauvegardes Actives",
+    "trackBackupsDescription": "Suivi des sauvegardes en cours de traitement",
+    "statusPending": "En attente",
+    "statusProcessing": "En traitement",
+    "statusCompleted": "Terminé",
+    "statusFailed": "Échoué",
+    "itemsProgress": "{{processed}} sur {{total}} éléments",
+    "download": "Télécharger",
+    "cancel": "Annuler",
+    "backupTypes": "Types de Sauvegarde",
+    "completeBackup": "Sauvegarde Complète",
+    "completeBackupDescription": "Comprend toute la structure de la visite: métadonnées, plans d'étage, points d'intérêt et toutes les photos 360°. Idéal pour une restauration complète.",
+    "mediaOnlyBackup": "Médias Seulement",
+    "mediaOnlyDescription": "Comprend uniquement les photos 360° et les plans d'étage, organisés dans des dossiers. Idéal pour la livraison de fichiers ou la migration de plateforme.",
+    "loadingTours": "Chargement des visites...",
+    "errorLoadingTours": "Erreur lors du chargement des visites",
+    "backupStarted": "Sauvegarde de {{tourName}} démarrée"
   }
 }
