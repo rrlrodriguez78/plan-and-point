@@ -96,15 +96,11 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
   console.log('🎬 Starting backup for tour:', tourId, 'type:', backupType);
 
   try {
-    // Verify tour exists and get owner info
+    // Verify tour exists
     const { data: tour, error: tourError } = await supabase
       .from('virtual_tours')
       .select(`
         *,
-        tenants!inner (
-          id,
-          owner_id
-        ),
         floor_plans (*),
         hotspots (*),
         panorama_photos (*)
@@ -123,17 +119,27 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
 
     console.log('✅ Tour found:', tour.title);
 
+    // Get tenant info
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('id, owner_id')
+      .eq('id', tour.tenant_id)
+      .maybeSingle();
+
+    if (tenantError) {
+      console.error('❌ Tenant query error:', tenantError);
+      throw new Error(`Tenant not found: ${tenantError.message}`);
+    }
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    console.log('✅ Tenant found:', tenant.id, 'Owner:', tenant.owner_id);
+
     // Calculate total items
     const totalItems = calculateTotalItems(tour, backupType);
     console.log('📊 Total items to process:', totalItems);
-
-    // Get user ID and tenant ID from tour
-    const tenantId = tour.tenant_id;
-    const ownerId = tour.tenants?.owner_id;
-
-    if (!ownerId) {
-      throw new Error('Could not determine tour owner');
-    }
 
     // Create backup job
     const { data: backupJob, error: jobError } = await supabase
@@ -143,8 +149,8 @@ async function startBackup(tourId: string, backupType: string, supabase: any) {
         job_type: backupType,
         status: 'processing',
         total_items: totalItems,
-        user_id: ownerId,
-        tenant_id: tenantId
+        user_id: tenant.owner_id,
+        tenant_id: tenant.id
       })
       .select()
       .maybeSingle();
