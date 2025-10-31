@@ -11,6 +11,7 @@ import { ViewerCanvas } from '@/components/viewer/ViewerCanvas';
 import { HotspotPoint } from '@/components/viewer/HotspotPoint';
 import { HotspotModal } from '@/components/viewer/HotspotModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
+import { PhotoGalleryViewer } from '@/components/viewer/PhotoGalleryViewer';
 import { OrientationWarning } from '@/components/viewer/OrientationWarning';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
@@ -31,6 +32,7 @@ const Viewer = () => {
   const [panoramaPhotos, setPanoramaPhotos] = useState<PanoramaPhoto[]>([]);
   const [showPanoramaViewer, setShowPanoramaViewer] = useState(false);
   const [activePanoramaPhoto, setActivePanoramaPhoto] = useState<PanoramaPhoto | null>(null);
+  const [tourType, setTourType] = useState<'tour_360' | 'photo_tour'>('tour_360');
   const [userDismissedWarning, setUserDismissedWarning] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordProtected, setPasswordProtected] = useState(false);
@@ -174,7 +176,8 @@ const Viewer = () => {
           is_published,
           tenant_id,
           password_protected,
-          password_updated_at
+          password_updated_at,
+          tour_type
         `)
         .eq('id', id)
         .maybeSingle();
@@ -253,7 +256,12 @@ const Viewer = () => {
         }
       }
 
-      setTour({ title: tourData.title, description: tourData.description });
+      setTour({ 
+        title: tourData.title, 
+        description: tourData.description,
+        tour_type: (tourData.tour_type || 'tour_360') as 'tour_360' | 'photo_tour'
+      });
+      setTourType((tourData.tour_type || 'tour_360') as 'tour_360' | 'photo_tour');
 
       const { data: plansData } = await supabase
         .from('floor_plans')
@@ -515,82 +523,153 @@ const Viewer = () => {
             />
           )}
 
-          {/* Panorama Viewer (for 360° photos) */}
-          <PanoramaViewer
-            isVisible={showPanoramaViewer}
-            onClose={() => {
-              setShowPanoramaViewer(false);
-              setSelectedHotspot(null);
-            }}
-            photos={panoramaPhotos}
-            activePhoto={activePanoramaPhoto}
-            setActivePhoto={setActivePanoramaPhoto}
-            hotspotName={selectedHotspot?.title || ''}
-            allHotspotsOnFloor={currentHotspots}
-            onNavigate={async (hotspot) => {
-              // Guardar la fecha actual ANTES de cambiar de hotspot
-              const currentDate = activePanoramaPhoto?.capture_date;
-              
-              // Cargar fotos del nuevo hotspot ANTES de cambiar el estado
-              const photos = await loadPanoramaPhotos(hotspot.id);
-              
-              if (photos.length === 0) {
-                // Si no hay fotos en absoluto, mostrar error y NO cambiar hotspot
-                toast.error(t('viewer.noPhotosAvailable'), {
-                  description: t('viewer.noPhotosDescription', { name: hotspot.title }),
-                });
-                return; // Quedarse en el hotspot actual
-              }
-              
-              // Verificar si hay foto para la fecha actual
-              if (currentDate) {
-                const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
-                if (!photoWithSameDate) {
-                  // Si no hay foto para la fecha actual, mostrar error y NO cambiar hotspot
-                  const formatDate = (dateString: string) => {
-                    try {
-                      return new Date(dateString).toLocaleDateString(i18n.language, { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      });
-                    } catch {
-                      return dateString;
-                    }
-                  };
-                  
-                  toast.error(t('viewer.noPhotoForDate'), {
-                    description: t('viewer.noPhotoForDateDescription', { date: formatDate(currentDate) }),
+          {/* Viewer - Conditionally render based on tour type */}
+          {tourType === 'tour_360' && (
+            <PanoramaViewer
+              isVisible={showPanoramaViewer}
+              onClose={() => {
+                setShowPanoramaViewer(false);
+                setSelectedHotspot(null);
+              }}
+              photos={panoramaPhotos}
+              activePhoto={activePanoramaPhoto}
+              setActivePhoto={setActivePanoramaPhoto}
+              hotspotName={selectedHotspot?.title || ''}
+              allHotspotsOnFloor={currentHotspots}
+              onNavigate={async (hotspot) => {
+                // Guardar la fecha actual ANTES de cambiar de hotspot
+                const currentDate = activePanoramaPhoto?.capture_date;
+                
+                // Cargar fotos del nuevo hotspot ANTES de cambiar el estado
+                const photos = await loadPanoramaPhotos(hotspot.id);
+                
+                if (photos.length === 0) {
+                  // Si no hay fotos en absoluto, mostrar error y NO cambiar hotspot
+                  toast.error(t('viewer.noPhotosAvailable'), {
+                    description: t('viewer.noPhotosDescription', { name: hotspot.title }),
                   });
                   return; // Quedarse en el hotspot actual
                 }
-              }
-              
-              // Si llegamos aquí, hay fotos disponibles para la fecha actual
-              setSelectedHotspot(hotspot);
-              setPanoramaPhotos(photos);
-              
-              // Intentar mantener la misma fecha
-              let photoToShow = photos[0]; // Fallback: primera foto
-              
-              if (currentDate) {
-                const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
-                if (photoWithSameDate) {
-                  photoToShow = photoWithSameDate;
+                
+                // Verificar si hay foto para la fecha actual
+                if (currentDate) {
+                  const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+                  if (!photoWithSameDate) {
+                    // Si no hay foto para la fecha actual, mostrar error y NO cambiar hotspot
+                    const formatDate = (dateString: string) => {
+                      try {
+                        return new Date(dateString).toLocaleDateString(i18n.language, { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        });
+                      } catch {
+                        return dateString;
+                      }
+                    };
+                    
+                    toast.error(t('viewer.noPhotoForDate'), {
+                      description: t('viewer.noPhotoForDateDescription', { date: formatDate(currentDate) }),
+                    });
+                    return; // Quedarse en el hotspot actual
+                  }
                 }
-              }
-              
-              setActivePanoramaPhoto(photoToShow);
-            }}
-            floorPlans={floorPlans}
-            currentFloorPlan={currentFloorPlan}
-            onFloorChange={(floorPlanId) => {
-              setCurrentFloorPlanId(floorPlanId);
-              setShowPanoramaViewer(false);
-              setSelectedHotspot(null);
-            }}
-            hotspotsByFloor={hotspotsByFloor}
-          />
+                
+                // Si llegamos aquí, hay fotos disponibles para la fecha actual
+                setSelectedHotspot(hotspot);
+                setPanoramaPhotos(photos);
+                
+                // Intentar mantener la misma fecha
+                let photoToShow = photos[0]; // Fallback: primera foto
+                
+                if (currentDate) {
+                  const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+                  if (photoWithSameDate) {
+                    photoToShow = photoWithSameDate;
+                  }
+                }
+                
+                setActivePanoramaPhoto(photoToShow);
+              }}
+              floorPlans={floorPlans}
+              currentFloorPlan={currentFloorPlan}
+              onFloorChange={(floorPlanId) => {
+                setCurrentFloorPlanId(floorPlanId);
+                setShowPanoramaViewer(false);
+                setSelectedHotspot(null);
+              }}
+              hotspotsByFloor={hotspotsByFloor}
+            />
+          )}
+
+          {tourType === 'photo_tour' && (
+            <PhotoGalleryViewer
+              isVisible={showPanoramaViewer}
+              onClose={() => {
+                setShowPanoramaViewer(false);
+                setSelectedHotspot(null);
+              }}
+              photos={panoramaPhotos}
+              activePhoto={activePanoramaPhoto}
+              setActivePhoto={setActivePanoramaPhoto}
+              hotspotName={selectedHotspot?.title || ''}
+              allHotspotsOnFloor={currentHotspots}
+              onNavigate={async (hotspot) => {
+                const currentDate = activePanoramaPhoto?.capture_date;
+                const photos = await loadPanoramaPhotos(hotspot.id);
+                
+                if (photos.length === 0) {
+                  toast.error(t('viewer.noPhotosAvailable'), {
+                    description: t('viewer.noPhotosDescription', { name: hotspot.title }),
+                  });
+                  return;
+                }
+                
+                if (currentDate) {
+                  const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+                  if (!photoWithSameDate) {
+                    const formatDate = (dateString: string) => {
+                      try {
+                        return new Date(dateString).toLocaleDateString(i18n.language, { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        });
+                      } catch {
+                        return dateString;
+                      }
+                    };
+                    
+                    toast.error(t('viewer.noPhotoForDate'), {
+                      description: t('viewer.noPhotoForDateDescription', { date: formatDate(currentDate) }),
+                    });
+                    return;
+                  }
+                }
+                
+                setSelectedHotspot(hotspot);
+                setPanoramaPhotos(photos);
+                
+                let photoToShow = photos[0];
+                if (currentDate) {
+                  const photoWithSameDate = photos.find(p => p.capture_date === currentDate);
+                  if (photoWithSameDate) {
+                    photoToShow = photoWithSameDate;
+                  }
+                }
+                
+                setActivePanoramaPhoto(photoToShow);
+              }}
+              floorPlans={floorPlans}
+              currentFloorPlan={currentFloorPlan}
+              onFloorChange={(floorPlanId) => {
+                setCurrentFloorPlanId(floorPlanId);
+                setShowPanoramaViewer(false);
+                setSelectedHotspot(null);
+              }}
+              hotspotsByFloor={hotspotsByFloor}
+            />
+          )}
 
           {/* Floor Controls */}
           <ViewerControls

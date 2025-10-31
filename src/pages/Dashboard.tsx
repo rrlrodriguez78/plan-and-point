@@ -107,6 +107,7 @@ const Dashboard = () => {
           description: tourData.description,
           tenant_id: currentTenant.tenant_id,
           cover_image_url: tourData.coverImageUrl,
+          tour_type: selectedTourType === '360' ? 'tour_360' : 'photo_tour',
         } as any)
         .select()
         .single();

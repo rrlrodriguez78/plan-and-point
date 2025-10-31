@@ -6,6 +6,7 @@ export interface Tour {
   tenant_id?: string;
   created_at?: string;
   updated_at?: string;
+  tour_type?: 'tour_360' | 'photo_tour';
 }
 
 export interface FloorPlan {

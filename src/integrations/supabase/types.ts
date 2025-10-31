@@ -1310,6 +1310,7 @@ export type Database = {
           share_image_url: string | null
           tenant_id: string
           title: string
+          tour_type: string | null
           updated_at: string
         }
         Insert: {
@@ -1325,6 +1326,7 @@ export type Database = {
           share_image_url?: string | null
           tenant_id: string
           title: string
+          tour_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -1340,6 +1342,7 @@ export type Database = {
           share_image_url?: string | null
           tenant_id?: string
           title?: string
+          tour_type?: string | null
           updated_at?: string
         }
         Relationships: [

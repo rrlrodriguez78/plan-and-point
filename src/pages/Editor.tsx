@@ -133,7 +133,7 @@ const Editor = () => {
     try {
       const { data: tourData, error: tourError } = await supabase
         .from('virtual_tours')
-        .select('id, title, description, is_published, tenant_id, created_at, updated_at, password_protected, password_hash, password_updated_at, share_description, share_image_url, cover_image_url')
+        .select('id, title, description, is_published, tenant_id, created_at, updated_at, password_protected, password_hash, password_updated_at, share_description, share_image_url, cover_image_url, tour_type')
         .eq('id', id)
         .single();
 
@@ -162,7 +162,10 @@ const Editor = () => {
           return;
         }
 
-        setTour(tourData);
+        setTour({
+          ...tourData,
+          tour_type: (tourData.tour_type || 'tour_360') as 'tour_360' | 'photo_tour'
+        });
 
         // 🔴 VERIFY: Tour saved in state with tenant_id
         console.log('✅ TOUR SAVED IN STATE:', {
@@ -649,7 +652,14 @@ const Editor = () => {
               <ArrowLeft className="w-4 h-4 mr-2" />
               {t('editor.back')}
             </Button>
-            <h1 className="text-3xl font-bold">{tour?.title}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">{tour?.title}</h1>
+              {tour?.tour_type && (
+                <Badge variant={tour.tour_type === 'tour_360' ? 'default' : 'secondary'}>
+                  {tour.tour_type === 'tour_360' ? '🌐 Tour 360°' : '📸 Tour Fotos'}
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-2">
