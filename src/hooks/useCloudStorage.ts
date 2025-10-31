@@ -35,7 +35,7 @@ export interface SyncHistory {
 export function useCloudStorage(tenantId: string) {
   const [destinations, setDestinations] = useState<BackupDestination[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   useEffect(() => {
     if (tenantId) {
@@ -80,7 +80,7 @@ export function useCloudStorage(tenantId: string) {
 
   const connectProvider = async (provider: 'google_drive' | 'dropbox') => {
     try {
-      setLoading(true);
+      setLoadingProvider(provider);
       const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
         body: { 
           action: 'authorize',
@@ -99,13 +99,13 @@ export function useCloudStorage(tenantId: string) {
       console.error('Error connecting provider:', error);
       toast.error(`Error connecting to ${provider}`);
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   };
 
   const disconnectProvider = async (destinationId: string) => {
     try {
-      setLoading(true);
+      setLoadingProvider('disconnecting');
       const { error } = await supabase
         .from('backup_destinations')
         .update({ is_active: false })
@@ -119,13 +119,13 @@ export function useCloudStorage(tenantId: string) {
       console.error('Error disconnecting provider:', error);
       toast.error('Error disconnecting provider');
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   };
 
   const testConnection = async (destinationId: string) => {
     try {
-      setLoading(true);
+      setLoadingProvider('testing');
       const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
         body: { 
           action: 'test-connection',
@@ -147,7 +147,7 @@ export function useCloudStorage(tenantId: string) {
       toast.error('Error testing connection');
       return false;
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   };
 
@@ -156,7 +156,7 @@ export function useCloudStorage(tenantId: string) {
     type: 'cloud_storage' | 'local_download' | 'both'
   ) => {
     try {
-      setLoading(true);
+      setLoadingProvider('updating');
       const { error } = await supabase
         .from('backup_destinations')
         .update({ destination_type: type })
@@ -170,13 +170,13 @@ export function useCloudStorage(tenantId: string) {
       console.error('Error updating destination type:', error);
       toast.error('Error updating destination type');
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   };
 
   const toggleAutoBackup = async (destinationId: string, enabled: boolean) => {
     try {
-      setLoading(true);
+      setLoadingProvider('updating');
       const { error } = await supabase
         .from('backup_destinations')
         .update({ auto_backup_enabled: enabled })
@@ -190,7 +190,7 @@ export function useCloudStorage(tenantId: string) {
       console.error('Error toggling auto-backup:', error);
       toast.error('Error updating auto-backup setting');
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   };
 
@@ -201,7 +201,7 @@ export function useCloudStorage(tenantId: string) {
   return {
     destinations,
     syncHistory,
-    loading,
+    loadingProvider,
     connectProvider,
     disconnectProvider,
     testConnection,

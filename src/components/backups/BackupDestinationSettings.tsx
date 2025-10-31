@@ -14,7 +14,7 @@ interface Props {
 export const BackupDestinationSettings: React.FC<Props> = ({ tenantId }) => {
   const { 
     destinations, 
-    loading,
+    loadingProvider,
     toggleAutoBackup,
     getActiveDestination 
   } = useCloudStorage(tenantId);
@@ -28,7 +28,7 @@ export const BackupDestinationSettings: React.FC<Props> = ({ tenantId }) => {
     setDestinationType(value as any);
   };
 
-  if (loading && destinations.length === 0) {
+  if (loadingProvider && destinations.length === 0) {
     return (
       <div className="flex justify-center items-center p-8">
         <RefreshCw className="h-8 w-8 animate-spin" />

@@ -13,7 +13,7 @@ interface Props {
 export const CloudProviderSelector: React.FC<Props> = ({ tenantId }) => {
   const { 
     destinations, 
-    loading,
+    loadingProvider,
     connectProvider,
     disconnectProvider,
     testConnection
@@ -26,6 +26,9 @@ export const CloudProviderSelector: React.FC<Props> = ({ tenantId }) => {
   const dropboxDestination = destinations.find(
     d => d.cloud_provider === 'dropbox' && d.is_active
   );
+
+  const isConnectingGoogle = loadingProvider === 'google_drive';
+  const isConnectingDropbox = loadingProvider === 'dropbox';
 
   return (
     <div className="space-y-4">
@@ -59,15 +62,15 @@ export const CloudProviderSelector: React.FC<Props> = ({ tenantId }) => {
                     size="sm"
                     variant="outline"
                     onClick={() => testConnection(googleDriveDestination.id)}
-                    disabled={loading}
+                    disabled={!!loadingProvider}
                   >
-                    {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Test'}
+                    {loadingProvider === 'testing' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Test'}
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
                     onClick={() => disconnectProvider(googleDriveDestination.id)}
-                    disabled={loading}
+                    disabled={!!loadingProvider}
                   >
                     Disconnect
                   </Button>
@@ -76,10 +79,16 @@ export const CloudProviderSelector: React.FC<Props> = ({ tenantId }) => {
                 <Button
                   size="sm"
                   onClick={() => connectProvider('google_drive')}
-                  disabled={loading}
+                  disabled={isConnectingGoogle}
                 >
-                  {loading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Connect
+                  {isConnectingGoogle ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect'
+                  )}
                 </Button>
               )}
             </div>
@@ -115,15 +124,15 @@ export const CloudProviderSelector: React.FC<Props> = ({ tenantId }) => {
                     size="sm"
                     variant="outline"
                     onClick={() => testConnection(dropboxDestination.id)}
-                    disabled={loading}
+                    disabled={!!loadingProvider}
                   >
-                    {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Test'}
+                    {loadingProvider === 'testing' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Test'}
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
                     onClick={() => disconnectProvider(dropboxDestination.id)}
-                    disabled={loading}
+                    disabled={!!loadingProvider}
                   >
                     Disconnect
                   </Button>
@@ -132,10 +141,16 @@ export const CloudProviderSelector: React.FC<Props> = ({ tenantId }) => {
                 <Button
                   size="sm"
                   onClick={() => connectProvider('dropbox')}
-                  disabled={loading}
+                  disabled={isConnectingDropbox}
                 >
-                  {loading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Connect
+                  {isConnectingDropbox ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect'
+                  )}
                 </Button>
               )}
             </div>

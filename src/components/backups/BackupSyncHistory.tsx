@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
-  const { syncHistory, loading } = useCloudStorage(tenantId);
+  const { syncHistory, loadingProvider } = useCloudStorage(tenantId);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -43,7 +43,7 @@ export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
     return `${mb.toFixed(1)} MB`;
   };
 
-  if (loading) {
+  if (loadingProvider) {
     return (
       <div className="flex justify-center items-center p-8">
         <RefreshCw className="h-8 w-8 animate-spin" />
