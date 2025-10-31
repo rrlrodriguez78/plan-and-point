@@ -23,12 +23,12 @@ const ProgressBar = ({ current, total }: { current: number; total: number }) => 
   const { t } = useTranslation();
   const percentage = (current / total) * 100;
   return (
-    <div className="w-full bg-slate-200 rounded-full h-3 mb-6">
+    <div className="w-full bg-slate-200 rounded-full h-3 mb-3">
       <div
         className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500 shadow-sm"
         style={{ width: `${percentage}%` }}
       ></div>
-      <div className="flex justify-between mt-2 text-xs text-slate-500">
+      <div className="flex justify-between mt-1 text-xs text-slate-500">
         <span>{t('tourSetup.step')} {current} {t('tourSetup.of')} {total}</span>
         <span>{Math.round(percentage)}% {t('tourSetup.completed')}</span>
       </div>
@@ -288,20 +288,20 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
           </DialogHeader>
 
           <ScrollArea className="flex-1">
-            <div className="p-6 pt-0">
+            <div className="p-4 pt-0">
               <ProgressBar current={currentStep} total={totalSteps} />
 
               {serverError && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4"
+                  className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3"
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1 mb-1">
                     <AlertCircle className="w-5 h-5 text-amber-600" />
                     <h4 className="font-semibold text-amber-800">{t('tourSetup.connectionProblem')}</h4>
                   </div>
-                  <p className="text-amber-700 mb-3">{serverError.message}</p>
+                  <p className="text-amber-700 mb-2">{serverError.message}</p>
                 </motion.div>
               )}
 
@@ -312,17 +312,17 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.3 }}
-                  className="space-y-4 sm:space-y-6 min-h-[250px] sm:min-h-[300px]"
+                  className="space-y-3 sm:space-y-4 min-h-[200px] sm:min-h-[250px]"
                 >
                   {currentStep === 1 && (
-                    <div className="space-y-4 text-center">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
-                        <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                    <div className="space-y-3 text-center">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                        <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{t('tourSetup.step1Title')}</h3>
-                        <p className="text-base sm:text-lg font-semibold text-blue-600 mb-4">{t('tourSetup.step1Question')}</p>
-                        <p className="text-sm text-slate-500 mb-6">{t('tourSetup.step1Description')}</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1">{t('tourSetup.step1Title')}</h3>
+                        <p className="text-base sm:text-lg font-semibold text-blue-600 mb-2">{t('tourSetup.step1Question')}</p>
+                        <p className="text-sm text-slate-500 mb-4">{t('tourSetup.step1Description')}</p>
                       </div>
                       <div className="max-w-md mx-auto">
                         <Input
@@ -337,14 +337,14 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
                   )}
 
                   {currentStep === 2 && (
-                    <div className="space-y-4 text-center">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
-                        <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                    <div className="space-y-3 text-center">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                        <ImageIcon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{t('tourSetup.step2Title')}</h3>
-                        <p className="text-base sm:text-lg font-semibold text-green-600 mb-4">{t('tourSetup.step2Question')}</p>
-                        <p className="text-sm text-slate-500 mb-6">{t('tourSetup.step2Description')}</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1">{t('tourSetup.step2Title')}</h3>
+                        <p className="text-base sm:text-lg font-semibold text-green-600 mb-2">{t('tourSetup.step2Question')}</p>
+                        <p className="text-sm text-slate-500 mb-4">{t('tourSetup.step2Description')}</p>
                       </div>
                       <div className="max-w-md mx-auto">
                         <Textarea
@@ -360,14 +360,14 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
                   )}
 
                   {currentStep === 3 && (
-                    <div className="space-y-4 text-center">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
-                        <Camera className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                    <div className="space-y-3 text-center">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                        <Camera className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{t('tourSetup.step3Title')}</h3>
-                        <p className="text-base sm:text-lg font-semibold text-purple-600 mb-4">{t('tourSetup.step3Question')}</p>
-                        <p className="text-sm text-slate-500 mb-6">{t('tourSetup.step3Description')}</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1">{t('tourSetup.step3Title')}</h3>
+                        <p className="text-base sm:text-lg font-semibold text-purple-600 mb-2">{t('tourSetup.step3Question')}</p>
+                        <p className="text-sm text-slate-500 mb-4">{t('tourSetup.step3Description')}</p>
                       </div>
 
                       {tourData.thumbnail_url ? (
@@ -375,7 +375,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
                           <img
                             src={tourData.thumbnail_url}
                             alt="Portada"
-                            className="w-full h-32 sm:h-40 object-cover rounded-lg border-2 border-purple-300 shadow-lg"
+                            className="w-full h-28 sm:h-36 object-cover rounded-lg border-2 border-purple-300 shadow-lg"
                           />
                           <p className="text-sm text-green-600 font-semibold mt-2">{t('tourSetup.uploadSuccess')}</p>
                           <Button
@@ -415,7 +415,7 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
             </div>
           </ScrollArea>
 
-          <DialogFooter className="p-6 pt-4 border-t bg-gradient-to-r from-slate-50 to-blue-50 flex-shrink-0">
+          <DialogFooter className="p-4 pt-3 border-t bg-gradient-to-r from-slate-50 to-blue-50 flex-shrink-0">
             <div className="flex justify-between w-full gap-2">
               <Button
                 variant="outline"
