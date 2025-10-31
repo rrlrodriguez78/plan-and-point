@@ -55,10 +55,76 @@ export type Database = {
           },
         ]
       }
+      backup_destinations: {
+        Row: {
+          auto_backup_enabled: boolean | null
+          backup_frequency: string | null
+          backup_on_photo_upload: boolean | null
+          cloud_access_token: string | null
+          cloud_folder_id: string | null
+          cloud_folder_path: string | null
+          cloud_provider: string | null
+          cloud_refresh_token: string | null
+          created_at: string | null
+          destination_type: string
+          id: string
+          is_active: boolean | null
+          last_backup_at: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_backup_enabled?: boolean | null
+          backup_frequency?: string | null
+          backup_on_photo_upload?: boolean | null
+          cloud_access_token?: string | null
+          cloud_folder_id?: string | null
+          cloud_folder_path?: string | null
+          cloud_provider?: string | null
+          cloud_refresh_token?: string | null
+          created_at?: string | null
+          destination_type: string
+          id?: string
+          is_active?: boolean | null
+          last_backup_at?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_backup_enabled?: boolean | null
+          backup_frequency?: string | null
+          backup_on_photo_upload?: boolean | null
+          cloud_access_token?: string | null
+          cloud_folder_id?: string | null
+          cloud_folder_path?: string | null
+          cloud_provider?: string | null
+          cloud_refresh_token?: string | null
+          created_at?: string | null
+          destination_type?: string
+          id?: string
+          is_active?: boolean | null
+          last_backup_at?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_destinations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_jobs: {
         Row: {
+          cloud_sync_error: string | null
+          cloud_synced: boolean | null
           completed_at: string | null
           created_at: string | null
+          destination_id: string | null
+          destination_type: string | null
           error_message: string | null
           estimated_size_mb: number | null
           file_hash: string | null
@@ -81,8 +147,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cloud_sync_error?: string | null
+          cloud_synced?: boolean | null
           completed_at?: string | null
           created_at?: string | null
+          destination_id?: string | null
+          destination_type?: string | null
           error_message?: string | null
           estimated_size_mb?: number | null
           file_hash?: string | null
@@ -105,8 +175,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cloud_sync_error?: string | null
+          cloud_synced?: boolean | null
           completed_at?: string | null
           created_at?: string | null
+          destination_id?: string | null
+          destination_type?: string | null
           error_message?: string | null
           estimated_size_mb?: number | null
           file_hash?: string | null
@@ -129,6 +203,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "backup_jobs_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "backup_destinations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "backup_jobs_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -309,6 +390,166 @@ export type Database = {
             columns: ["backup_job_id"]
             isOneToOne: false
             referencedRelation: "backup_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      backup_sync_history: {
+        Row: {
+          backup_job_id: string | null
+          completed_at: string | null
+          destination_id: string
+          error_message: string | null
+          files_failed: number | null
+          files_synced: number | null
+          id: string
+          metadata: Json | null
+          started_at: string | null
+          status: string | null
+          sync_type: string | null
+          total_size_bytes: number | null
+        }
+        Insert: {
+          backup_job_id?: string | null
+          completed_at?: string | null
+          destination_id: string
+          error_message?: string | null
+          files_failed?: number | null
+          files_synced?: number | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string | null
+          sync_type?: string | null
+          total_size_bytes?: number | null
+        }
+        Update: {
+          backup_job_id?: string | null
+          completed_at?: string | null
+          destination_id?: string
+          error_message?: string | null
+          files_failed?: number | null
+          files_synced?: number | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string | null
+          sync_type?: string | null
+          total_size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_sync_history_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "backup_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backup_sync_history_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "backup_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cloud_file_mappings: {
+        Row: {
+          backed_up_at: string | null
+          backup_job_id: string | null
+          checksum: string | null
+          cloud_file_id: string
+          cloud_file_name: string
+          cloud_file_path: string
+          destination_id: string
+          file_size_bytes: number | null
+          floor_plan_id: string | null
+          hotspot_id: string | null
+          id: string
+          local_file_type: string | null
+          local_file_url: string
+          metadata: Json | null
+          photo_id: string | null
+          tour_id: string
+        }
+        Insert: {
+          backed_up_at?: string | null
+          backup_job_id?: string | null
+          checksum?: string | null
+          cloud_file_id: string
+          cloud_file_name: string
+          cloud_file_path: string
+          destination_id: string
+          file_size_bytes?: number | null
+          floor_plan_id?: string | null
+          hotspot_id?: string | null
+          id?: string
+          local_file_type?: string | null
+          local_file_url: string
+          metadata?: Json | null
+          photo_id?: string | null
+          tour_id: string
+        }
+        Update: {
+          backed_up_at?: string | null
+          backup_job_id?: string | null
+          checksum?: string | null
+          cloud_file_id?: string
+          cloud_file_name?: string
+          cloud_file_path?: string
+          destination_id?: string
+          file_size_bytes?: number | null
+          floor_plan_id?: string | null
+          hotspot_id?: string | null
+          id?: string
+          local_file_type?: string | null
+          local_file_url?: string
+          metadata?: Json | null
+          photo_id?: string | null
+          tour_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloud_file_mappings_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "backup_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cloud_file_mappings_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "backup_destinations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cloud_file_mappings_floor_plan_id_fkey"
+            columns: ["floor_plan_id"]
+            isOneToOne: false
+            referencedRelation: "floor_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cloud_file_mappings_hotspot_id_fkey"
+            columns: ["hotspot_id"]
+            isOneToOne: false
+            referencedRelation: "hotspots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cloud_file_mappings_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "panorama_photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cloud_file_mappings_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
             referencedColumns: ["id"]
           },
         ]
@@ -1401,6 +1642,15 @@ export type Database = {
         Returns: {
           content: string
           section: string
+        }[]
+      }
+      get_active_backup_destination: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          auto_backup_enabled: boolean
+          cloud_provider: string
+          destination_type: string
+          id: string
         }[]
       }
       get_backup_system_dashboard: {
