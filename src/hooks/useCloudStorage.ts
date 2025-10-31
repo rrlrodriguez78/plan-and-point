@@ -37,13 +37,7 @@ export function useCloudStorage(tenantId: string) {
   const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (tenantId) {
-      loadDestinations();
-      loadSyncHistory();
-    }
-  }, [tenantId]);
-
+  // Function to load destinations (exposed so it can be called externally)
   const loadDestinations = async () => {
     try {
       const { data, error } = await supabase
@@ -77,6 +71,13 @@ export function useCloudStorage(tenantId: string) {
       console.error('Error loading sync history:', error);
     }
   };
+
+  useEffect(() => {
+    if (tenantId) {
+      loadDestinations();
+      loadSyncHistory();
+    }
+  }, [tenantId]);
 
   const connectProvider = async (provider: 'google_drive' | 'dropbox') => {
     try {

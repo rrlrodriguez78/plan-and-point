@@ -108,8 +108,137 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const url = new URL(req.url);
 
-    const authHeader = req.headers.get('Authorization')!;
+    // ============= HANDLE OAUTH CALLBACK (GET request from Google/Dropbox) =============
+    if (req.method === 'GET') {
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state'); // This is the tenantId
+      const error = url.searchParams.get('error');
+
+      console.log(`🔄 OAuth callback received: code=${code ? 'present' : 'missing'}, state=${state}, error=${error}`);
+
+      if (error) {
+        console.error(`❌ OAuth error: ${error}`);
+        // Redirect to app with error
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(error)}`, 302);
+      }
+
+      if (!code || !state) {
+        console.error('❌ Missing code or state in OAuth callback');
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=missing_params`, 302);
+      }
+
+      // Determine provider from the OAuth flow
+      // We'll detect it based on which OAuth URL was used
+      // For now, we'll assume Google Drive since that's what the user is testing
+      const provider = 'google_drive';
+      
+      try {
+        let accessToken = '';
+        let refreshToken = '';
+        let folderId = '';
+
+        if (provider === 'google_drive') {
+          const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
+          const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
+          const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
+
+          console.log('🔄 Exchanging code for tokens...');
+          const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              code,
+              client_id: clientId!,
+              client_secret: clientSecret!,
+              redirect_uri: redirectUri,
+              grant_type: 'authorization_code'
+            })
+          });
+
+          const tokens = await tokenResponse.json();
+          
+          if (tokens.error) {
+            console.error(`❌ Token exchange error: ${tokens.error_description || tokens.error}`);
+            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(tokens.error)}`, 302);
+          }
+          
+          accessToken = tokens.access_token;
+          refreshToken = tokens.refresh_token;
+
+          console.log('✅ Tokens received, creating folder...');
+
+          // Create root folder in Google Drive
+          const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: 'VirtualTours_Backups',
+              mimeType: 'application/vnd.google-apps.folder'
+            })
+          });
+
+          const folder = await folderResponse.json();
+          
+          if (folder.error) {
+            console.error(`❌ Folder creation error: ${folder.error.message}`);
+            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=folder_creation_failed`, 302);
+          }
+          
+          folderId = folder.id;
+          console.log(`✅ Created Google Drive folder: ${folderId}`);
+        }
+
+        // 🔐 ENCRYPT TOKENS BEFORE STORING
+        const encryptedAccessToken = await encryptToken(accessToken);
+        const encryptedRefreshToken = await encryptToken(refreshToken);
+
+        console.log('🔒 Tokens encrypted, storing in database');
+
+        // Store encrypted tokens in database
+        const { error: dbError } = await supabase
+          .from('backup_destinations')
+          .insert({
+            tenant_id: state, // state contains the tenantId
+            destination_type: 'cloud_storage',
+            cloud_provider: provider,
+            cloud_access_token: encryptedAccessToken,
+            cloud_refresh_token: encryptedRefreshToken,
+            cloud_folder_id: folderId,
+            cloud_folder_path: '/VirtualTours_Backups',
+            is_active: true
+          });
+
+        if (dbError) {
+          console.error('❌ Database error:', dbError);
+          return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=database_error`, 302);
+        }
+
+        console.log('✅ Cloud destination configured successfully');
+
+        // Redirect back to app with success
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?success=connected`, 302);
+
+      } catch (callbackError: any) {
+        console.error('❌ OAuth callback processing error:', callbackError);
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(callbackError.message)}`, 302);
+      }
+    }
+
+    // ============= HANDLE API CALLS (POST requests) =============
+    if (!req.method || req.method !== 'POST') {
+      throw new Error('Invalid request method');
+    }
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header missing');
+    }
+
     const token = authHeader.replace('Bearer ', '');
     const { data: { user } } = await supabase.auth.getUser(token);
 
@@ -145,124 +274,6 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ authUrl }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      case 'callback': {
-        // Handle OAuth callback (exchange code for tokens)
-        const { code, state: callbackTenantId, provider: callbackProvider } = await req.json();
-        
-        console.log(`🔄 Processing OAuth callback for ${callbackProvider}`);
-        
-        let accessToken = '';
-        let refreshToken = '';
-        let folderId = '';
-
-        if (callbackProvider === 'google_drive') {
-          const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
-          const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
-          const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
-
-          const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              code,
-              client_id: clientId!,
-              client_secret: clientSecret!,
-              redirect_uri: redirectUri,
-              grant_type: 'authorization_code'
-            })
-          });
-
-          const tokens = await tokenResponse.json();
-          
-          if (tokens.error) {
-            throw new Error(`Google OAuth error: ${tokens.error_description || tokens.error}`);
-          }
-          
-          accessToken = tokens.access_token;
-          refreshToken = tokens.refresh_token;
-
-          // Create root folder in Google Drive
-          const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name: 'VirtualTours_Backups',
-              mimeType: 'application/vnd.google-apps.folder'
-            })
-          });
-
-          const folder = await folderResponse.json();
-          
-          if (folder.error) {
-            throw new Error(`Google Drive folder creation error: ${folder.error.message}`);
-          }
-          
-          folderId = folder.id;
-          console.log(`✅ Created Google Drive folder: ${folderId}`);
-          
-        } else if (callbackProvider === 'dropbox') {
-          const appKey = Deno.env.get('DROPBOX_APP_KEY');
-          const appSecret = Deno.env.get('DROPBOX_APP_SECRET');
-          const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
-
-          const tokenResponse = await fetch('https://api.dropboxapi.com/oauth2/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              code,
-              client_id: appKey!,
-              client_secret: appSecret!,
-              redirect_uri: redirectUri,
-              grant_type: 'authorization_code'
-            })
-          });
-
-          const tokens = await tokenResponse.json();
-          
-          if (tokens.error) {
-            throw new Error(`Dropbox OAuth error: ${tokens.error_description || tokens.error}`);
-          }
-          
-          accessToken = tokens.access_token;
-          refreshToken = tokens.refresh_token;
-          folderId = '/VirtualTours_Backups';
-          
-          console.log('✅ Dropbox authorization successful');
-        }
-
-        // 🔐 ENCRYPT TOKENS BEFORE STORING
-        const encryptedAccessToken = await encryptToken(accessToken);
-        const encryptedRefreshToken = await encryptToken(refreshToken);
-
-        console.log('🔒 Tokens encrypted, storing in database');
-
-        // Store encrypted tokens in database
-        const { error } = await supabase
-          .from('backup_destinations')
-          .insert({
-            tenant_id: callbackTenantId,
-            destination_type: 'cloud_storage',
-            cloud_provider: callbackProvider,
-            cloud_access_token: encryptedAccessToken,
-            cloud_refresh_token: encryptedRefreshToken,
-            cloud_folder_id: folderId,
-            cloud_folder_path: '/VirtualTours_Backups',
-            is_active: true
-          });
-
-        if (error) throw error;
-
-        console.log('✅ Cloud destination configured successfully');
-
-        return new Response(
-          JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

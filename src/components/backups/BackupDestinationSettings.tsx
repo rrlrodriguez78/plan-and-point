@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -12,17 +13,30 @@ interface Props {
 }
 
 export const BackupDestinationSettings: React.FC<Props> = ({ tenantId }) => {
+  const [searchParams] = useSearchParams();
   const { 
     destinations, 
     loadingProvider,
     toggleAutoBackup,
-    getActiveDestination 
+    getActiveDestination,
+    loadDestinations
   } = useCloudStorage(tenantId);
 
   const activeDestination = getActiveDestination();
   const [destinationType, setDestinationType] = useState<'local_download' | 'cloud_storage' | 'both'>(
     activeDestination?.destination_type || 'local_download'
   );
+
+  // Reload destinations when returning from OAuth
+  useEffect(() => {
+    const success = searchParams.get('success');
+    if (success === 'connected') {
+      // Reload destinations after successful OAuth
+      setTimeout(() => {
+        loadDestinations();
+      }, 500); // Small delay to ensure DB write completes
+    }
+  }, [searchParams, loadDestinations]);
 
   const handleDestinationTypeChange = (value: string) => {
     setDestinationType(value as any);

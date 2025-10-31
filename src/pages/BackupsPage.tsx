@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
@@ -9,9 +9,11 @@ import { BackupTester } from '@/components/backups/BackupTester';
 import { BackupDestinationSettings } from '@/components/backups/BackupDestinationSettings';
 import { BackupSyncHistory } from '@/components/backups/BackupSyncHistory';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const BackupsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tenantId, setTenantId] = useState<string>('');
 
   useEffect(() => {
@@ -26,6 +28,22 @@ const BackupsPage: React.FC = () => {
     };
     loadTenant();
   }, []);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+
+    if (success === 'connected') {
+      toast.success('Google Drive conectado exitosamente');
+      // Clear the URL params
+      setSearchParams({});
+    } else if (error) {
+      toast.error(`Error al conectar: ${error}`);
+      // Clear the URL params
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   return (
     <div className="min-h-screen bg-background">
