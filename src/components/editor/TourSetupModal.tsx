@@ -264,23 +264,23 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, t
 
       <Dialog open={isOpen && !isEditingThumbnail && !showCoverSizeDialog} onOpenChange={handleCloseModal}>
         <DialogContent className="max-w-2xl sm:max-w-4xl h-[90vh] flex flex-col p-0">
-          <DialogHeader className="p-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg">
-                <Home className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+          <DialogHeader className="p-4 pb-2 border-b bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                <Home className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <DialogTitle className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   {t('tourSetup.title')}
                 </DialogTitle>
-                <DialogDescription className="text-sm sm:text-base mt-1">
+                <DialogDescription className="text-xs sm:text-sm">
                   {t('tourSetup.subtitle')}
                 </DialogDescription>
               </div>
             </div>
             {tourType && (
-              <div className="text-center pt-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
+              <div className="text-center pt-1">
+                <span className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                   {tourType === '360' ? '🌐 Tours 360°' : '📸 Tours de Fotos'}
                 </span>
               </div>
