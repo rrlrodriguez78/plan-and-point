@@ -41,11 +41,11 @@ const App = () => (
         <A11ySkipLink />
         <Toaster />
         <Sonner />
-        <PWAUpdatePrompt />
         <BrowserRouter>
           <AuthProvider>
             <TenantProvider>
               <UserSettingsProvider>
+                <PWAUpdatePrompt />
                 <main id="main-content">
                   <Routes>
                   {/* Public routes */}
