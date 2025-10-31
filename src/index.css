@@ -260,6 +260,12 @@ a[role="button"]:active {
   }
 }
 
+/* Push content down when update banner is visible */
+.has-update-banner {
+  padding-top: 100px;
+  transition: padding-top 0.3s ease;
+}
+
 /* Toast Animations & Fantasy Effects */
 @keyframes toast-slide-in {
   from {
