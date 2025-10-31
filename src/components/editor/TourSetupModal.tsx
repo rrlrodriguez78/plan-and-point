@@ -41,9 +41,10 @@ interface TourSetupModalProps {
   onClose: () => void;
   onConfirm: (tourData: any) => void;
   isSaving: boolean;
+  tourType?: '360' | 'photos' | null;
 }
 
-export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }: TourSetupModalProps) {
+export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving, tourType }: TourSetupModalProps) {
   const { t } = useTranslation();
   const [tourData, setTourData] = useState({
     title: '',
@@ -277,6 +278,13 @@ export default function TourSetupModal({ isOpen, onClose, onConfirm, isSaving }:
                 </DialogDescription>
               </div>
             </div>
+            {tourType && (
+              <div className="text-center pt-2">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
+                  {tourType === '360' ? '🌐 Tours 360°' : '📸 Tours de Fotos'}
+                </span>
+              </div>
+            )}
           </DialogHeader>
 
           <ScrollArea className="flex-1">

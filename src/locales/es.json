@@ -300,6 +300,18 @@
     "saving": "Guardando...",
     "uploading": "Subiendo..."
   },
+  "tourTypeSelector": {
+    "title": "¿Qué tipo de tour quieres crear?",
+    "subtitle": "Elige el formato que mejor se adapte a tu proyecto",
+    "tour360": {
+      "title": "Tours 360°",
+      "description": "Fotos panorámicas de 360 grados para experiencias inmersivas"
+    },
+    "photoTour": {
+      "title": "Tours de Fotos",
+      "description": "Galerías con fotos panorámicas y normales"
+    }
+  },
   "tourSetup": {
     "title": "Crear Nuevo Tour Virtual",
     "subtitle": "Te guiaré paso a paso para configurar tu tour",

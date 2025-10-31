@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield, Share2 } from 'lucide-react';
 import ShareTourDialog from '@/components/share/ShareTourDialog';
 import TourSetupModal from '@/components/editor/TourSetupModal';
+import { TourTypeSelector } from '@/components/editor/TourTypeSelector';
 import { useTranslation } from 'react-i18next';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -37,7 +38,9 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
+  const [typeSelectorOpen, setTypeSelectorOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTourType, setSelectedTourType] = useState<'360' | 'photos' | null>(null);
   const [savingTour, setSavingTour] = useState(false);
   const [uploadingCover, setUploadingCover] = useState<string | null>(null);
   const [tourToDelete, setTourToDelete] = useState<string | null>(null);
@@ -82,6 +85,11 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTourTypeSelect = (type: '360' | 'photos') => {
+    setSelectedTourType(type);
+    setModalOpen(true);
   };
 
   const handleCreateTour = async (tourData: { title: string; description: string; coverImageUrl?: string }) => {
@@ -244,16 +252,26 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <Button size="lg" onClick={() => setModalOpen(true)}>
+          <Button size="lg" onClick={() => setTypeSelectorOpen(true)}>
             <Plus className="w-5 h-5 mr-2" />
             {t('dashboard.createNew')}
           </Button>
           
+          <TourTypeSelector
+            isOpen={typeSelectorOpen}
+            onClose={() => setTypeSelectorOpen(false)}
+            onSelect={handleTourTypeSelect}
+          />
+          
           <TourSetupModal
             isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
+            onClose={() => {
+              setModalOpen(false);
+              setSelectedTourType(null);
+            }}
             onConfirm={handleCreateTour}
             isSaving={savingTour}
+            tourType={selectedTourType}
           />
         </div>
 
@@ -266,7 +284,7 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => setModalOpen(true)} size="lg">
+              <Button onClick={() => setTypeSelectorOpen(true)} size="lg">
                 <Plus className="w-5 h-5 mr-2" />
                 {t('dashboard.createFirstTour')}
               </Button>
