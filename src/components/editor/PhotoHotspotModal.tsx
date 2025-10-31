@@ -136,7 +136,7 @@ export default function PhotoHotspotModal({
             </TabsTrigger>
             <TabsTrigger value="panorama" className="gap-2">
               <Eye className="w-4 h-4" />
-              Fotos
+              Photos
             </TabsTrigger>
             <TabsTrigger value="media" className="gap-2">
               <Camera className="w-4 h-4" />
