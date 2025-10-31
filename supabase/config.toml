@@ -26,3 +26,9 @@ verify_jwt = true
 
 [functions.backup-worker]
 verify_jwt = false
+
+[functions.cloud-storage-auth]
+verify_jwt = true
+
+[functions.cloud-sync-worker]
+verify_jwt = false
