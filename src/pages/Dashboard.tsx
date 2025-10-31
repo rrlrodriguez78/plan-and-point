@@ -29,6 +29,7 @@ interface Tour {
   created_at: string;
   cover_image_url?: string;
   password_protected?: boolean;
+  tour_type?: 'tour_360' | 'photo_tour';
 }
 
 const Dashboard = () => {
@@ -69,12 +70,12 @@ const Dashboard = () => {
 
     try {
       // Load tours - EXCLUDE the "115N 3ST" tour (reserved for CreateTour page)
-      const toursData: any = (await supabase
+      const toursData: Tour[] = (await supabase
         .from('virtual_tours')
         .select('*')
         .eq('tenant_id', currentTenant.tenant_id)
         .neq('id', 'a5f2a965-d194-4f27-a01f-a0981f0ae307')
-        .order('created_at', { ascending: false })).data;
+        .order('created_at', { ascending: false })).data as Tour[];
 
       if (toursData) {
         setTours(toursData);
@@ -115,9 +116,14 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast.success(t('dashboard.tourCreated'));
-      setTours([data, ...tours]);
+      setTours([data as Tour, ...tours]);
       setModalOpen(false);
-      navigate(`/app/editor/${data.id}`);
+      
+      // Navigate to correct editor based on tour type
+      const editorPath = data.tour_type === 'photo_tour' 
+        ? `/app/photo-editor/${data.id}` 
+        : `/app/editor/${data.id}`;
+      navigate(editorPath);
     } catch (error) {
       console.error('Error creating tour:', error);
       toast.error(t('dashboard.errorCreating'));
@@ -355,7 +361,12 @@ const Dashboard = () => {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => navigate(`/app/editor/${tour.id}`)}
+                            onClick={() => {
+                              const editorPath = tour.tour_type === 'photo_tour' 
+                                ? `/app/photo-editor/${tour.id}` 
+                                : `/app/editor/${tour.id}`;
+                              navigate(editorPath);
+                            }}
                             className="h-7 w-7 p-0 backdrop-blur-sm bg-black/40 hover:bg-black/60 transition-all border border-white/20"
                           >
                             <Edit className="w-3.5 h-3.5" />
