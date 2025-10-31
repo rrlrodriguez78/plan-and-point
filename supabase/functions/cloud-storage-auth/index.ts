@@ -6,6 +6,99 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============= ENCRYPTION UTILITIES =============
+// Uses AES-GCM encryption with the CLOUD_ENCRYPTION_KEY
+
+async function getEncryptionKey(): Promise<CryptoKey> {
+  const keyHex = Deno.env.get('CLOUD_ENCRYPTION_KEY')!;
+  const keyData = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+  
+  return await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptToken(token: string): Promise<string> {
+  const key = await getEncryptionKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12)); // 12 bytes for GCM
+  const encodedToken = new TextEncoder().encode(token);
+  
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encodedToken
+  );
+  
+  // Combine IV and encrypted data, then base64 encode
+  const combined = new Uint8Array(iv.length + encryptedData.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encryptedData), iv.length);
+  
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptToken(encryptedToken: string): Promise<string> {
+  const key = await getEncryptionKey();
+  const combined = Uint8Array.from(atob(encryptedToken), c => c.charCodeAt(0));
+  
+  const iv = combined.slice(0, 12);
+  const data = combined.slice(12);
+  
+  const decryptedData = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  );
+  
+  return new TextDecoder().decode(decryptedData);
+}
+
+// ============= OAUTH HELPERS =============
+
+async function refreshGoogleToken(refreshToken: string): Promise<string> {
+  const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
+  
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId!,
+      client_secret: clientSecret!,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  
+  const tokens = await response.json();
+  return tokens.access_token;
+}
+
+async function refreshDropboxToken(refreshToken: string): Promise<string> {
+  const appKey = Deno.env.get('DROPBOX_APP_KEY');
+  const appSecret = Deno.env.get('DROPBOX_APP_SECRET');
+  
+  const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: appKey!,
+      client_secret: appSecret!,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  
+  const tokens = await response.json();
+  return tokens.access_token;
+}
+
+// ============= MAIN HANDLER =============
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -25,6 +118,7 @@ serve(async (req) => {
     }
 
     const { action, provider, tenantId, destinationId } = await req.json();
+    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}`);
 
     switch (action) {
       case 'authorize': {
@@ -34,11 +128,19 @@ serve(async (req) => {
 
         if (provider === 'google_drive') {
           const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
+          if (!clientId) throw new Error('Google Drive Client ID not configured');
+          
           const scope = 'https://www.googleapis.com/auth/drive.file';
-          authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${tenantId}&access_type=offline&prompt=consent`;
+          authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${tenantId}&access_type=offline&prompt=consent`;
+          
+          console.log('✅ Generated Google Drive OAuth URL');
         } else if (provider === 'dropbox') {
           const appKey = Deno.env.get('DROPBOX_APP_KEY');
-          authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&redirect_uri=${redirectUri}&response_type=code&state=${tenantId}&token_access_type=offline`;
+          if (!appKey) throw new Error('Dropbox App Key not configured');
+          
+          authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${tenantId}&token_access_type=offline`;
+          
+          console.log('✅ Generated Dropbox OAuth URL');
         }
 
         return new Response(
@@ -49,13 +151,15 @@ serve(async (req) => {
 
       case 'callback': {
         // Handle OAuth callback (exchange code for tokens)
-        const { code, state: tenantId, provider } = await req.json();
+        const { code, state: callbackTenantId, provider: callbackProvider } = await req.json();
+        
+        console.log(`🔄 Processing OAuth callback for ${callbackProvider}`);
         
         let accessToken = '';
         let refreshToken = '';
         let folderId = '';
 
-        if (provider === 'google_drive') {
+        if (callbackProvider === 'google_drive') {
           const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
           const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
           const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
@@ -73,10 +177,15 @@ serve(async (req) => {
           });
 
           const tokens = await tokenResponse.json();
+          
+          if (tokens.error) {
+            throw new Error(`Google OAuth error: ${tokens.error_description || tokens.error}`);
+          }
+          
           accessToken = tokens.access_token;
           refreshToken = tokens.refresh_token;
 
-          // Create root folder
+          // Create root folder in Google Drive
           const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
             method: 'POST',
             headers: {
@@ -90,8 +199,15 @@ serve(async (req) => {
           });
 
           const folder = await folderResponse.json();
+          
+          if (folder.error) {
+            throw new Error(`Google Drive folder creation error: ${folder.error.message}`);
+          }
+          
           folderId = folder.id;
-        } else if (provider === 'dropbox') {
+          console.log(`✅ Created Google Drive folder: ${folderId}`);
+          
+        } else if (callbackProvider === 'dropbox') {
           const appKey = Deno.env.get('DROPBOX_APP_KEY');
           const appSecret = Deno.env.get('DROPBOX_APP_SECRET');
           const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
@@ -109,26 +225,41 @@ serve(async (req) => {
           });
 
           const tokens = await tokenResponse.json();
+          
+          if (tokens.error) {
+            throw new Error(`Dropbox OAuth error: ${tokens.error_description || tokens.error}`);
+          }
+          
           accessToken = tokens.access_token;
           refreshToken = tokens.refresh_token;
           folderId = '/VirtualTours_Backups';
+          
+          console.log('✅ Dropbox authorization successful');
         }
 
-        // Store in database (simplified - should encrypt tokens)
+        // 🔐 ENCRYPT TOKENS BEFORE STORING
+        const encryptedAccessToken = await encryptToken(accessToken);
+        const encryptedRefreshToken = await encryptToken(refreshToken);
+
+        console.log('🔒 Tokens encrypted, storing in database');
+
+        // Store encrypted tokens in database
         const { error } = await supabase
           .from('backup_destinations')
           .insert({
-            tenant_id: tenantId,
+            tenant_id: callbackTenantId,
             destination_type: 'cloud_storage',
-            cloud_provider: provider,
-            cloud_access_token: accessToken,
-            cloud_refresh_token: refreshToken,
+            cloud_provider: callbackProvider,
+            cloud_access_token: encryptedAccessToken,
+            cloud_refresh_token: encryptedRefreshToken,
             cloud_folder_id: folderId,
             cloud_folder_path: '/VirtualTours_Backups',
             is_active: true
           });
 
         if (error) throw error;
+
+        console.log('✅ Cloud destination configured successfully');
 
         return new Response(
           JSON.stringify({ success: true }),
@@ -137,7 +268,9 @@ serve(async (req) => {
       }
 
       case 'test-connection': {
-        // Test cloud connection
+        // Test cloud connection by decrypting token and making API call
+        console.log(`🧪 Testing connection for destination: ${destinationId}`);
+        
         const { data: destination } = await supabase
           .from('backup_destinations')
           .select('*')
@@ -146,20 +279,68 @@ serve(async (req) => {
 
         if (!destination) throw new Error('Destination not found');
 
+        // 🔓 DECRYPT TOKEN FOR USE
+        const accessToken = await decryptToken(destination.cloud_access_token);
         let success = false;
 
         if (destination.cloud_provider === 'google_drive') {
           const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
-            headers: { 'Authorization': `Bearer ${destination.cloud_access_token}` }
+            headers: { 'Authorization': `Bearer ${accessToken}` }
           });
-          success = response.ok;
+          
+          if (response.status === 401) {
+            // Token expired, try to refresh
+            console.log('🔄 Access token expired, refreshing...');
+            const refreshToken = await decryptToken(destination.cloud_refresh_token);
+            const newAccessToken = await refreshGoogleToken(refreshToken);
+            const encryptedNewToken = await encryptToken(newAccessToken);
+            
+            // Update with new token
+            await supabase
+              .from('backup_destinations')
+              .update({ cloud_access_token: encryptedNewToken })
+              .eq('id', destinationId);
+            
+            // Retry test
+            const retryResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+              headers: { 'Authorization': `Bearer ${newAccessToken}` }
+            });
+            success = retryResponse.ok;
+          } else {
+            success = response.ok;
+          }
+          
         } else if (destination.cloud_provider === 'dropbox') {
           const response = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${destination.cloud_access_token}` }
+            headers: { 'Authorization': `Bearer ${accessToken}` }
           });
-          success = response.ok;
+          
+          if (response.status === 401) {
+            // Token expired, try to refresh
+            console.log('🔄 Access token expired, refreshing...');
+            const refreshToken = await decryptToken(destination.cloud_refresh_token);
+            const newAccessToken = await refreshDropboxToken(refreshToken);
+            const encryptedNewToken = await encryptToken(newAccessToken);
+            
+            // Update with new token
+            await supabase
+              .from('backup_destinations')
+              .update({ cloud_access_token: encryptedNewToken })
+              .eq('id', destinationId);
+            
+            // Retry test
+            const retryResponse = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${newAccessToken}` }
+            });
+            success = retryResponse.ok;
+          } else {
+            success = response.ok;
+          }
         }
+
+        console.log(success ? '✅ Connection test successful' : '❌ Connection test failed');
 
         return new Response(
           JSON.stringify({ success }),
@@ -169,12 +350,16 @@ serve(async (req) => {
 
       case 'disconnect': {
         // Deactivate destination
+        console.log(`🔌 Disconnecting destination: ${destinationId}`);
+        
         const { error } = await supabase
           .from('backup_destinations')
           .update({ is_active: false })
           .eq('id', destinationId);
 
         if (error) throw error;
+
+        console.log('✅ Destination disconnected');
 
         return new Response(
           JSON.stringify({ success: true }),
@@ -186,7 +371,7 @@ serve(async (req) => {
         throw new Error('Invalid action');
     }
   } catch (error: any) {
-    console.error('Error:', error);
+    console.error('❌ Cloud storage auth error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
