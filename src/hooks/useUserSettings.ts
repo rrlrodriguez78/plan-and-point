@@ -71,6 +71,12 @@ export interface UserSettings {
     sms: boolean;
   };
   subscription_tier: string;
+  
+  // PWA Update Settings
+  pwa_auto_update: boolean;
+  pwa_auto_update_delay: number;
+  pwa_browser_notifications: boolean;
+  pwa_check_interval: number;
 }
 
 const defaultSettings: UserSettings = {
@@ -107,7 +113,11 @@ const defaultSettings: UserSettings = {
   metrics_to_track: { views: true, engagement: true, performance: true },
   report_frequency: 'weekly',
   contact_preferences: { email: true, phone: false, sms: false },
-  subscription_tier: 'free'
+  subscription_tier: 'free',
+  pwa_auto_update: false,
+  pwa_auto_update_delay: 30000,
+  pwa_browser_notifications: false,
+  pwa_check_interval: 3600000
 };
 
 export const useUserSettings = () => {
@@ -169,7 +179,11 @@ export const useUserSettings = () => {
           metrics_to_track: data.metrics_to_track as any,
           report_frequency: data.report_frequency as any,
           contact_preferences: data.contact_preferences as any,
-          subscription_tier: data.subscription_tier
+          subscription_tier: data.subscription_tier,
+          pwa_auto_update: data.pwa_auto_update ?? defaultSettings.pwa_auto_update,
+          pwa_auto_update_delay: data.pwa_auto_update_delay ?? defaultSettings.pwa_auto_update_delay,
+          pwa_browser_notifications: data.pwa_browser_notifications ?? defaultSettings.pwa_browser_notifications,
+          pwa_check_interval: data.pwa_check_interval ?? defaultSettings.pwa_check_interval
         });
       }
     } catch (error) {

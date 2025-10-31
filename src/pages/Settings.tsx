@@ -8,7 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell, ListChecks, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Shield, Terminal, Lock, Unlock, FileText, Bell, ListChecks, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -26,6 +26,7 @@ import { NotificationsList } from '@/components/settings/NotificationsList';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { AnalyticsDashboard } from '@/components/settings/AnalyticsDashboard';
 import { ImplementationChecklist } from '@/components/settings/ImplementationChecklist';
+import { PWAUpdateSettings } from '@/components/settings/PWAUpdateSettings';
 
 interface GoldenRule {
   id: string;
@@ -512,7 +513,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="implementation" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-6 mb-8">
             <TabsTrigger value="implementation">
               <ListChecks className="w-4 h-4 mr-2" />
               {t('settings.implementation')}
@@ -532,6 +533,10 @@ const Settings = () => {
             <TabsTrigger value="notifications">
               <Bell className="w-4 h-4 mr-2" />
               Notificaciones
+            </TabsTrigger>
+            <TabsTrigger value="pwa">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              PWA
             </TabsTrigger>
           </TabsList>
 
@@ -772,6 +777,10 @@ const Settings = () => {
                 </TabsContent>
               </Tabs>
             </div>
+          </TabsContent>
+
+          <TabsContent value="pwa">
+            <PWAUpdateSettings />
           </TabsContent>
         </Tabs>
 

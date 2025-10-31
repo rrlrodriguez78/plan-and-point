@@ -1442,6 +1442,10 @@ export type Database = {
           notification_types: Json | null
           profile_visibility: string | null
           push_notifications: boolean | null
+          pwa_auto_update: boolean | null
+          pwa_auto_update_delay: number | null
+          pwa_browser_notifications: boolean | null
+          pwa_check_interval: number | null
           report_frequency: string | null
           share_usage_data: boolean | null
           sound_effects: boolean | null
@@ -1482,6 +1486,10 @@ export type Database = {
           notification_types?: Json | null
           profile_visibility?: string | null
           push_notifications?: boolean | null
+          pwa_auto_update?: boolean | null
+          pwa_auto_update_delay?: number | null
+          pwa_browser_notifications?: boolean | null
+          pwa_check_interval?: number | null
           report_frequency?: string | null
           share_usage_data?: boolean | null
           sound_effects?: boolean | null
@@ -1522,6 +1530,10 @@ export type Database = {
           notification_types?: Json | null
           profile_visibility?: string | null
           push_notifications?: boolean | null
+          pwa_auto_update?: boolean | null
+          pwa_auto_update_delay?: number | null
+          pwa_browser_notifications?: boolean | null
+          pwa_check_interval?: number | null
           report_frequency?: string | null
           share_usage_data?: boolean | null
           sound_effects?: boolean | null
