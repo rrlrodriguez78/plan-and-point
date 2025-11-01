@@ -79,43 +79,83 @@ export function useCloudStorage(tenantId: string) {
     }
   }, [tenantId, loadDestinations]);
 
-  // Listen for OAuth success messages from popup
+  // Polling system to detect OAuth completion
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Validate message content instead of origin (since popup uses '*')
-      // Check if message has the correct structure
-      if (!event.data || typeof event.data !== 'object') {
+    let pollingInterval: NodeJS.Timeout | null = null;
+    let pollingAttempts = 0;
+    const MAX_POLLING_ATTEMPTS = 60; // 2 minutes (60 attempts x 2 seconds)
+
+    const checkOAuthCompletion = async () => {
+      if (!loadingProvider || loadingProvider === 'disconnecting' || 
+          loadingProvider === 'testing' || loadingProvider === 'updating') {
         return;
       }
 
-      // Verify it's an OAuth success message with valid structure
-      if (event.data.type === 'oauth-success' && 
-          event.data.provider && 
-          typeof event.data.timestamp === 'number') {
-        
-        console.log('✅ OAuth success message received:', {
-          provider: event.data.provider,
-          action: event.data.action,
-          origin: event.origin
-        });
-        
-        const providerName = event.data.provider === 'google_drive' ? 'Google Drive' : 'Dropbox';
-        const actionText = event.data.action === 'reconnected' ? 'reconectado' : 'conectado';
-        
-        toast.success(`${providerName} ${actionText} exitosamente`);
-        
-        // Reload destinations to show the new connection
-        loadDestinations();
-        loadSyncHistory();
-        
-        // Clear loading state
-        setLoadingProvider(null);
+      pollingAttempts++;
+      console.log(`🔍 Polling attempt ${pollingAttempts}/${MAX_POLLING_ATTEMPTS} - Checking for new OAuth connection...`);
+
+      try {
+        const { data, error } = await supabase
+          .from('backup_destinations')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        // Check if we found a new active connection
+        if (data && data.length > 0) {
+          const newConnection = data[0] as BackupDestination;
+          const isNew = !destinations.find(d => d.id === newConnection.id && d.is_active);
+
+          if (isNew) {
+            console.log('✅ OAuth completed! New connection detected:', newConnection);
+            
+            const providerName = newConnection.cloud_provider === 'google_drive' ? 'Google Drive' : 'Dropbox';
+            toast.success(`${providerName} conectado exitosamente`);
+            
+            // Reload data
+            await loadDestinations();
+            await loadSyncHistory();
+            
+            // Clear loading state and stop polling
+            setLoadingProvider(null);
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+              pollingInterval = null;
+            }
+          }
+        }
+
+        // Stop polling after max attempts
+        if (pollingAttempts >= MAX_POLLING_ATTEMPTS) {
+          console.log('⏱️ Polling timeout reached');
+          setLoadingProvider(null);
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+        }
+      } catch (error) {
+        console.error('❌ Polling error:', error);
       }
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [loadDestinations]);
+    // Start polling when OAuth flow begins
+    if (loadingProvider && loadingProvider !== 'disconnecting' && 
+        loadingProvider !== 'testing' && loadingProvider !== 'updating') {
+      console.log('🚀 Starting OAuth polling system...');
+      pollingInterval = setInterval(checkOAuthCompletion, 2000); // Check every 2 seconds
+    }
+
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [loadingProvider, tenantId, destinations, loadDestinations]);
 
   const connectProvider = async (provider: 'google_drive' | 'dropbox') => {
     try {
@@ -189,19 +229,11 @@ export function useCloudStorage(tenantId: string) {
             window.location.href = data.authUrl;
           }
         } else {
-          console.log('✅ OAuth window opened successfully');
+          console.log('✅ OAuth popup opened successfully');
+          console.log('📊 Polling system will detect completion automatically...');
           
-          // Note: We rely on postMessage for success notification
-          // Polling for window.closed would cause COOP errors
-          console.log('📡 Waiting for postMessage from OAuth window...');
-          
-          // Safety timeout: if OAuth doesn't complete in 2 minutes, clear loading state
-          setTimeout(() => {
-            if (loadingProvider === provider) {
-              console.log('⏱️ OAuth timeout reached, clearing loading state...');
-              setLoadingProvider(null);
-            }
-          }, 120000);
+          // Note: We use polling system to detect OAuth completion
+          // This is more reliable than postMessage in cross-origin scenarios
         }
       } else {
         console.error('❌ No authUrl in response:', data);
