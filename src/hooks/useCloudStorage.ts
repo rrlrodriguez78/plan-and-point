@@ -94,8 +94,8 @@ export function useCloudStorage(tenantId: string) {
       if (error) throw error;
 
       // Redirect to OAuth URL
-      if (data.auth_url) {
-        window.location.href = data.auth_url;
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
       } else {
         toast.error('No authorization URL received');
       }
