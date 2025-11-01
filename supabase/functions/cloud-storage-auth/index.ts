@@ -341,7 +341,10 @@ serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ authUrl }),
+          JSON.stringify({ 
+            authUrl,
+            redirectUri: finalRedirectUri // For debugging
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

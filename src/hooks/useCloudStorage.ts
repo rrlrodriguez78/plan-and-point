@@ -83,11 +83,14 @@ export function useCloudStorage(tenantId: string) {
     try {
       setLoadingProvider(provider);
       
+      const redirectUri = window.location.origin + '/auth/callback';
+      
       console.log('🔍 Starting OAuth flow:', {
         provider,
         tenantId,
         currentUrl: window.location.href,
-        redirectUri: window.location.origin + '/auth/callback'
+        redirectUri: redirectUri,
+        origin: window.location.origin
       });
       
       const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
@@ -95,7 +98,7 @@ export function useCloudStorage(tenantId: string) {
           action: 'authorize',
           provider,
           tenant_id: tenantId,
-          redirect_uri: window.location.origin + '/auth/callback'
+          redirect_uri: redirectUri
         }
       });
 
@@ -104,20 +107,40 @@ export function useCloudStorage(tenantId: string) {
         throw error;
       }
 
-      console.log('✅ OAuth URL received:', data.authUrl);
+      console.log('✅ OAuth response received:', {
+        hasAuthUrl: !!data.authUrl,
+        authUrlLength: data.authUrl?.length,
+        fullResponse: data
+      });
 
-      // Open OAuth URL
       if (data.authUrl) {
-        console.log('🚀 Opening Google OAuth in popup window...');
+        // Verify redirect_uri in OAuth URL
+        const oauthUrl = new URL(data.authUrl);
+        const redirectParam = oauthUrl.searchParams.get('redirect_uri');
         
-        // Try to open in popup window
+        console.log('🔍 OAuth URL Analysis:', {
+          host: oauthUrl.host,
+          pathname: oauthUrl.pathname,
+          redirectUriParam: redirectParam,
+          expectedRedirectUri: redirectUri,
+          redirectUriMatches: redirectParam === redirectUri
+        });
+
+        if (redirectParam !== redirectUri) {
+          console.warn('⚠️ WARNING: redirect_uri mismatch!', {
+            expected: redirectUri,
+            received: redirectParam
+          });
+        }
+
+        console.log('🚀 Opening OAuth window...');
+        
         const oauthWindow = window.open(
           data.authUrl, 
           'google_oauth',
           'width=600,height=700,scrollbars=yes,location=yes'
         );
         
-        // If popup blocked or failed, fallback to full redirect
         if (!oauthWindow || oauthWindow.closed || typeof oauthWindow.closed === 'undefined') {
           console.log('⚠️ Popup blocked, using full page redirect...');
           // Use window.top to escape iframe if in preview
@@ -126,6 +149,8 @@ export function useCloudStorage(tenantId: string) {
           } else {
             window.location.href = data.authUrl;
           }
+        } else {
+          console.log('✅ OAuth window opened successfully');
         }
       } else {
         console.error('❌ No authUrl in response:', data);
