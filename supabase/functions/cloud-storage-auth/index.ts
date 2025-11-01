@@ -446,6 +446,146 @@ serve(async (req) => {
         );
       }
 
+      case 'callback': {
+        // Handle OAuth callback from React component
+        const { code, state } = await req.json();
+        
+        console.log(`🔄 Processing OAuth callback: code=${code ? 'present' : 'missing'}, state=${state}`);
+
+        if (!code || !state) {
+          throw new Error('Missing code or state in callback');
+        }
+
+        // 🔒 VALIDATE STATE TOKEN
+        console.log('🔐 Validating state token...');
+        
+        // Clean up expired states first
+        await supabase
+          .from('oauth_states')
+          .delete()
+          .lt('expires_at', new Date().toISOString());
+
+        // Retrieve and validate state
+        const { data: oauthState, error: stateError } = await supabase
+          .from('oauth_states')
+          .select('*')
+          .eq('state_token', state)
+          .single();
+
+        if (stateError || !oauthState) {
+          console.error('❌ Invalid or expired state token');
+          throw new Error('Invalid or expired state token');
+        }
+
+        // Check expiration
+        if (new Date(oauthState.expires_at) < new Date()) {
+          console.error('❌ State token expired');
+          await supabase.from('oauth_states').delete().eq('id', oauthState.id);
+          throw new Error('State token expired');
+        }
+
+        // Delete state token (one-time use)
+        await supabase.from('oauth_states').delete().eq('id', oauthState.id);
+
+        const tenantId = oauthState.tenant_id;
+        const provider = oauthState.provider;
+        const storedRedirectUri = oauthState.redirect_uri;
+        
+        console.log(`✅ State validated. TenantId: ${tenantId}, Provider: ${provider}`);
+        
+        let accessToken = '';
+        let refreshToken = '';
+        let folderId = '';
+
+        if (provider === 'google_drive') {
+          const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
+          const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
+          
+          // Use the stored redirect_uri from oauth_states
+          const callbackRedirectUri = storedRedirectUri || `${supabaseUrl}/functions/v1/cloud-storage-auth`;
+
+          console.log(`🔄 Exchanging code for tokens with redirect_uri: ${callbackRedirectUri}`);
+          const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              code,
+              client_id: clientId!,
+              client_secret: clientSecret!,
+              redirect_uri: callbackRedirectUri,
+              grant_type: 'authorization_code'
+            })
+          });
+
+          const tokens = await tokenResponse.json();
+          
+          if (tokens.error) {
+            console.error(`❌ Token exchange error: ${tokens.error_description || tokens.error}`);
+            throw new Error(tokens.error_description || tokens.error);
+          }
+          
+          accessToken = tokens.access_token;
+          refreshToken = tokens.refresh_token;
+
+          console.log('✅ Tokens received, creating folder...');
+
+          // Create root folder in Google Drive
+          const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: 'VirtualTours_Backups',
+              mimeType: 'application/vnd.google-apps.folder'
+            })
+          });
+
+          const folder = await folderResponse.json();
+          
+          if (folder.error) {
+            console.error(`❌ Folder creation error: ${folder.error.message}`);
+            throw new Error('Folder creation failed: ' + folder.error.message);
+          }
+          
+          folderId = folder.id;
+          console.log(`✅ Created Google Drive folder: ${folderId}`);
+        }
+
+        // 🔐 ENCRYPT TOKENS BEFORE STORING
+        const encryptedAccessToken = await encryptToken(accessToken);
+        const encryptedRefreshToken = await encryptToken(refreshToken);
+
+        console.log('🔒 Tokens encrypted, storing in database');
+
+        // Store encrypted tokens in database
+        const { error: dbError } = await supabase
+          .from('backup_destinations')
+          .insert({
+            tenant_id: tenantId,
+            destination_type: 'cloud_storage',
+            cloud_provider: provider,
+            cloud_access_token: encryptedAccessToken,
+            cloud_refresh_token: encryptedRefreshToken,
+            cloud_folder_id: folderId,
+            cloud_folder_path: '/VirtualTours_Backups',
+            is_active: true
+          });
+
+        if (dbError) {
+          console.error('❌ Database error:', dbError);
+          throw new Error('Database error: ' + dbError.message);
+        }
+
+        console.log('✅ Cloud destination configured successfully');
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         throw new Error('Invalid action');
     }

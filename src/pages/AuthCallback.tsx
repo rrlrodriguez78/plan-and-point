@@ -40,36 +40,36 @@ const AuthCallback = () => {
         throw new Error('No hay sesión activa');
       }
 
-      // Parse state to get provider and tenant_id
-      const stateData = JSON.parse(decodeURIComponent(state));
-      const provider = stateData.provider;
-      const tenantId = stateData.tenant_id;
+      console.log('🔍 Sending code and state to edge function...');
 
-      // Call the cloud-storage-auth edge function
+      // Call the cloud-storage-auth edge function with code and state
+      // The edge function will validate the state and complete the OAuth flow
       const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
         body: {
+          action: 'callback',
           code,
-          provider,
-          tenant_id: tenantId,
-          redirect_uri: window.location.origin + '/auth/callback'
+          state
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
 
       if (data.success) {
+        console.log('✅ OAuth callback successful');
         setStatus('success');
-        localStorage.setItem('google_user_email', data.user_email || '');
         
         // Redirect to backups page with success parameter
         setTimeout(() => {
           navigate('/app/backups?oauth_success=true');
         }, 2000);
       } else {
-        throw new Error(data.message || 'Error al conectar con Google Drive');
+        throw new Error(data.error || 'Error al conectar con Google Drive');
       }
     } catch (error) {
-      console.error('Error en autenticación:', error);
+      console.error('❌ Error en autenticación:', error);
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Error desconocido');
       setTimeout(() => navigate('/app/backups?oauth_error=true'), 3000);
