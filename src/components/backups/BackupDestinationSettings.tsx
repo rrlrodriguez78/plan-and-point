@@ -29,14 +29,27 @@ export const BackupDestinationSettings: React.FC<Props> = ({ tenantId }) => {
 
   // Reload destinations when returning from OAuth
   useEffect(() => {
-    const success = searchParams.get('success');
-    if (success === 'connected') {
+    const oauthSuccess = searchParams.get('oauth_success');
+    if (oauthSuccess === 'true') {
       // Reload destinations after successful OAuth
+      console.log('✅ OAuth success detected, reloading destinations...');
       setTimeout(() => {
         loadDestinations();
       }, 500); // Small delay to ensure DB write completes
     }
   }, [searchParams, loadDestinations]);
+
+  // Poll for destination changes while connecting
+  useEffect(() => {
+    if (loadingProvider) {
+      const interval = setInterval(() => {
+        console.log('🔄 Polling destinations during connection...');
+        loadDestinations();
+      }, 2000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [loadingProvider, loadDestinations]);
 
   const handleDestinationTypeChange = (value: string) => {
     setDestinationType(value as any);

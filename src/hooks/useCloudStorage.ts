@@ -152,6 +152,19 @@ export function useCloudStorage(tenantId: string) {
           }
         } else {
           console.log('✅ OAuth window opened successfully');
+          
+          // Poll to detect when popup closes and refresh destinations
+          const pollInterval = setInterval(() => {
+            if (oauthWindow.closed) {
+              console.log('🔄 OAuth popup closed, reloading destinations...');
+              clearInterval(pollInterval);
+              setLoadingProvider(null);
+              loadDestinations();
+            }
+          }, 500);
+          
+          // Clear interval after 5 minutes to avoid memory leaks
+          setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
         }
       } else {
         console.error('❌ No authUrl in response:', data);
