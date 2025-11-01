@@ -171,8 +171,9 @@ serve(async (req) => {
 
       const tenantId = oauthState.tenant_id;
       const provider = oauthState.provider;
+      const storedRedirectUri = oauthState.redirect_uri;
       
-      console.log(`✅ State validated. TenantId: ${tenantId}, Provider: ${provider}`);
+      console.log(`✅ State validated. TenantId: ${tenantId}, Provider: ${provider}, Redirect URI: ${storedRedirectUri}`);
       
       try {
         let accessToken = '';
@@ -182,9 +183,11 @@ serve(async (req) => {
         if (provider === 'google_drive') {
           const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
           const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
-          const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
+          
+          // Use the stored redirect_uri from oauth_states
+          const callbackRedirectUri = storedRedirectUri || `${supabaseUrl}/functions/v1/cloud-storage-auth`;
 
-          console.log('🔄 Exchanging code for tokens...');
+          console.log(`🔄 Exchanging code for tokens with redirect_uri: ${callbackRedirectUri}`);
           const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -192,7 +195,7 @@ serve(async (req) => {
               code,
               client_id: clientId!,
               client_secret: clientSecret!,
-              redirect_uri: redirectUri,
+              redirect_uri: callbackRedirectUri,
               grant_type: 'authorization_code'
             })
           });
@@ -286,8 +289,8 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, provider, tenant_id, destinationId } = await req.json();
-    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}`);
+    const { action, provider, tenant_id, redirect_uri, destinationId } = await req.json();
+    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}, redirect_uri: ${redirect_uri}`);
 
     switch (action) {
       case 'authorize': {
@@ -296,12 +299,17 @@ serve(async (req) => {
         
         // Store state → tenant_id mapping (expires in 10 minutes)
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        
+        // Use client redirect_uri or fallback to edge function URL
+        const finalRedirectUri = redirect_uri || `${supabaseUrl}/functions/v1/cloud-storage-auth`;
+        
         const { error: stateError } = await supabase
           .from('oauth_states')
           .insert({
             state_token: state,
             tenant_id: tenant_id,
             provider: provider,
+            redirect_uri: finalRedirectUri,
             expires_at: expiresAt
           });
 
@@ -310,10 +318,9 @@ serve(async (req) => {
           throw new Error('Failed to initialize OAuth flow');
         }
 
-        console.log(`🔐 Generated secure state token for ${provider}`);
+        console.log(`🔐 Generated secure state token for ${provider} with redirect_uri: ${finalRedirectUri}`);
 
-        // Generate OAuth URL for provider
-        const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
+        // Generate OAuth URL for provider using the finalRedirectUri
         let authUrl = '';
 
         if (provider === 'google_drive') {
@@ -321,16 +328,16 @@ serve(async (req) => {
           if (!clientId) throw new Error('Google Drive Client ID not configured');
           
           const scope = 'https://www.googleapis.com/auth/drive.file';
-          authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&access_type=offline&prompt=consent`;
+          authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(finalRedirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&access_type=offline&prompt=consent`;
           
-          console.log('✅ Generated Google Drive OAuth URL with secure state');
+          console.log('✅ Generated Google Drive OAuth URL with secure state and client redirect_uri');
         } else if (provider === 'dropbox') {
           const appKey = Deno.env.get('DROPBOX_APP_KEY');
           if (!appKey) throw new Error('Dropbox App Key not configured');
           
-          authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&token_access_type=offline`;
+          authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&redirect_uri=${encodeURIComponent(finalRedirectUri)}&response_type=code&state=${state}&token_access_type=offline`;
           
-          console.log('✅ Generated Dropbox OAuth URL with secure state');
+          console.log('✅ Generated Dropbox OAuth URL with secure state and client redirect_uri');
         }
 
         return new Response(
