@@ -255,7 +255,8 @@ async function getBackupStatus(backupId: string, userId: string, adminClient: an
       .single();
 
     if (error || !backupJob) {
-      throw new Error('Backup not found or access denied');
+      console.error('❌ Backup not found:', { backupId, userId, error });
+      throw new Error(error ? `Database error: ${error.message}` : 'Backup not found - it may have been cleaned up or expired');
     }
 
     const { data: queueData } = await adminClient

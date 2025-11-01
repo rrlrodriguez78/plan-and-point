@@ -294,6 +294,9 @@ export function useBackupSystem() {
   };
 
   const pollBackupStatus = async (backupId: string) => {
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+    
     const checkStatus = async () => {
       try {
         console.log('Polling backup status for:', backupId);
@@ -307,10 +310,33 @@ export function useBackupSystem() {
 
         if (error) {
           console.error('Error polling backup status:', error);
-          // Retry after 5 seconds if error
-          setTimeout(checkStatus, 5000);
+          
+          // Check if backup not found (likely cleaned up or expired)
+          if (error.message?.includes('not found') || error.message?.includes('expired')) {
+            console.warn('⚠️ Backup not found, stopping polling:', backupId);
+            toast.error('This backup is no longer available (may have been cleaned up)');
+            
+            // Remove from active jobs
+            setActiveJobs(prev => prev.filter(job => job.backupId !== backupId));
+            return;
+          }
+          
+          // Retry with backoff, but stop after MAX_RETRIES
+          retryCount++;
+          if (retryCount < MAX_RETRIES) {
+            const backoffDelay = Math.min(5000 * retryCount, 30000); // Max 30s
+            console.log(`Retry ${retryCount}/${MAX_RETRIES} in ${backoffDelay}ms`);
+            setTimeout(checkStatus, backoffDelay);
+          } else {
+            console.error('Max retries reached, stopping polling for:', backupId);
+            toast.error('Unable to check backup status. Please refresh the page.');
+            setActiveJobs(prev => prev.filter(job => job.backupId !== backupId));
+          }
           return;
         }
+        
+        // Reset retry count on success
+        retryCount = 0;
 
         console.log('Backup status update:', data);
 
@@ -344,10 +370,19 @@ export function useBackupSystem() {
           toast.error(`Backup failed: ${data.error || 'Unknown error'}`);
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error in polling:', error);
-        // Retry after 5 seconds if error
-        setTimeout(checkStatus, 5000);
+        
+        retryCount++;
+        if (retryCount < MAX_RETRIES) {
+          const backoffDelay = Math.min(5000 * retryCount, 30000);
+          console.log(`Catch block retry ${retryCount}/${MAX_RETRIES} in ${backoffDelay}ms`);
+          setTimeout(checkStatus, backoffDelay);
+        } else {
+          console.error('Max retries reached in catch, stopping polling');
+          toast.error('Unable to check backup status. Please refresh the page.');
+          setActiveJobs(prev => prev.filter(job => job.backupId !== backupId));
+        }
       }
     };
 
