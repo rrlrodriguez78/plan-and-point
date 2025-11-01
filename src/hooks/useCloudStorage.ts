@@ -77,7 +77,38 @@ export function useCloudStorage(tenantId: string) {
       loadDestinations();
       loadSyncHistory();
     }
-  }, [tenantId]);
+  }, [tenantId, loadDestinations]);
+
+  // Listen for OAuth success messages from popup
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify origin matches APP_URL (your custom domain or preview URL)
+      const allowedOrigins = [
+        window.location.origin,
+        import.meta.env.VITE_SUPABASE_URL
+      ];
+      
+      if (!allowedOrigins.some(origin => event.origin.startsWith(origin))) {
+        console.warn('⚠️ Ignoring postMessage from unauthorized origin:', event.origin);
+        return;
+      }
+
+      if (event.data?.type === 'oauth-success') {
+        console.log('✅ OAuth success message received:', event.data);
+        toast.success(`${event.data.provider === 'google_drive' ? 'Google Drive' : 'Dropbox'} conectado exitosamente`);
+        
+        // Reload destinations to show the new connection
+        loadDestinations();
+        loadSyncHistory();
+        
+        // Clear loading state
+        setLoadingProvider(null);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [loadDestinations]);
 
   const connectProvider = async (provider: 'google_drive' | 'dropbox') => {
     try {
@@ -153,27 +184,17 @@ export function useCloudStorage(tenantId: string) {
         } else {
           console.log('✅ OAuth window opened successfully');
           
-          // Poll to detect when popup closes and refresh destinations
-          const pollInterval = setInterval(() => {
-            if (oauthWindow.closed) {
-              console.log('🔄 OAuth popup closed, reloading destinations...');
-              clearInterval(pollInterval);
-              setLoadingProvider(null);
-              loadDestinations();
-            }
-          }, 1000); // Increased from 500ms to 1000ms to reduce load
+          // Note: We rely on postMessage for success notification
+          // Polling for window.closed would cause COOP errors
+          console.log('📡 Waiting for postMessage from OAuth window...');
           
-          // Clear interval after 5 minutes to avoid memory leaks
-          setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
-          
-          // Safety timeout: if OAuth doesn't complete in 30 seconds, clear loading state
+          // Safety timeout: if OAuth doesn't complete in 2 minutes, clear loading state
           setTimeout(() => {
             if (loadingProvider === provider) {
               console.log('⏱️ OAuth timeout reached, clearing loading state...');
               setLoadingProvider(null);
-              clearInterval(pollInterval);
             }
-          }, 30000);
+          }, 120000);
         }
       } else {
         console.error('❌ No authUrl in response:', data);

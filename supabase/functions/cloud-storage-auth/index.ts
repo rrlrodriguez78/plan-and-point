@@ -144,12 +144,14 @@ serve(async (req) => {
 
       if (error) {
         console.error(`❌ OAuth error: ${error}`);
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(error)}`, 302);
+        const appUrl = Deno.env.get('APP_URL');
+        return Response.redirect(`${appUrl}/app/backups?error=${encodeURIComponent(error)}`, 302);
       }
 
       if (!code || !state) {
         console.error('❌ Missing code or state in OAuth callback');
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=missing_params`, 302);
+        const appUrl = Deno.env.get('APP_URL');
+        return Response.redirect(`${appUrl}/app/backups?error=missing_params`, 302);
       }
 
       // 🔒 VALIDATE STATE TOKEN
@@ -170,14 +172,16 @@ serve(async (req) => {
 
       if (stateError || !oauthState) {
         console.error('❌ Invalid or expired state token');
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=invalid_state`, 302);
+        const appUrl = Deno.env.get('APP_URL');
+        return Response.redirect(`${appUrl}/app/backups?error=invalid_state`, 302);
       }
 
       // Check expiration
       if (new Date(oauthState.expires_at) < new Date()) {
         console.error('❌ State token expired');
         await supabase.from('oauth_states').delete().eq('id', oauthState.id);
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=state_expired`, 302);
+        const appUrl = Deno.env.get('APP_URL');
+        return Response.redirect(`${appUrl}/app/backups?error=state_expired`, 302);
       }
 
       // Delete state token (one-time use)
@@ -218,7 +222,8 @@ serve(async (req) => {
           
           if (tokens.error) {
             console.error(`❌ Token exchange error: ${tokens.error_description || tokens.error}`);
-            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(tokens.error)}`, 302);
+            const appUrl = Deno.env.get('APP_URL');
+            return Response.redirect(`${appUrl}/app/backups?error=${encodeURIComponent(tokens.error)}`, 302);
           }
           
           accessToken = tokens.access_token;
@@ -243,7 +248,8 @@ serve(async (req) => {
           
           if (folder.error) {
             console.error(`❌ Folder creation error: ${folder.error.message}`);
-            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=folder_creation_failed`, 302);
+            const appUrl = Deno.env.get('APP_URL');
+            return Response.redirect(`${appUrl}/app/backups?error=folder_creation_failed`, 302);
           }
           
           folderId = folder.id;
@@ -288,7 +294,8 @@ serve(async (req) => {
 
           if (updateError) {
             console.error('❌ Failed to update destination:', updateError);
-            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=update_failed`, 302);
+            const appUrl = Deno.env.get('APP_URL');
+            return Response.redirect(`${appUrl}/app/backups?error=update_failed`, 302);
           }
 
           console.log('✅ Destination reconnected successfully');
@@ -314,20 +321,104 @@ serve(async (req) => {
 
           if (dbError || !newDestination) {
             console.error('❌ Database error:', dbError);
-            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=database_error`, 302);
+            const appUrl = Deno.env.get('APP_URL');
+            return Response.redirect(`${appUrl}/app/backups?error=database_error`, 302);
           }
 
           destinationId = newDestination.id;
           console.log('✅ Cloud destination configured securely');
         }
 
-        // Redirect back to app with appropriate success message
+        // Return HTML that sends postMessage to opener and redirects
         const action = isReconnection ? 'reconnected' : 'connected';
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?success=${action}`, 302);
+        const appUrl = Deno.env.get('APP_URL');
+        const redirectUrl = `${appUrl}/app/backups?success=${action}`;
+        
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Conexión Exitosa</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .success-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem;
+    }
+    p {
+      margin: 0;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">✅</div>
+    <h1>¡Conexión Exitosa!</h1>
+    <p>Redirigiendo...</p>
+  </div>
+  <script>
+    (function() {
+      console.log('🎉 OAuth successful, notifying parent window...');
+      
+      // Notify opener window if exists
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage({
+            type: 'oauth-success',
+            provider: '${provider}',
+            action: '${action}'
+          }, '${appUrl}');
+          console.log('✅ postMessage sent to opener');
+        } catch (e) {
+          console.error('❌ Failed to send postMessage:', e);
+        }
+      }
+      
+      // Redirect after a short delay
+      setTimeout(function() {
+        if (window.opener && !window.opener.closed) {
+          // If opened as popup, close self
+          window.close();
+        } else {
+          // If opened as full page, redirect
+          window.location.href = '${redirectUrl}';
+        }
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>`;
+        
+        return new Response(html, {
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            ...corsHeaders
+          }
+        });
 
       } catch (callbackError: any) {
         console.error('❌ OAuth callback processing error:', callbackError);
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(callbackError.message)}`, 302);
+        const appUrl = Deno.env.get('APP_URL');
+        return Response.redirect(`${appUrl}/app/backups?error=${encodeURIComponent(callbackError.message)}`, 302);
       }
     }
 

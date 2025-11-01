@@ -29,15 +29,21 @@ const BackupsPage: React.FC = () => {
     loadTenant();
   }, []);
 
-  // Handle OAuth callback
+  // Handle OAuth callback from redirect
   useEffect(() => {
     const success = searchParams.get('success');
     const error = searchParams.get('error');
 
-    if (success === 'connected') {
-      toast.success('Google Drive conectado exitosamente');
+    if (success === 'connected' || success === 'reconnected') {
+      const message = success === 'reconnected' 
+        ? 'Conexión restablecida exitosamente' 
+        : 'Google Drive conectado exitosamente';
+      toast.success(message);
       // Clear the URL params
       setSearchParams({});
+      
+      // Force reload to show updated data
+      window.location.reload();
     } else if (error) {
       toast.error(`Error al conectar: ${error}`);
       // Clear the URL params
