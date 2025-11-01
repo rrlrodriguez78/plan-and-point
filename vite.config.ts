@@ -102,36 +102,66 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
         skipWaiting: true,
         clientsClaim: true,
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'gstatic-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+      runtimeCaching: [
+        // 🚫 EXCLUIR Google OAuth/Drive (DEBE IR PRIMERO)
+        {
+          urlPattern: /^https:\/\/(accounts\.google\.com|oauth2\.googleapis\.com)\/.*/i,
+          handler: 'NetworkOnly',
+          options: {
+            cacheName: 'google-oauth-no-cache'
+          }
+        },
+        {
+          urlPattern: /^https:\/\/www\.googleapis\.com\/(drive|upload)\/.*/i,
+          handler: 'NetworkOnly',
+          options: {
+            cacheName: 'google-drive-no-cache'
+          }
+        },
+        {
+          urlPattern: /^https:\/\/.*\.googleusercontent\.com\/.*/i,
+          handler: 'NetworkOnly',
+          options: {
+            cacheName: 'google-usercontent-no-cache'
+          }
+        },
+        {
+          urlPattern: /^https:\/\/.*\.supabase\.co\/functions\/.*/i,
+          handler: 'NetworkOnly',
+          options: {
+            cacheName: 'supabase-functions-no-cache'
+          }
+        },
+        // ✅ Google Fonts (CacheFirst para performance)
+        {
+          urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'google-fonts-cache',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
             }
           }
-        ]
+        },
+        {
+          urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'gstatic-fonts-cache',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
+            }
+          }
+        }
+      ]
       }
     })
   ].filter(Boolean),
