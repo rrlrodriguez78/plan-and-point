@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,6 +56,15 @@ async function decryptToken(encryptedToken: string): Promise<string> {
   );
   
   return new TextDecoder().decode(decryptedData);
+}
+
+// ============= STATE GENERATION =============
+
+function generateState(): string {
+  const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+  const base64 = encodeBase64(randomBytes);
+  // Make it URL-safe
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 // ============= OAUTH HELPERS =============
@@ -113,14 +123,13 @@ serve(async (req) => {
     // ============= HANDLE OAUTH CALLBACK (GET request from Google/Dropbox) =============
     if (req.method === 'GET') {
       const code = url.searchParams.get('code');
-      const state = url.searchParams.get('state'); // This is the tenantId
+      const state = url.searchParams.get('state');
       const error = url.searchParams.get('error');
 
       console.log(`🔄 OAuth callback received: code=${code ? 'present' : 'missing'}, state=${state}, error=${error}`);
 
       if (error) {
         console.error(`❌ OAuth error: ${error}`);
-        // Redirect to app with error
         return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=${encodeURIComponent(error)}`, 302);
       }
 
@@ -129,10 +138,41 @@ serve(async (req) => {
         return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=missing_params`, 302);
       }
 
-      // Determine provider from the OAuth flow
-      // We'll detect it based on which OAuth URL was used
-      // For now, we'll assume Google Drive since that's what the user is testing
-      const provider = 'google_drive';
+      // 🔒 VALIDATE STATE TOKEN
+      console.log('🔐 Validating state token...');
+      
+      // Clean up expired states first
+      await supabase
+        .from('oauth_states')
+        .delete()
+        .lt('expires_at', new Date().toISOString());
+
+      // Retrieve and validate state
+      const { data: oauthState, error: stateError } = await supabase
+        .from('oauth_states')
+        .select('*')
+        .eq('state_token', state)
+        .single();
+
+      if (stateError || !oauthState) {
+        console.error('❌ Invalid or expired state token');
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=invalid_state`, 302);
+      }
+
+      // Check expiration
+      if (new Date(oauthState.expires_at) < new Date()) {
+        console.error('❌ State token expired');
+        await supabase.from('oauth_states').delete().eq('id', oauthState.id);
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=state_expired`, 302);
+      }
+
+      // Delete state token (one-time use)
+      await supabase.from('oauth_states').delete().eq('id', oauthState.id);
+
+      const tenantId = oauthState.tenant_id;
+      const provider = oauthState.provider;
+      
+      console.log(`✅ State validated. TenantId: ${tenantId}, Provider: ${provider}`);
       
       try {
         let accessToken = '';
@@ -203,7 +243,7 @@ serve(async (req) => {
         const { error: dbError } = await supabase
           .from('backup_destinations')
           .insert({
-            tenant_id: state, // state contains the tenantId
+            tenant_id: tenantId, // Use validated tenantId from oauth_states
             destination_type: 'cloud_storage',
             cloud_provider: provider,
             cloud_access_token: encryptedAccessToken,
@@ -251,6 +291,27 @@ serve(async (req) => {
 
     switch (action) {
       case 'authorize': {
+        // Generate secure state token
+        const state = generateState();
+        
+        // Store state → tenantId mapping (expires in 10 minutes)
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const { error: stateError } = await supabase
+          .from('oauth_states')
+          .insert({
+            state_token: state,
+            tenant_id: tenantId,
+            provider: provider,
+            expires_at: expiresAt
+          });
+
+        if (stateError) {
+          console.error('❌ Failed to store OAuth state:', stateError);
+          throw new Error('Failed to initialize OAuth flow');
+        }
+
+        console.log(`🔐 Generated secure state token for ${provider}`);
+
         // Generate OAuth URL for provider
         const redirectUri = `${supabaseUrl}/functions/v1/cloud-storage-auth`;
         let authUrl = '';
@@ -260,16 +321,16 @@ serve(async (req) => {
           if (!clientId) throw new Error('Google Drive Client ID not configured');
           
           const scope = 'https://www.googleapis.com/auth/drive.file';
-          authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${tenantId}&access_type=offline&prompt=consent`;
+          authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&access_type=offline&prompt=consent`;
           
-          console.log('✅ Generated Google Drive OAuth URL');
+          console.log('✅ Generated Google Drive OAuth URL with secure state');
         } else if (provider === 'dropbox') {
           const appKey = Deno.env.get('DROPBOX_APP_KEY');
           if (!appKey) throw new Error('Dropbox App Key not configured');
           
-          authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${tenantId}&token_access_type=offline`;
+          authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&token_access_type=offline`;
           
-          console.log('✅ Generated Dropbox OAuth URL');
+          console.log('✅ Generated Dropbox OAuth URL with secure state');
         }
 
         return new Response(
