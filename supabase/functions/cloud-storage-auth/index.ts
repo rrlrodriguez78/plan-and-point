@@ -242,58 +242,125 @@ serve(async (req) => {
           console.log(`✅ Created Google Drive folder: ${folderId}`);
         }
 
-        // 🔐 STORE TOKENS IN VAULT - First create destination to get ID
-        console.log('💾 Creating backup destination...');
+        // 🔐 CHECK IF DESTINATION ALREADY EXISTS
+        console.log('🔍 Checking for existing destination...');
         
-        const { data: newDestination, error: dbError } = await supabase
+        const { data: existingDestination } = await supabase
           .from('backup_destinations')
-          .insert({
-            tenant_id: tenantId,
-            destination_type: 'cloud_storage',
-            cloud_provider: provider,
-            cloud_folder_id: folderId,
-            cloud_folder_path: '/VirtualTours_Backups',
-            is_active: true
-          })
-          .select('id')
-          .single();
+          .select('id, cloud_access_token_secret_id, cloud_refresh_token_secret_id')
+          .eq('tenant_id', tenantId)
+          .eq('cloud_provider', provider)
+          .maybeSingle();
 
-        if (dbError || !newDestination) {
-          console.error('❌ Database error:', dbError);
-          return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=database_error`, 302);
-        }
+        let destinationId: string;
+        let isReconnection = false;
 
-        console.log('🔒 Storing tokens in vault securely...');
-        
-        try {
-          // Store tokens in vault
-          const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, newDestination.id);
-          const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, newDestination.id);
-          
-          // Update destination with vault secret IDs
-          const { error: updateError } = await supabase
-            .from('backup_destinations')
-            .update({
-              cloud_access_token_secret_id: accessSecretId,
-              cloud_refresh_token_secret_id: refreshSecretId
-            })
-            .eq('id', newDestination.id);
-          
-          if (updateError) {
-            console.error('❌ Failed to update destination with vault IDs:', updateError);
-            throw new Error('Failed to link vault secrets');
+        if (existingDestination) {
+          // UPDATE EXISTING DESTINATION
+          console.log('🔄 Updating existing destination...');
+          isReconnection = true;
+          destinationId = existingDestination.id;
+
+          try {
+            // Update tokens in vault
+            if (existingDestination.cloud_access_token_secret_id && existingDestination.cloud_refresh_token_secret_id) {
+              console.log('🔒 Updating tokens in vault...');
+              await updateTokenInVault(supabase, existingDestination.cloud_access_token_secret_id, accessToken);
+              await updateTokenInVault(supabase, existingDestination.cloud_refresh_token_secret_id, refreshToken);
+            } else {
+              // Create new vault entries if they don't exist
+              console.log('🔒 Creating new vault entries...');
+              const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, destinationId);
+              const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, destinationId);
+              
+              await supabase
+                .from('backup_destinations')
+                .update({
+                  cloud_access_token_secret_id: accessSecretId,
+                  cloud_refresh_token_secret_id: refreshSecretId
+                })
+                .eq('id', destinationId);
+            }
+
+            // Update destination metadata
+            const { error: updateError } = await supabase
+              .from('backup_destinations')
+              .update({
+                cloud_folder_id: folderId,
+                cloud_folder_path: '/VirtualTours_Backups',
+                is_active: true,
+                last_backup_at: new Date().toISOString()
+              })
+              .eq('id', destinationId);
+
+            if (updateError) {
+              console.error('❌ Failed to update destination:', updateError);
+              throw new Error('Failed to update destination');
+            }
+
+            console.log('✅ Destination reconnected successfully');
+          } catch (updateError: any) {
+            console.error('❌ Update error:', updateError);
+            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=update_failed`, 302);
           }
+
+        } else {
+          // CREATE NEW DESTINATION
+          console.log('💾 Creating new backup destination...');
           
-          console.log('✅ Cloud destination configured securely with vault');
-        } catch (vaultError: any) {
-          console.error('❌ Vault storage error:', vaultError);
-          // Clean up: delete the destination if vault storage failed
-          await supabase.from('backup_destinations').delete().eq('id', newDestination.id);
-          return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=vault_error`, 302);
+          const { data: newDestination, error: dbError } = await supabase
+            .from('backup_destinations')
+            .insert({
+              tenant_id: tenantId,
+              destination_type: 'cloud_storage',
+              cloud_provider: provider,
+              cloud_folder_id: folderId,
+              cloud_folder_path: '/VirtualTours_Backups',
+              is_active: true
+            })
+            .select('id')
+            .single();
+
+          if (dbError || !newDestination) {
+            console.error('❌ Database error:', dbError);
+            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=database_error`, 302);
+          }
+
+          destinationId = newDestination.id;
+
+          console.log('🔒 Storing tokens in vault securely...');
+          
+          try {
+            // Store tokens in vault
+            const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, destinationId);
+            const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, destinationId);
+            
+            // Update destination with vault secret IDs
+            const { error: updateError } = await supabase
+              .from('backup_destinations')
+              .update({
+                cloud_access_token_secret_id: accessSecretId,
+                cloud_refresh_token_secret_id: refreshSecretId
+              })
+              .eq('id', destinationId);
+            
+            if (updateError) {
+              console.error('❌ Failed to update destination with vault IDs:', updateError);
+              throw new Error('Failed to link vault secrets');
+            }
+            
+            console.log('✅ Cloud destination configured securely with vault');
+          } catch (vaultError: any) {
+            console.error('❌ Vault storage error:', vaultError);
+            // Clean up: delete the destination if vault storage failed
+            await supabase.from('backup_destinations').delete().eq('id', destinationId);
+            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=vault_error`, 302);
+          }
         }
 
-        // Redirect back to app with success
-        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?success=connected`, 302);
+        // Redirect back to app with appropriate success message
+        const action = isReconnection ? 'reconnected' : 'connected';
+        return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?success=${action}`, 302);
 
       } catch (callbackError: any) {
         console.error('❌ OAuth callback processing error:', callbackError);
