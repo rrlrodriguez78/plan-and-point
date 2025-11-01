@@ -1788,6 +1788,15 @@ export type Database = {
           test_type: string
         }[]
       }
+      vault_create_secret: {
+        Args: { description?: string; name: string; secret: string }
+        Returns: string
+      }
+      vault_read_secret: { Args: { secret_id: string }; Returns: string }
+      vault_update_secret: {
+        Args: { new_secret: string; secret_id: string }
+        Returns: undefined
+      }
       verify_production_readiness: {
         Args: never
         Returns: {

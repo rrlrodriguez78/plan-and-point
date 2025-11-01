@@ -19,46 +19,42 @@ async function storeTokenInVault(
   const secretName = `oauth_${tokenType}_${provider}_${destinationId}`;
   const description = `OAuth ${tokenType} token for ${provider} backup destination`;
   
-  const { data, error } = await supabase
-    .from('vault.secrets')
-    .insert({
-      name: secretName,
-      secret: tokenValue,
-      description: description
-    })
-    .select('id')
-    .single();
+  const { data, error } = await supabase.rpc('vault_create_secret', {
+    secret: tokenValue,
+    name: secretName,
+    description: description
+  });
   
   if (error) {
     console.error(`❌ Failed to store ${tokenType} token in vault:`, error);
     throw new Error(`Failed to store ${tokenType} token securely`);
   }
   
-  console.log(`✅ ${tokenType} token stored in vault: ${data.id}`);
-  return data.id;
+  console.log(`✅ ${tokenType} token stored in vault: ${data}`);
+  return data; // Returns the secret ID
 }
 
 async function getTokenFromVault(supabase: any, secretId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('vault.decrypted_secrets')
-    .select('decrypted_secret')
-    .eq('id', secretId)
-    .single();
+  const { data, error } = await supabase.rpc('vault_read_secret', {
+    secret_id: secretId
+  });
   
   if (error || !data) {
+    console.error('❌ Failed to retrieve token from vault:', error);
     throw new Error('Failed to retrieve token from vault');
   }
   
-  return data.decrypted_secret;
+  return data;
 }
 
 async function updateTokenInVault(supabase: any, secretId: string, newToken: string): Promise<void> {
-  const { error } = await supabase
-    .from('vault.secrets')
-    .update({ secret: newToken })
-    .eq('id', secretId);
+  const { error } = await supabase.rpc('vault_update_secret', {
+    secret_id: secretId,
+    new_secret: newToken
+  });
   
   if (error) {
+    console.error('❌ Failed to update token in vault:', error);
     throw new Error('Failed to update token in vault');
   }
 }
