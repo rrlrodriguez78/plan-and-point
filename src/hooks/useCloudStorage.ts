@@ -218,7 +218,7 @@ export function useCloudStorage(tenantId: string) {
       if (error) throw error;
 
       await loadDestinations();
-      toast.success('Provider disconnected');
+      toast.success('Google Drive desconectado - Tus backups están seguros');
     } catch (error: any) {
       console.error('Error disconnecting provider:', error);
       toast.error('Error disconnecting provider');

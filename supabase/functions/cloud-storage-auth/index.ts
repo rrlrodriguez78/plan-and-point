@@ -229,31 +229,58 @@ serve(async (req) => {
           accessToken = tokens.access_token;
           refreshToken = tokens.refresh_token;
 
-          console.log('✅ Tokens received, creating folder...');
+          console.log('✅ Tokens received, searching for existing folder...');
 
-          // Create root folder in Google Drive
-          const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name: 'VirtualTours_Backups',
-              mimeType: 'application/vnd.google-apps.folder'
-            })
-          });
+          // Search for existing VirtualTours_Backups folder
+          console.log('🔍 Searching for existing VirtualTours_Backups folder...');
+          const searchResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=name='VirtualTours_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+              },
+            }
+          );
 
-          const folder = await folderResponse.json();
-          
-          if (folder.error) {
-            console.error(`❌ Folder creation error: ${folder.error.message}`);
+          if (!searchResponse.ok) {
+            console.error(`❌ Folder search error: ${searchResponse.statusText}`);
             const appUrl = Deno.env.get('APP_URL');
-            return Response.redirect(`${appUrl}/app/backups?error=folder_creation_failed`, 302);
+            return Response.redirect(`${appUrl}/app/backups?error=folder_search_failed`, 302);
           }
-          
-          folderId = folder.id;
-          console.log(`✅ Created Google Drive folder: ${folderId}`);
+
+          const searchData = await searchResponse.json();
+
+          if (searchData.files && searchData.files.length > 0) {
+            // Use existing folder
+            folderId = searchData.files[0].id;
+            console.log('📍 Using existing folder:', folderId);
+          } else {
+            // Create new folder
+            console.log('🆕 Creating new VirtualTours_Backups folder...');
+            const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: 'VirtualTours_Backups',
+                mimeType: 'application/vnd.google-apps.folder'
+              })
+            });
+
+            const folder = await folderResponse.json();
+            
+            if (folder.error) {
+              console.error(`❌ Folder creation error: ${folder.error.message}`);
+              const appUrl = Deno.env.get('APP_URL');
+              return Response.redirect(`${appUrl}/app/backups?error=folder_creation_failed`, 302);
+            }
+            
+            folderId = folder.id;
+            console.log(`✅ New folder created: ${folderId}`);
+          }
         }
 
         // 🔐 ENCRYPT AND STORE TOKENS
@@ -687,30 +714,56 @@ serve(async (req) => {
           accessToken = tokens.access_token;
           refreshToken = tokens.refresh_token;
 
-          console.log('✅ Tokens received, creating folder...');
+          console.log('✅ Tokens received, searching for existing folder...');
 
-          // Create root folder in Google Drive
-          const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name: 'VirtualTours_Backups',
-              mimeType: 'application/vnd.google-apps.folder'
-            })
-          });
+          // Search for existing VirtualTours_Backups folder
+          console.log('🔍 Searching for existing VirtualTours_Backups folder...');
+          const searchResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=name='VirtualTours_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+              },
+            }
+          );
 
-          const folder = await folderResponse.json();
-          
-          if (folder.error) {
-            console.error(`❌ Folder creation error: ${folder.error.message}`);
-            throw new Error('Folder creation failed: ' + folder.error.message);
+          if (!searchResponse.ok) {
+            console.error(`❌ Folder search error: ${searchResponse.statusText}`);
+            throw new Error('Folder search failed: ' + searchResponse.statusText);
           }
-          
-          folderId = folder.id;
-          console.log(`✅ Created Google Drive folder: ${folderId}`);
+
+          const searchData = await searchResponse.json();
+
+          if (searchData.files && searchData.files.length > 0) {
+            // Use existing folder
+            folderId = searchData.files[0].id;
+            console.log('📍 Using existing folder:', folderId);
+          } else {
+            // Create new folder
+            console.log('🆕 Creating new VirtualTours_Backups folder...');
+            const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: 'VirtualTours_Backups',
+                mimeType: 'application/vnd.google-apps.folder'
+              })
+            });
+
+            const folder = await folderResponse.json();
+            
+            if (folder.error) {
+              console.error(`❌ Folder creation error: ${folder.error.message}`);
+              throw new Error('Folder creation failed: ' + folder.error.message);
+            }
+            
+            folderId = folder.id;
+            console.log(`✅ New folder created: ${folderId}`);
+          }
         }
 
         // 🔐 ENCRYPT AND STORE TOKENS
