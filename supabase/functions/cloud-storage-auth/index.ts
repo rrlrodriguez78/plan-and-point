@@ -286,21 +286,21 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, provider, tenantId, destinationId } = await req.json();
-    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}`);
+    const { action, provider, tenant_id, destinationId } = await req.json();
+    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}`);
 
     switch (action) {
       case 'authorize': {
         // Generate secure state token
         const state = generateState();
         
-        // Store state → tenantId mapping (expires in 10 minutes)
+        // Store state → tenant_id mapping (expires in 10 minutes)
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
         const { error: stateError } = await supabase
           .from('oauth_states')
           .insert({
             state_token: state,
-            tenant_id: tenantId,
+            tenant_id: tenant_id,
             provider: provider,
             expires_at: expiresAt
           });
