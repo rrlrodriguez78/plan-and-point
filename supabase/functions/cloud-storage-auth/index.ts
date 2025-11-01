@@ -290,7 +290,7 @@ serve(async (req) => {
     }
 
     const { action, provider, tenant_id, redirect_uri, destinationId, destination_id, code, state } = await req.json();
-    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}, redirect_uri: ${redirect_uri}`);
+    console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}, redirect_uri: ${redirect_uri}, destinationId: ${destinationId}, destination_id: ${destination_id}`);
 
     switch (action) {
       case 'authorize': {
@@ -389,7 +389,7 @@ serve(async (req) => {
             await supabase
               .from('backup_destinations')
               .update({ cloud_access_token: encryptedNewToken })
-              .eq('id', destinationId);
+              .eq('id', destId);
             
             // Retry test
             const retryResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
@@ -417,7 +417,7 @@ serve(async (req) => {
             await supabase
               .from('backup_destinations')
               .update({ cloud_access_token: encryptedNewToken })
-              .eq('id', destinationId);
+              .eq('id', destId);
             
             // Retry test
             const retryResponse = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
