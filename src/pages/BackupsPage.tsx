@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { BackupManager } from '@/components/backups/BackupManager';
 import { BackupTester } from '@/components/backups/BackupTester';
-import { BackupDestinationSettings } from '@/components/backups/BackupDestinationSettings';
+import BackupSettings from '@/components/backups/BackupSettings';
 import { BackupSyncHistory } from '@/components/backups/BackupSyncHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -74,7 +74,7 @@ const BackupsPage: React.FC = () => {
           </TabsContent>
           
           <TabsContent value="settings">
-            {tenantId && <BackupDestinationSettings tenantId={tenantId} />}
+            {tenantId && <BackupSettings tenantId={tenantId} />}
           </TabsContent>
           
           <TabsContent value="history">
