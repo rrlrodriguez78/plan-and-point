@@ -12,69 +12,29 @@ const AuthCallback = () => {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    const error = urlParams.get('error');
+    const oauthSuccess = urlParams.get('oauth_success');
+    const oauthError = urlParams.get('oauth_error');
 
-    if (error) {
-      setStatus('error');
-      setErrorMessage('Autenticación cancelada por el usuario');
-      setTimeout(() => navigate('/app/backups'), 3000);
+    // Edge function handles OAuth flow and redirects with success/error params
+    if (oauthSuccess === 'true') {
+      setStatus('success');
+      setTimeout(() => navigate('/app/backups?oauth_success=true'), 2000);
       return;
     }
 
-    if (code && state) {
-      exchangeCodeForToken(code, state);
-    } else {
+    if (oauthError === 'true' || oauthError) {
       setStatus('error');
-      setErrorMessage('Parámetros de autenticación inválidos');
-      setTimeout(() => navigate('/app/backups'), 3000);
+      setErrorMessage(oauthError === 'true' ? 'Error al conectar con el proveedor' : oauthError);
+      setTimeout(() => navigate('/app/backups?oauth_error=true'), 3000);
+      return;
     }
+
+    // Fallback: no valid params
+    setStatus('error');
+    setErrorMessage('Parámetros de autenticación inválidos');
+    setTimeout(() => navigate('/app/backups'), 3000);
   }, [navigate]);
 
-  const exchangeCodeForToken = async (code: string, state: string) => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (!session.session) {
-        throw new Error('No hay sesión activa');
-      }
-
-      console.log('🔍 Sending code and state to edge function...');
-
-      // Call the cloud-storage-auth edge function with code and state
-      // The edge function will validate the state and complete the OAuth flow
-      const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
-        body: {
-          action: 'callback',
-          code,
-          state
-        }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-
-      if (data.success) {
-        console.log('✅ OAuth callback successful');
-        setStatus('success');
-        
-        // Redirect to backups page with success parameter
-        setTimeout(() => {
-          navigate('/app/backups?oauth_success=true');
-        }, 2000);
-      } else {
-        throw new Error(data.error || 'Error al conectar con Google Drive');
-      }
-    } catch (error) {
-      console.error('❌ Error en autenticación:', error);
-      setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Error desconocido');
-      setTimeout(() => navigate('/app/backups?oauth_error=true'), 3000);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">

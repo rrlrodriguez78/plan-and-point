@@ -83,7 +83,8 @@ export function useCloudStorage(tenantId: string) {
     try {
       setLoadingProvider(provider);
       
-      const redirectUri = window.location.origin + '/auth/callback';
+      // Use edge function URL as redirect_uri - works on any domain
+      const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cloud-storage-auth`;
       
       console.log('🔍 Starting OAuth flow:', {
         provider,
