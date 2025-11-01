@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,7 +61,8 @@ async function decryptToken(encryptedToken: string): Promise<string> {
 
 function generateState(): string {
   const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-  const base64 = encodeBase64(randomBytes);
+  // Convert to base64 using native btoa
+  const base64 = btoa(String.fromCharCode(...randomBytes));
   // Make it URL-safe
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
