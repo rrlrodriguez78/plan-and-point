@@ -14,8 +14,12 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       injectRegister: 'auto',
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      },
       includeAssets: ['favicon.ico', 'icons/*.png', 'splash/*.png', 'lion-original.jpg'],
       manifest: {
         name: 'VirtualTour - Tours Virtuales 360°',
