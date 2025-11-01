@@ -30,6 +30,7 @@ import CompatibilityReport from "./pages/CompatibilityReport";
 import SwipeDemo from "./pages/SwipeDemo";
 import PWASplashGenerator from "./pages/PWASplashGenerator";
 import BackupsPage from "./pages/BackupsPage";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
                   <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<Auth />} />
                   <Route path="/signup" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/share/:token" element={<SharedTour />} />
                   <Route path="/viewer/:id" element={<Viewer />} />
                   

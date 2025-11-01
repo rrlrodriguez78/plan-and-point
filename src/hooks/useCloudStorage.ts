@@ -86,20 +86,22 @@ export function useCloudStorage(tenantId: string) {
         body: { 
           action: 'authorize',
           provider,
-          tenantId
+          tenant_id: tenantId,
+          redirect_uri: window.location.origin + '/auth/callback'
         }
       });
 
       if (error) throw error;
 
       // Redirect to OAuth URL
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
+      if (data.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        toast.error('No authorization URL received');
       }
     } catch (error: any) {
       console.error('Error connecting provider:', error);
       toast.error(`Error connecting to ${provider}`);
-    } finally {
       setLoadingProvider(null);
     }
   };
@@ -130,7 +132,7 @@ export function useCloudStorage(tenantId: string) {
       const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
         body: { 
           action: 'test-connection',
-          destinationId
+          destination_id: destinationId
         }
       });
 
