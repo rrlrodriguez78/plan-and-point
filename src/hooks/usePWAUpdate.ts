@@ -93,7 +93,11 @@ export function usePWAUpdate(options?: Partial<PWAUpdateOptions>) {
       typeof window !== 'undefined' &&
       'serviceWorker' in navigator
     ) {
-      const workbox = new Workbox('/sw.js', { scope: '/' });
+      const swPath = import.meta.env.MODE === 'production' ? '/sw.js' : '/dev-sw.js?dev-sw';
+      const workbox = new Workbox(swPath, { 
+        scope: '/',
+        type: 'module' 
+      });
 
       workbox.addEventListener('installed', async (event) => {
         if (event.isUpdate) {
@@ -129,6 +133,9 @@ export function usePWAUpdate(options?: Partial<PWAUpdateOptions>) {
 
       workbox.register().catch((error) => {
         console.error('❌ Service worker registration failed:', error);
+        if (error.message && error.message.includes('MIME')) {
+          console.warn('⚠️ Service Worker MIME type issue - this is expected in dev mode');
+        }
       });
 
       setWb(workbox);

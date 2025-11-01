@@ -82,6 +82,14 @@ export function useCloudStorage(tenantId: string) {
   const connectProvider = async (provider: 'google_drive' | 'dropbox') => {
     try {
       setLoadingProvider(provider);
+      
+      console.log('🔍 Starting OAuth flow:', {
+        provider,
+        tenantId,
+        currentUrl: window.location.href,
+        redirectUri: window.location.origin + '/auth/callback'
+      });
+      
       const { data, error } = await supabase.functions.invoke('cloud-storage-auth', {
         body: { 
           action: 'authorize',
@@ -91,17 +99,24 @@ export function useCloudStorage(tenantId: string) {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw error;
+      }
+
+      console.log('✅ OAuth URL received:', data.authUrl);
 
       // Redirect to OAuth URL
       if (data.authUrl) {
+        console.log('🚀 Redirecting to Google OAuth...');
         window.location.href = data.authUrl;
       } else {
+        console.error('❌ No authUrl in response:', data);
         toast.error('No authorization URL received');
       }
     } catch (error: any) {
-      console.error('Error connecting provider:', error);
-      toast.error(`Error connecting to ${provider}`);
+      console.error('❌ Connect provider failed:', error);
+      toast.error(`Error connecting to ${provider}: ${error.message}`);
       setLoadingProvider(null);
     }
   };
