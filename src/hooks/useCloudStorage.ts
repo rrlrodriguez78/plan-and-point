@@ -106,10 +106,27 @@ export function useCloudStorage(tenantId: string) {
 
       console.log('✅ OAuth URL received:', data.authUrl);
 
-      // Redirect to OAuth URL
+      // Open OAuth URL
       if (data.authUrl) {
-        console.log('🚀 Redirecting to Google OAuth...');
-        window.location.href = data.authUrl;
+        console.log('🚀 Opening Google OAuth in popup window...');
+        
+        // Try to open in popup window
+        const oauthWindow = window.open(
+          data.authUrl, 
+          'google_oauth',
+          'width=600,height=700,scrollbars=yes,location=yes'
+        );
+        
+        // If popup blocked or failed, fallback to full redirect
+        if (!oauthWindow || oauthWindow.closed || typeof oauthWindow.closed === 'undefined') {
+          console.log('⚠️ Popup blocked, using full page redirect...');
+          // Use window.top to escape iframe if in preview
+          if (window.top) {
+            window.top.location.href = data.authUrl;
+          } else {
+            window.location.href = data.authUrl;
+          }
+        }
       } else {
         console.error('❌ No authUrl in response:', data);
         toast.error('No authorization URL received');
