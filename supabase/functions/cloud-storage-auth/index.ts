@@ -289,7 +289,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, provider, tenant_id, redirect_uri, destinationId } = await req.json();
+    const { action, provider, tenant_id, redirect_uri, destinationId, code, state } = await req.json();
     console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}, redirect_uri: ${redirect_uri}`);
 
     switch (action) {
@@ -451,7 +451,7 @@ serve(async (req) => {
 
       case 'callback': {
         // Handle OAuth callback from React component
-        const { code, state } = await req.json();
+        // code and state already parsed from request body at line 292
         
         console.log(`🔄 Processing OAuth callback: code=${code ? 'present' : 'missing'}, state=${state}`);
 
