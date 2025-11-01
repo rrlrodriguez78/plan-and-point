@@ -289,7 +289,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, provider, tenant_id, redirect_uri, destinationId, code, state } = await req.json();
+    const { action, provider, tenant_id, redirect_uri, destinationId, destination_id, code, state } = await req.json();
     console.log(`🔐 Cloud storage auth action: ${action}, provider: ${provider}, tenant_id: ${tenant_id}, redirect_uri: ${redirect_uri}`);
 
     switch (action) {
@@ -351,12 +351,20 @@ serve(async (req) => {
 
       case 'test-connection': {
         // Test cloud connection by decrypting token and making API call
-        console.log(`🧪 Testing connection for destination: ${destinationId}`);
+        const destId = destinationId || destination_id;
+        console.log(`🧪 Testing connection for destination: ${destId}`);
+        
+        if (!destId) {
+          return new Response(JSON.stringify({ error: 'Missing destination ID' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         
         const { data: destination } = await supabase
           .from('backup_destinations')
           .select('*')
-          .eq('id', destinationId)
+          .eq('id', destId)
           .single();
 
         if (!destination) throw new Error('Destination not found');
