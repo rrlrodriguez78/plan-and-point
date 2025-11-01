@@ -570,19 +570,50 @@ serve(async (req) => {
 
         console.log('🔒 Tokens encrypted, storing in database');
 
-        // Store encrypted tokens in database
-        const { error: dbError } = await supabase
+        // Check if destination already exists for this tenant + provider
+        const { data: existingDest } = await supabase
           .from('backup_destinations')
-          .insert({
-            tenant_id: tenantId,
-            destination_type: 'cloud_storage',
-            cloud_provider: provider,
-            cloud_access_token: encryptedAccessToken,
-            cloud_refresh_token: encryptedRefreshToken,
-            cloud_folder_id: folderId,
-            cloud_folder_path: '/VirtualTours_Backups',
-            is_active: true
-          });
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('cloud_provider', provider)
+          .single();
+
+        let dbError = null;
+
+        if (existingDest) {
+          // UPDATE existing entry
+          console.log(`🔄 Updating existing destination: ${existingDest.id}`);
+          const { error } = await supabase
+            .from('backup_destinations')
+            .update({
+              cloud_access_token: encryptedAccessToken,
+              cloud_refresh_token: encryptedRefreshToken,
+              cloud_folder_id: folderId,
+              cloud_folder_path: '/VirtualTours_Backups',
+              is_active: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingDest.id);
+          
+          dbError = error;
+        } else {
+          // INSERT new entry
+          console.log('➕ Creating new destination entry');
+          const { error } = await supabase
+            .from('backup_destinations')
+            .insert({
+              tenant_id: tenantId,
+              destination_type: 'cloud_storage',
+              cloud_provider: provider,
+              cloud_access_token: encryptedAccessToken,
+              cloud_refresh_token: encryptedRefreshToken,
+              cloud_folder_id: folderId,
+              cloud_folder_path: '/VirtualTours_Backups',
+              is_active: true
+            });
+          
+          dbError = error;
+        }
 
         if (dbError) {
           console.error('❌ Database error:', dbError);
