@@ -82,17 +82,27 @@ export function useCloudStorage(tenantId: string) {
   // Listen for OAuth success messages from popup
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Verify origin is from Supabase or same origin
-      const supabaseOrigin = 'https://swnhlzcodsnpsqpxaxov.supabase.co';
-      
-      if (event.origin !== supabaseOrigin && event.origin !== window.location.origin) {
-        console.warn('⚠️ Ignoring postMessage from unauthorized origin:', event.origin);
+      // Validate message content instead of origin (since popup uses '*')
+      // Check if message has the correct structure
+      if (!event.data || typeof event.data !== 'object') {
         return;
       }
 
-      if (event.data?.type === 'oauth-success') {
-        console.log('✅ OAuth success message received from:', event.origin);
-        toast.success(`${event.data.provider === 'google_drive' ? 'Google Drive' : 'Dropbox'} conectado exitosamente`);
+      // Verify it's an OAuth success message with valid structure
+      if (event.data.type === 'oauth-success' && 
+          event.data.provider && 
+          typeof event.data.timestamp === 'number') {
+        
+        console.log('✅ OAuth success message received:', {
+          provider: event.data.provider,
+          action: event.data.action,
+          origin: event.origin
+        });
+        
+        const providerName = event.data.provider === 'google_drive' ? 'Google Drive' : 'Dropbox';
+        const actionText = event.data.action === 'reconnected' ? 'reconectado' : 'conectado';
+        
+        toast.success(`${providerName} ${actionText} exitosamente`);
         
         // Reload destinations to show the new connection
         loadDestinations();

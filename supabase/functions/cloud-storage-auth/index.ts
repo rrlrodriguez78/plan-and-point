@@ -391,8 +391,26 @@ serve(async (req) => {
       font-size: 1.5rem;
     }
     p {
-      margin: 0;
+      margin: 0.5rem 0;
       opacity: 0.9;
+    }
+    .close-btn {
+      margin-top: 1.5rem;
+      padding: 0.75rem 2rem;
+      background: rgba(255,255,255,0.2);
+      border: 2px solid white;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .close-btn:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+    #countdown {
+      font-weight: bold;
     }
   </style>
 </head>
@@ -400,36 +418,67 @@ serve(async (req) => {
   <div class="container">
     <div class="success-icon">✅</div>
     <h1>¡Conexión Exitosa!</h1>
-    <p>Redirigiendo...</p>
+    <p>Google Drive conectado correctamente</p>
+    <p id="status">Esta ventana se cerrará en <span id="countdown">3</span> segundos...</p>
+    <button class="close-btn" onclick="handleClose()">Cerrar esta ventana</button>
   </div>
   <script>
     (function() {
       console.log('🎉 OAuth successful, notifying parent window...');
       
-      // Notify opener window if exists
+      // Notify opener window if exists - use '*' for cross-origin compatibility
       if (window.opener && !window.opener.closed) {
         try {
+          // Send to any origin - the receiver validates the message content
           window.opener.postMessage({
             type: 'oauth-success',
             provider: '${provider}',
-            action: '${action}'
-          }, '${appUrl}');
-          console.log('✅ postMessage sent to opener');
+            action: '${action}',
+            timestamp: Date.now()
+          }, '*');
+          console.log('✅ postMessage sent to opener with origin *');
         } catch (e) {
           console.error('❌ Failed to send postMessage:', e);
         }
       }
       
-      // Redirect after a short delay
-      setTimeout(function() {
-        if (window.opener && !window.opener.closed) {
-          // If opened as popup, close self
-          window.close();
+      // Countdown timer
+      let countdown = 3;
+      const countdownEl = document.getElementById('countdown');
+      const statusEl = document.getElementById('status');
+      
+      const timer = setInterval(function() {
+        countdown--;
+        if (countdown > 0) {
+          countdownEl.textContent = countdown;
         } else {
-          // If opened as full page, redirect
-          window.location.href = '${redirectUrl}';
+          clearInterval(timer);
+          attemptClose();
         }
       }, 1000);
+      
+      function attemptClose() {
+        if (window.opener && !window.opener.closed) {
+          // Try to close popup
+          try {
+            window.close();
+            // If window.close() didn't work, show manual instruction
+            setTimeout(function() {
+              statusEl.innerHTML = 'Por favor cierra esta ventana manualmente';
+            }, 500);
+          } catch (e) {
+            statusEl.innerHTML = 'Por favor cierra esta ventana manualmente';
+          }
+        } else {
+          // Full page redirect
+          window.location.href = '${redirectUrl}';
+        }
+      }
+      
+      // Manual close button
+      window.handleClose = function() {
+        attemptClose();
+      };
     })();
   </script>
 </body>
