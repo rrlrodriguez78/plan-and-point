@@ -6,37 +6,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ============= VAULT UTILITIES =============
-// Retrieve tokens from Supabase Vault for enhanced security
+// ============= ENCRYPTION UTILITIES =============
+// Use Web Crypto API for secure token decryption
 
-async function getTokenFromVault(supabase: any, secretId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('vault.decrypted_secrets')
-    .select('decrypted_secret')
-    .eq('id', secretId)
-    .single();
+async function decryptToken(encryptedToken: string): Promise<string> {
+  const encryptionKey = Deno.env.get('CLOUD_ENCRYPTION_KEY');
+  if (!encryptionKey) throw new Error('CLOUD_ENCRYPTION_KEY not configured');
   
-  if (error || !data) {
-    throw new Error('Failed to retrieve token from vault');
-  }
+  // Decode from base64
+  const combined = Uint8Array.from(atob(encryptedToken), c => c.charCodeAt(0));
   
-  return data.decrypted_secret;
+  // Extract IV and encrypted data
+  const iv = combined.slice(0, 12);
+  const encrypted = combined.slice(12);
+  
+  // Import decryption key
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(encryptionKey.padEnd(32, '0').slice(0, 32)),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+  
+  // Decrypt
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encrypted
+  );
+  
+  return new TextDecoder().decode(decrypted);
 }
 
-async function updateTokenInVault(supabase: any, secretId: string, newToken: string): Promise<void> {
-  const { error } = await supabase
-    .from('vault.secrets')
-    .update({ secret: newToken })
-    .eq('id', secretId);
+async function encryptToken(token: string): Promise<string> {
+  const encryptionKey = Deno.env.get('CLOUD_ENCRYPTION_KEY');
+  if (!encryptionKey) throw new Error('CLOUD_ENCRYPTION_KEY not configured');
   
-  if (error) {
-    throw new Error('Failed to update token in vault');
-  }
+  // Generate a random IV
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  // Import encryption key
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(encryptionKey.padEnd(32, '0').slice(0, 32)),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+  
+  // Encrypt the token
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(token)
+  );
+  
+  // Combine IV and encrypted data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  // Return as base64
+  return btoa(String.fromCharCode(...combined));
 }
 
 // ============= TOKEN REFRESH UTILITIES =============
 
-async function refreshGoogleToken(refreshToken: string, supabase: any, accessTokenSecretId: string): Promise<string> {
+async function refreshGoogleToken(refreshToken: string, supabase: any, destinationId: string): Promise<string> {
   const clientId = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
   const clientSecret = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
   
@@ -59,14 +96,18 @@ async function refreshGoogleToken(refreshToken: string, supabase: any, accessTok
   
   const newAccessToken = tokens.access_token;
   
-  // Update vault with new token
-  await updateTokenInVault(supabase, accessTokenSecretId, newAccessToken);
+  // Encrypt and update database
+  const encryptedToken = await encryptToken(newAccessToken);
+  await supabase
+    .from('backup_destinations')
+    .update({ cloud_access_token: encryptedToken })
+    .eq('id', destinationId);
   
-  console.log('✅ Google Drive token refreshed in vault');
+  console.log('✅ Google Drive token refreshed');
   return newAccessToken;
 }
 
-async function refreshDropboxToken(refreshToken: string, supabase: any, accessTokenSecretId: string): Promise<string> {
+async function refreshDropboxToken(refreshToken: string, supabase: any, destinationId: string): Promise<string> {
   const appKey = Deno.env.get('DROPBOX_APP_KEY');
   const appSecret = Deno.env.get('DROPBOX_APP_SECRET');
   
@@ -89,10 +130,14 @@ async function refreshDropboxToken(refreshToken: string, supabase: any, accessTo
   
   const newAccessToken = tokens.access_token;
   
-  // Update vault with new token
-  await updateTokenInVault(supabase, accessTokenSecretId, newAccessToken);
+  // Encrypt and update database
+  const encryptedToken = await encryptToken(newAccessToken);
+  await supabase
+    .from('backup_destinations')
+    .update({ cloud_access_token: encryptedToken })
+    .eq('id', destinationId);
   
-  console.log('✅ Dropbox token refreshed in vault');
+  console.log('✅ Dropbox token refreshed');
   return newAccessToken;
 }
 
@@ -160,13 +205,13 @@ serve(async (req) => {
 
         console.log(`📦 File downloaded, size: ${fileData.size} bytes`);
 
-        // 🔓 RETRIEVE TOKENS FROM VAULT
-        if (!destination.cloud_access_token_secret_id || !destination.cloud_refresh_token_secret_id) {
-          throw new Error('Destination tokens not configured in vault');
+        // 🔓 DECRYPT TOKENS
+        if (!destination.cloud_access_token || !destination.cloud_refresh_token) {
+          throw new Error('Destination tokens not configured');
         }
         
-        const accessToken = await getTokenFromVault(supabase, destination.cloud_access_token_secret_id);
-        const refreshToken = await getTokenFromVault(supabase, destination.cloud_refresh_token_secret_id);
+        const accessToken = await decryptToken(destination.cloud_access_token);
+        const refreshToken = await decryptToken(destination.cloud_refresh_token);
 
         // Upload to cloud provider
         let cloudFileId = '';
@@ -200,7 +245,7 @@ serve(async (req) => {
           // If unauthorized, refresh token and retry
           if (uploadResponse.status === 401) {
             console.log('🔄 Token expired, refreshing Google Drive token...');
-            currentAccessToken = await refreshGoogleToken(refreshToken, supabase, destination.cloud_access_token_secret_id);
+            currentAccessToken = await refreshGoogleToken(refreshToken, supabase, destination.id);
             
             uploadResponse = await fetch(
               'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
@@ -251,7 +296,7 @@ serve(async (req) => {
           // If unauthorized, refresh token and retry
           if (uploadResponse.status === 401) {
             console.log('🔄 Token expired, refreshing Dropbox token...');
-            currentAccessToken = await refreshDropboxToken(refreshToken, supabase, destination.cloud_access_token_secret_id);
+            currentAccessToken = await refreshDropboxToken(refreshToken, supabase, destination.id);
             
             uploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
               method: 'POST',

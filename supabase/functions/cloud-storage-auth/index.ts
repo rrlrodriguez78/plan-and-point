@@ -6,57 +6,69 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ============= VAULT UTILITIES =============
-// Store tokens in Supabase Vault for enhanced security
+// ============= ENCRYPTION UTILITIES =============
+// Use Web Crypto API for secure token encryption
 
-async function storeTokenInVault(
-  supabase: any,
-  tokenValue: string,
-  tokenType: 'access' | 'refresh',
-  provider: string,
-  destinationId: string
-): Promise<string> {
-  const secretName = `oauth_${tokenType}_${provider}_${destinationId}`;
-  const description = `OAuth ${tokenType} token for ${provider} backup destination`;
+async function encryptToken(token: string): Promise<string> {
+  const encryptionKey = Deno.env.get('CLOUD_ENCRYPTION_KEY');
+  if (!encryptionKey) throw new Error('CLOUD_ENCRYPTION_KEY not configured');
   
-  const { data, error } = await supabase.rpc('vault_create_secret', {
-    secret: tokenValue,
-    name: secretName,
-    description: description
-  });
+  // Generate a random IV
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   
-  if (error) {
-    console.error(`❌ Failed to store ${tokenType} token in vault:`, error);
-    throw new Error(`Failed to store ${tokenType} token securely`);
-  }
+  // Import encryption key
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(encryptionKey.padEnd(32, '0').slice(0, 32)),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
   
-  console.log(`✅ ${tokenType} token stored in vault: ${data}`);
-  return data; // Returns the secret ID
+  // Encrypt the token
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(token)
+  );
+  
+  // Combine IV and encrypted data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  // Return as base64
+  return btoa(String.fromCharCode(...combined));
 }
 
-async function getTokenFromVault(supabase: any, secretId: string): Promise<string> {
-  const { data, error } = await supabase.rpc('vault_read_secret', {
-    secret_id: secretId
-  });
+async function decryptToken(encryptedToken: string): Promise<string> {
+  const encryptionKey = Deno.env.get('CLOUD_ENCRYPTION_KEY');
+  if (!encryptionKey) throw new Error('CLOUD_ENCRYPTION_KEY not configured');
   
-  if (error || !data) {
-    console.error('❌ Failed to retrieve token from vault:', error);
-    throw new Error('Failed to retrieve token from vault');
-  }
+  // Decode from base64
+  const combined = Uint8Array.from(atob(encryptedToken), c => c.charCodeAt(0));
   
-  return data;
-}
-
-async function updateTokenInVault(supabase: any, secretId: string, newToken: string): Promise<void> {
-  const { error } = await supabase.rpc('vault_update_secret', {
-    secret_id: secretId,
-    new_secret: newToken
-  });
+  // Extract IV and encrypted data
+  const iv = combined.slice(0, 12);
+  const encrypted = combined.slice(12);
   
-  if (error) {
-    console.error('❌ Failed to update token in vault:', error);
-    throw new Error('Failed to update token in vault');
-  }
+  // Import decryption key
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(encryptionKey.padEnd(32, '0').slice(0, 32)),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+  
+  // Decrypt
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encrypted
+  );
+  
+  return new TextDecoder().decode(decrypted);
 }
 
 // ============= STATE GENERATION =============
@@ -238,12 +250,17 @@ serve(async (req) => {
           console.log(`✅ Created Google Drive folder: ${folderId}`);
         }
 
+        // 🔐 ENCRYPT AND STORE TOKENS
+        console.log('🔒 Encrypting tokens...');
+        const encryptedAccessToken = await encryptToken(accessToken);
+        const encryptedRefreshToken = await encryptToken(refreshToken);
+
         // 🔐 CHECK IF DESTINATION ALREADY EXISTS
         console.log('🔍 Checking for existing destination...');
         
         const { data: existingDestination } = await supabase
           .from('backup_destinations')
-          .select('id, cloud_access_token_secret_id, cloud_refresh_token_secret_id')
+          .select('id')
           .eq('tenant_id', tenantId)
           .eq('cloud_provider', provider)
           .maybeSingle();
@@ -257,48 +274,24 @@ serve(async (req) => {
           isReconnection = true;
           destinationId = existingDestination.id;
 
-          try {
-            // Update tokens in vault
-            if (existingDestination.cloud_access_token_secret_id && existingDestination.cloud_refresh_token_secret_id) {
-              console.log('🔒 Updating tokens in vault...');
-              await updateTokenInVault(supabase, existingDestination.cloud_access_token_secret_id, accessToken);
-              await updateTokenInVault(supabase, existingDestination.cloud_refresh_token_secret_id, refreshToken);
-            } else {
-              // Create new vault entries if they don't exist
-              console.log('🔒 Creating new vault entries...');
-              const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, destinationId);
-              const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, destinationId);
-              
-              await supabase
-                .from('backup_destinations')
-                .update({
-                  cloud_access_token_secret_id: accessSecretId,
-                  cloud_refresh_token_secret_id: refreshSecretId
-                })
-                .eq('id', destinationId);
-            }
+          const { error: updateError } = await supabase
+            .from('backup_destinations')
+            .update({
+              cloud_access_token: encryptedAccessToken,
+              cloud_refresh_token: encryptedRefreshToken,
+              cloud_folder_id: folderId,
+              cloud_folder_path: '/VirtualTours_Backups',
+              is_active: true,
+              last_backup_at: new Date().toISOString()
+            })
+            .eq('id', destinationId);
 
-            // Update destination metadata
-            const { error: updateError } = await supabase
-              .from('backup_destinations')
-              .update({
-                cloud_folder_id: folderId,
-                cloud_folder_path: '/VirtualTours_Backups',
-                is_active: true,
-                last_backup_at: new Date().toISOString()
-              })
-              .eq('id', destinationId);
-
-            if (updateError) {
-              console.error('❌ Failed to update destination:', updateError);
-              throw new Error('Failed to update destination');
-            }
-
-            console.log('✅ Destination reconnected successfully');
-          } catch (updateError: any) {
-            console.error('❌ Update error:', updateError);
+          if (updateError) {
+            console.error('❌ Failed to update destination:', updateError);
             return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=update_failed`, 302);
           }
+
+          console.log('✅ Destination reconnected successfully');
 
         } else {
           // CREATE NEW DESTINATION
@@ -310,6 +303,8 @@ serve(async (req) => {
               tenant_id: tenantId,
               destination_type: 'cloud_storage',
               cloud_provider: provider,
+              cloud_access_token: encryptedAccessToken,
+              cloud_refresh_token: encryptedRefreshToken,
               cloud_folder_id: folderId,
               cloud_folder_path: '/VirtualTours_Backups',
               is_active: true
@@ -323,35 +318,7 @@ serve(async (req) => {
           }
 
           destinationId = newDestination.id;
-
-          console.log('🔒 Storing tokens in vault securely...');
-          
-          try {
-            // Store tokens in vault
-            const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, destinationId);
-            const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, destinationId);
-            
-            // Update destination with vault secret IDs
-            const { error: updateError } = await supabase
-              .from('backup_destinations')
-              .update({
-                cloud_access_token_secret_id: accessSecretId,
-                cloud_refresh_token_secret_id: refreshSecretId
-              })
-              .eq('id', destinationId);
-            
-            if (updateError) {
-              console.error('❌ Failed to update destination with vault IDs:', updateError);
-              throw new Error('Failed to link vault secrets');
-            }
-            
-            console.log('✅ Cloud destination configured securely with vault');
-          } catch (vaultError: any) {
-            console.error('❌ Vault storage error:', vaultError);
-            // Clean up: delete the destination if vault storage failed
-            await supabase.from('backup_destinations').delete().eq('id', destinationId);
-            return Response.redirect(`${Deno.env.get('APP_URL') || 'https://090a7828-d3d3-4f30-91e7-e22507021ad8.lovableproject.com'}/app/backups?error=vault_error`, 302);
-          }
+          console.log('✅ Cloud destination configured securely');
         }
 
         // Redirect back to app with appropriate success message
@@ -461,12 +428,13 @@ serve(async (req) => {
 
         if (!destination) throw new Error('Destination not found');
 
-        // 🔓 RETRIEVE TOKEN FROM VAULT
-        if (!destination.cloud_access_token_secret_id) {
-          throw new Error('No access token configured for this destination');
+        // 🔓 DECRYPT TOKEN
+        if (!destination.cloud_access_token || !destination.cloud_refresh_token) {
+          throw new Error('No tokens configured for this destination');
         }
         
-        const accessToken = await getTokenFromVault(supabase, destination.cloud_access_token_secret_id);
+        let accessToken = await decryptToken(destination.cloud_access_token);
+        const refreshToken = await decryptToken(destination.cloud_refresh_token);
         let success = false;
 
         if (destination.cloud_provider === 'google_drive') {
@@ -477,20 +445,16 @@ serve(async (req) => {
           if (response.status === 401) {
             // Token expired, try to refresh
             console.log('🔄 Access token expired, refreshing...');
-            
-            if (!destination.cloud_refresh_token_secret_id) {
-              throw new Error('No refresh token available');
-            }
-            
-            const refreshToken = await getTokenFromVault(supabase, destination.cloud_refresh_token_secret_id);
-            const newAccessToken = await refreshGoogleToken(refreshToken);
-            
-            // Update vault with new token
-            await updateTokenInVault(supabase, destination.cloud_access_token_secret_id, newAccessToken);
+            accessToken = await refreshGoogleToken(refreshToken);
+            const encryptedToken = await encryptToken(accessToken);
+            await supabase
+              .from('backup_destinations')
+              .update({ cloud_access_token: encryptedToken })
+              .eq('id', destId);
             
             // Retry test
             const retryResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
-              headers: { 'Authorization': `Bearer ${newAccessToken}` }
+              headers: { 'Authorization': `Bearer ${accessToken}` }
             });
             success = retryResponse.ok;
           } else {
@@ -506,21 +470,17 @@ serve(async (req) => {
           if (response.status === 401) {
             // Token expired, try to refresh
             console.log('🔄 Access token expired, refreshing...');
-            
-            if (!destination.cloud_refresh_token_secret_id) {
-              throw new Error('No refresh token available');
-            }
-            
-            const refreshToken = await getTokenFromVault(supabase, destination.cloud_refresh_token_secret_id);
-            const newAccessToken = await refreshDropboxToken(refreshToken);
-            
-            // Update vault with new token
-            await updateTokenInVault(supabase, destination.cloud_access_token_secret_id, newAccessToken);
+            accessToken = await refreshDropboxToken(refreshToken);
+            const encryptedToken = await encryptToken(accessToken);
+            await supabase
+              .from('backup_destinations')
+              .update({ cloud_access_token: encryptedToken })
+              .eq('id', destId);
             
             // Retry test
             const retryResponse = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
               method: 'POST',
-              headers: { 'Authorization': `Bearer ${newAccessToken}` }
+              headers: { 'Authorization': `Bearer ${accessToken}` }
             });
             success = retryResponse.ok;
           } else {
@@ -662,13 +622,15 @@ serve(async (req) => {
           console.log(`✅ Created Google Drive folder: ${folderId}`);
         }
 
-        // 🔐 STORE TOKENS IN VAULT
-        console.log('💾 Managing destination and vault storage...');
+        // 🔐 ENCRYPT AND STORE TOKENS
+        console.log('💾 Encrypting and storing tokens...');
+        const encryptedAccessToken = await encryptToken(accessToken);
+        const encryptedRefreshToken = await encryptToken(refreshToken);
         
         // Check if destination already exists for this tenant + provider
         const { data: existingDest } = await supabase
           .from('backup_destinations')
-          .select('id, cloud_access_token_secret_id, cloud_refresh_token_secret_id')
+          .select('id')
           .eq('tenant_id', tenantId)
           .eq('cloud_provider', provider)
           .single();
@@ -681,86 +643,42 @@ serve(async (req) => {
           console.log(`🔄 Updating existing destination: ${existingDest.id}`);
           destinationId = existingDest.id;
           
-          try {
-            // Update or create vault secrets
-            if (existingDest.cloud_access_token_secret_id) {
-              await updateTokenInVault(supabase, existingDest.cloud_access_token_secret_id, accessToken);
-            } else {
-              const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, destinationId);
-              await supabase
-                .from('backup_destinations')
-                .update({ cloud_access_token_secret_id: accessSecretId })
-                .eq('id', destinationId);
-            }
-            
-            if (existingDest.cloud_refresh_token_secret_id) {
-              await updateTokenInVault(supabase, existingDest.cloud_refresh_token_secret_id, refreshToken);
-            } else {
-              const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, destinationId);
-              await supabase
-                .from('backup_destinations')
-                .update({ cloud_refresh_token_secret_id: refreshSecretId })
-                .eq('id', destinationId);
-            }
-            
-            // Update destination metadata
-            const { error } = await supabase
-              .from('backup_destinations')
-              .update({
-                cloud_folder_id: folderId,
-                cloud_folder_path: '/VirtualTours_Backups',
-                is_active: true,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', destinationId);
-            
-            dbError = error;
-          } catch (vaultError: any) {
-            console.error('❌ Vault update error:', vaultError);
-            dbError = vaultError;
-          }
+          const { error } = await supabase
+            .from('backup_destinations')
+            .update({
+              cloud_access_token: encryptedAccessToken,
+              cloud_refresh_token: encryptedRefreshToken,
+              cloud_folder_id: folderId,
+              cloud_folder_path: '/VirtualTours_Backups',
+              is_active: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', destinationId);
+          
+          dbError = error;
         } else {
           // INSERT new entry
           console.log('➕ Creating new destination entry');
           
-          try {
-            // Create destination first
-            const { data: newDest, error: insertError } = await supabase
-              .from('backup_destinations')
-              .insert({
-                tenant_id: tenantId,
-                destination_type: 'cloud_storage',
-                cloud_provider: provider,
-                cloud_folder_id: folderId,
-                cloud_folder_path: '/VirtualTours_Backups',
-                is_active: true
-              })
-              .select('id')
-              .single();
-            
-            if (insertError || !newDest) {
-              throw insertError || new Error('Failed to create destination');
-            }
-            
+          const { data: newDest, error: insertError } = await supabase
+            .from('backup_destinations')
+            .insert({
+              tenant_id: tenantId,
+              destination_type: 'cloud_storage',
+              cloud_provider: provider,
+              cloud_access_token: encryptedAccessToken,
+              cloud_refresh_token: encryptedRefreshToken,
+              cloud_folder_id: folderId,
+              cloud_folder_path: '/VirtualTours_Backups',
+              is_active: true
+            })
+            .select('id')
+            .single();
+          
+          if (insertError || !newDest) {
+            dbError = insertError || new Error('Failed to create destination');
+          } else {
             destinationId = newDest.id;
-            
-            // Store tokens in vault
-            const accessSecretId = await storeTokenInVault(supabase, accessToken, 'access', provider, destinationId);
-            const refreshSecretId = await storeTokenInVault(supabase, refreshToken, 'refresh', provider, destinationId);
-            
-            // Update destination with vault IDs
-            const { error: updateError } = await supabase
-              .from('backup_destinations')
-              .update({
-                cloud_access_token_secret_id: accessSecretId,
-                cloud_refresh_token_secret_id: refreshSecretId
-              })
-              .eq('id', destinationId);
-            
-            dbError = updateError;
-          } catch (vaultError: any) {
-            console.error('❌ Vault storage error:', vaultError);
-            dbError = vaultError;
           }
         }
 

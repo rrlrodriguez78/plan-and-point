@@ -60,11 +60,11 @@ export type Database = {
           auto_backup_enabled: boolean | null
           backup_frequency: string | null
           backup_on_photo_upload: boolean | null
-          cloud_access_token_secret_id: string | null
+          cloud_access_token: string | null
           cloud_folder_id: string | null
           cloud_folder_path: string | null
           cloud_provider: string | null
-          cloud_refresh_token_secret_id: string | null
+          cloud_refresh_token: string | null
           created_at: string | null
           destination_type: string
           id: string
@@ -77,11 +77,11 @@ export type Database = {
           auto_backup_enabled?: boolean | null
           backup_frequency?: string | null
           backup_on_photo_upload?: boolean | null
-          cloud_access_token_secret_id?: string | null
+          cloud_access_token?: string | null
           cloud_folder_id?: string | null
           cloud_folder_path?: string | null
           cloud_provider?: string | null
-          cloud_refresh_token_secret_id?: string | null
+          cloud_refresh_token?: string | null
           created_at?: string | null
           destination_type: string
           id?: string
@@ -94,11 +94,11 @@ export type Database = {
           auto_backup_enabled?: boolean | null
           backup_frequency?: string | null
           backup_on_photo_upload?: boolean | null
-          cloud_access_token_secret_id?: string | null
+          cloud_access_token?: string | null
           cloud_folder_id?: string | null
           cloud_folder_path?: string | null
           cloud_provider?: string | null
-          cloud_refresh_token_secret_id?: string | null
+          cloud_refresh_token?: string | null
           created_at?: string | null
           destination_type?: string
           id?: string
@@ -1787,15 +1787,6 @@ export type Database = {
           successful_backups: number
           test_type: string
         }[]
-      }
-      vault_create_secret: {
-        Args: { description?: string; name: string; secret: string }
-        Returns: string
-      }
-      vault_read_secret: { Args: { secret_id: string }; Returns: string }
-      vault_update_secret: {
-        Args: { new_secret: string; secret_id: string }
-        Returns: undefined
       }
       verify_production_readiness: {
         Args: never
