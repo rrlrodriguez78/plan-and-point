@@ -39,18 +39,6 @@ export const BackupDestinationSettings: React.FC<Props> = ({ tenantId }) => {
     }
   }, [searchParams, loadDestinations]);
 
-  // Poll for destination changes while connecting
-  useEffect(() => {
-    if (loadingProvider) {
-      const interval = setInterval(() => {
-        console.log('🔄 Polling destinations during connection...');
-        loadDestinations();
-      }, 2000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [loadingProvider, loadDestinations]);
-
   const handleDestinationTypeChange = (value: string) => {
     setDestinationType(value as any);
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -38,7 +38,7 @@ export function useCloudStorage(tenantId: string) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   // Function to load destinations (exposed so it can be called externally)
-  const loadDestinations = async () => {
+  const loadDestinations = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('backup_destinations')
@@ -51,7 +51,7 @@ export function useCloudStorage(tenantId: string) {
       console.error('Error loading destinations:', error);
       toast.error('Error loading backup destinations');
     }
-  };
+  }, [tenantId]);
 
   const loadSyncHistory = async () => {
     try {
@@ -161,10 +161,19 @@ export function useCloudStorage(tenantId: string) {
               setLoadingProvider(null);
               loadDestinations();
             }
-          }, 500);
+          }, 1000); // Increased from 500ms to 1000ms to reduce load
           
           // Clear interval after 5 minutes to avoid memory leaks
           setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
+          
+          // Safety timeout: if OAuth doesn't complete in 30 seconds, clear loading state
+          setTimeout(() => {
+            if (loadingProvider === provider) {
+              console.log('⏱️ OAuth timeout reached, clearing loading state...');
+              setLoadingProvider(null);
+              clearInterval(pollInterval);
+            }
+          }, 30000);
         }
       } else {
         console.error('❌ No authUrl in response:', data);
