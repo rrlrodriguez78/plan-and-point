@@ -115,7 +115,7 @@ const PublicTours = () => {
         .from('tour_analytics')
         .select('likes_count')
         .eq('tour_id', tourId)
-        .single();
+        .maybeSingle();
 
       const currentLikes = currentAnalytics?.likes_count || 0;
       const newLikes = isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
@@ -165,7 +165,7 @@ const PublicTours = () => {
     }
 
     try {
-      // Insert comment
+      // Insert comment (most important operation)
       const { error: commentError } = await supabase
         .from('tour_comments')
         .insert({
@@ -178,40 +178,13 @@ const PublicTours = () => {
 
       if (commentError) throw commentError;
 
-      // Get current analytics
-      const { data: currentAnalytics } = await supabase
-        .from('tour_analytics')
-        .select('comments_count')
-        .eq('tour_id', tourId)
-        .single();
-
-      const currentComments = currentAnalytics?.comments_count || 0;
-
-      // Update analytics
-      const { error: analyticsError } = await supabase
-        .from('tour_analytics')
-        .upsert({
-          tour_id: tourId,
-          comments_count: currentComments + 1
-        });
-
-      if (analyticsError) throw analyticsError;
-
-      // Update local analytics state
-      setAnalytics(prev => ({
-        ...prev,
-        [tourId]: {
-          ...prev[tourId],
-          tour_id: tourId,
-          likes_count: prev[tourId]?.likes_count || 0,
-          comments_count: currentComments + 1
-        }
-      }));
-
-      // Reset form and close dialog
+      // Reset form and close dialog immediately
       setCommentForm({ name: '', email: '', comment: '' });
       setCommentDialogOpen(null);
       toast.success(t('publicTours.commentAdded'));
+
+      // Refresh tours to get updated count from database (trigger handles count)
+      await fetchPublicTours();
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error(t('publicTours.errorComment'));
