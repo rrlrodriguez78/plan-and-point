@@ -197,7 +197,7 @@ export default function FloorPlanManager({
         const { data, error } = await supabase
           .from('floor_plans')
           .insert(floorPlanData)
-          .select()
+          .select('id, name, tour_id, tenant_id, image_url, width, height, capture_date, created_at')
           .single();
         
         if (error) {
@@ -225,14 +225,26 @@ export default function FloorPlanManager({
         
         console.log('✅ Floor Plan Created Successfully:', data);
         
+        // 🔴 DEBUG: Verificar valores antes del sync
+        console.log('🔍 DEBUG - Checking sync conditions:', {
+          'data.id': data.id,
+          'data.image_url': data.image_url,
+          'editingFloorPlan.image_url': editingFloorPlan.image_url,
+          'tour?.id': tour?.id,
+          'tour?.tenant_id': tour?.tenant_id,
+          'ALL CONDITIONS': Boolean(data.id && (data.image_url || editingFloorPlan.image_url) && tour?.id && tour?.tenant_id)
+        });
+        
         // Sync floor plan image to Google Drive (after creation)
-        if (data.id && data.image_url && tour?.id && tour?.tenant_id) {
+        const imageUrlToSync = data.image_url || editingFloorPlan.image_url;
+        
+        if (data.id && imageUrlToSync && tour?.id && tour?.tenant_id) {
           console.log('🗺️ Syncing new floor plan image to Google Drive...', {
             floorPlanId: data.id,
-            imageUrl: data.image_url,
+            imageUrl: imageUrlToSync,
             tourId: tour.id,
             tenantId: tour.tenant_id,
-            fileName: data.image_url.split('/').pop()
+            fileName: imageUrlToSync.split('/').pop()
           });
 
           supabase.functions
@@ -240,10 +252,10 @@ export default function FloorPlanManager({
               body: { 
                 action: 'sync_floor_plan',
                 floorPlanId: data.id,
-                imageUrl: data.image_url,
+                imageUrl: imageUrlToSync,
                 tourId: tour.id,
                 tenantId: tour.tenant_id,
-                fileName: data.image_url.split('/').pop() || `floor_plan_${data.id}.webp`
+                fileName: imageUrlToSync.split('/').pop() || `floor_plan_${data.id}.webp`
               }
             })
             .then(({ data: syncData, error: syncError }) => {
@@ -274,10 +286,12 @@ export default function FloorPlanManager({
         if (error) throw error;
         
         // Sync updated floor plan image to Google Drive
-        if (editingFloorPlan.id && editingFloorPlan.image_url && tour?.id && tour?.tenant_id) {
+        const imageUrlToSync = editingFloorPlan.image_url;
+        
+        if (editingFloorPlan.id && imageUrlToSync && tour?.id && tour?.tenant_id) {
           console.log('🗺️ Syncing updated floor plan image to Google Drive...', {
             floorPlanId: editingFloorPlan.id,
-            imageUrl: editingFloorPlan.image_url,
+            imageUrl: imageUrlToSync,
             tourId: tour.id,
             tenantId: tour.tenant_id
           });
@@ -287,10 +301,10 @@ export default function FloorPlanManager({
               body: { 
                 action: 'sync_floor_plan',
                 floorPlanId: editingFloorPlan.id,
-                imageUrl: editingFloorPlan.image_url,
+                imageUrl: imageUrlToSync,
                 tourId: tour.id,
                 tenantId: tour.tenant_id,
-                fileName: editingFloorPlan.image_url.split('/').pop() || `floor_plan_${editingFloorPlan.id}.webp`
+                fileName: imageUrlToSync.split('/').pop() || `floor_plan_${editingFloorPlan.id}.webp`
               }
             })
             .then(({ data: syncData, error: syncError }) => {
