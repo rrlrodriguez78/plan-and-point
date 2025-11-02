@@ -400,6 +400,27 @@ export function useCloudStorage(tenantId: string) {
     return destinations.find(d => d.is_active) || null;
   };
 
+  const clearSyncHistory = async () => {
+    try {
+      const activeDestination = getActiveDestination();
+      if (!activeDestination) {
+        throw new Error('No active destination found');
+      }
+
+      const { error } = await supabase
+        .from('backup_sync_history')
+        .delete()
+        .eq('destination_id', activeDestination.id);
+      
+      if (error) throw error;
+      
+      await loadSyncHistory();
+    } catch (error: any) {
+      console.error('Error clearing sync history:', error);
+      throw error;
+    }
+  };
+
   return {
     destinations,
     syncHistory,
@@ -411,6 +432,7 @@ export function useCloudStorage(tenantId: string) {
     toggleAutoBackup,
     loadDestinations,
     loadSyncHistory,
-    getActiveDestination
+    getActiveDestination,
+    clearSyncHistory
   };
 }

@@ -1,16 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useCloudStorage } from '@/hooks/useCloudStorage';
-import { CheckCircle, XCircle, Clock, RefreshCw, Cloud } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, RefreshCw, Cloud, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface Props {
   tenantId: string;
 }
 
 export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
-  const { syncHistory, loadingProvider } = useCloudStorage(tenantId);
+  const { syncHistory, loadingProvider, clearSyncHistory } = useCloudStorage(tenantId);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearHistory = async () => {
+    try {
+      setIsClearing(true);
+      await clearSyncHistory();
+      toast.success('Historial eliminado correctamente');
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      toast.error('Error al eliminar el historial');
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -55,8 +72,42 @@ export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>📜 Cloud Sync History</CardTitle>
-        <CardDescription>Recent synchronizations to cloud storage</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>📜 Cloud Sync History</CardTitle>
+            <CardDescription>Recent synchronizations to cloud storage</CardDescription>
+          </div>
+          
+          {syncHistory.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isClearing}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Borrar Historial
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Borrar todo el historial?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará permanentemente todos los registros de sincronización.
+                    Los archivos en Google Drive NO se eliminarán, solo el historial local.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearHistory}>
+                    Borrar Todo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {syncHistory.length === 0 ? (
