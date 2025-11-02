@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.cloud-sync-worker]
 verify_jwt = false
+
+[functions.photo-sync-to-drive]
+verify_jwt = false
