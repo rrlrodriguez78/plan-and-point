@@ -192,8 +192,41 @@ serve(async (req) => {
       if (syncError) throw syncError;
 
       try {
-        // Get backup file from storage
+        // Check if multipart backup
+        const isMultipart = backupJob.metadata?.multipart === true;
+        
+        if (isMultipart) {
+          console.log('⚠️ Multipart backup detected - skipping automatic sync');
+          console.log('ℹ️ User must download parts manually and combine them');
+          
+          // Update sync history as skipped
+          await supabase
+            .from('backup_sync_history')
+            .update({
+              status: 'completed',
+              files_synced: 0,
+              error_message: 'Multipart backups require manual download and merge',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', syncHistory.id);
+
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: 'Multipart backups not supported for automatic sync',
+              isMultipart: true
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get backup file from storage (single file backups only)
         const storagePath = backupJob.storage_path;
+        
+        if (!storagePath) {
+          throw new Error('Storage path is null - backup may not be completed yet');
+        }
+        
         console.log(`📥 Downloading backup from storage: ${storagePath}`);
         
         const { data: fileData, error: downloadError } = await supabase.storage
