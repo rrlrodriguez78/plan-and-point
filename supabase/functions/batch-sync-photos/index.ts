@@ -103,7 +103,7 @@ async function verifyDriveFolder(accessToken: string, folderId: string): Promise
   }
 }
 
-// NUEVA: Función para obtener y verificar el folder de destino
+// NUEVA: Función para obtener y verificar el folder de destino (con validación flexible)
 async function getVerifiedDestination(supabase: any, tenantId: string) {
   const { data: destination, error: destError } = await supabase
     .from('backup_destinations')
@@ -120,15 +120,18 @@ async function getVerifiedDestination(supabase: any, tenantId: string) {
   // Decrypt access token
   const accessToken = await decryptToken(destination.cloud_access_token);
 
-  // VERIFICAR QUE EL FOLDER EXISTA
+  // VERIFICAR QUE EL FOLDER EXISTA (pero no bloquear si no existe)
   const folderCheck = await verifyDriveFolder(accessToken, destination.cloud_folder_id);
   if (!folderCheck.exists || !folderCheck.accessible) {
-    throw new Error('Google Drive folder not found or inaccessible. Please reconfigure the backup destination.');
+    console.warn(`⚠️ Google Drive folder ${destination.cloud_folder_id} not found or inaccessible. Will proceed with verification anyway.`);
+  } else {
+    console.log(`✅ Google Drive folder ${destination.cloud_folder_id} verified successfully`);
   }
 
   return {
     ...destination,
-    accessToken
+    accessToken,
+    folderAccessible: folderCheck.exists && folderCheck.accessible
   };
 }
 
