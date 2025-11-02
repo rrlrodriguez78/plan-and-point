@@ -156,6 +156,17 @@ async function uploadPhotoToDrive(
     parents: [folderId]
   };
 
+  // Convertir Blob a base64 de forma eficiente (sin spread operator)
+  const arrayBuffer = await photoBlob.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  const base64Photo = btoa(binary);
+
   const multipartRequestBody =
     delimiter +
     'Content-Type: application/json\r\n\r\n' +
@@ -163,7 +174,7 @@ async function uploadPhotoToDrive(
     delimiter +
     'Content-Type: image/webp\r\n' +
     'Content-Transfer-Encoding: base64\r\n\r\n' +
-    btoa(String.fromCharCode(...new Uint8Array(await photoBlob.arrayBuffer()))) +
+    base64Photo +
     close_delim;
 
   const response = await fetch(
