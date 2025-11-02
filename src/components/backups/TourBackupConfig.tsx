@@ -112,10 +112,7 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
         toast.error('Error al programar backup inicial');
       }
     } else {
-      const config = getConfigForTour(tourId);
-      if (config) {
-        await disableAutoBackup(config.id);
-      }
+      await disableAutoBackup(tourId);
     }
   };
 
