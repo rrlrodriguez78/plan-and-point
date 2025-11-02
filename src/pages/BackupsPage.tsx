@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
-import { BackupManager } from '@/components/backups/BackupManager';
+
 
 import BackupSettings from '@/components/backups/BackupSettings';
 import { BackupSyncHistory } from '@/components/backups/BackupSyncHistory';
@@ -68,16 +68,11 @@ const BackupsPage: React.FC = () => {
           <h1 className="text-3xl font-bold">Backups</h1>
         </div>
         
-        <Tabs defaultValue="backups" className="space-y-6">
+        <Tabs defaultValue="settings" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="backups">🗂️ Backups Manuales</TabsTrigger>
-            <TabsTrigger value="settings">⚙️ Backup Settings</TabsTrigger>
+            <TabsTrigger value="settings">⚙️ Google Drive Settings</TabsTrigger>
             <TabsTrigger value="history">📜 Sync History</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="backups" className="space-y-6">
-            <BackupManager />
-          </TabsContent>
           
           <TabsContent value="settings" className="space-y-6">
             {tenantId && (
