@@ -89,10 +89,33 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
       return;
     }
 
+    if (enabled && destination && !destination.is_active) {
+      toast.error('El destino de Google Drive está inactivo. Reconéctalo primero.');
+      return;
+    }
+
     if (enabled && destination) {
       await enableAutoBackup(tourId, destination.id);
+      
+      // Trigger manual de backup inicial
+      toast.success('Auto-backup activado. Creando primer backup...');
+      try {
+        const { error } = await supabase
+          .from('virtual_tours')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', tourId);
+        
+        if (error) throw error;
+        toast.success('Backup inicial programado');
+      } catch (error) {
+        console.error('Error triggering manual backup:', error);
+        toast.error('Error al programar backup inicial');
+      }
     } else {
-      await disableAutoBackup(tourId);
+      const config = getConfigForTour(tourId);
+      if (config) {
+        await disableAutoBackup(config.id);
+      }
     }
   };
 

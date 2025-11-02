@@ -19,6 +19,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.text();
+    console.log('🎯 Backup Processor iniciado');
     console.log('📦 Request body:', requestBody);
     
     const { action, tourId, backupType = 'full_backup', backupId } = JSON.parse(requestBody);

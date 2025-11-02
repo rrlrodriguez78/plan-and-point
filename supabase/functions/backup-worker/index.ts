@@ -520,14 +520,16 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
 
     // Auto-sync to cloud if enabled
     try {
-      const { data: destination } = await adminClient
-        .from('backup_destinations')
+      // Check if tour has auto_backup_enabled in tour_backup_config
+      const { data: tourConfig } = await adminClient
+        .from('tour_backup_config')
         .select('*')
-        .eq('id', backupJob.destination_id)
+        .eq('tour_id', backupJob.tour_id)
+        .eq('destination_id', backupJob.destination_id)
         .single();
 
-      if (destination?.auto_backup_enabled && destination?.is_active) {
-        console.log(`☁️ Auto-syncing backup ${backupJobId} to Google Drive...`);
+      if (tourConfig?.auto_backup_enabled) {
+        console.log(`🔄 Starting automatic cloud sync for job ${backupJobId}`);
         
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -544,10 +546,12 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
             backupJobId: backupJobId
           })
         }).then(res => res.json()).then(result => {
-          console.log(`✅ Auto-sync initiated for backup ${backupJobId}:`, result);
+          console.log(`✅ Automatic sync initiated:`, result);
         }).catch(err => {
-          console.error(`❌ Auto-sync failed for backup ${backupJobId}:`, err);
+          console.error(`❌ Automatic sync failed:`, err);
         });
+      } else {
+        console.log(`ℹ️ Skipping automatic sync for job ${backupJobId} - tour auto_backup not enabled`);
       }
     } catch (error) {
       console.error('⚠️ Error checking auto-sync eligibility:', error);
