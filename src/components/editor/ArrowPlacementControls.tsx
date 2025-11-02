@@ -49,6 +49,19 @@ export const ArrowPlacementControls = ({
   
   return (
     <div className="space-y-3">
+      {/* Indicador Sistema UV */}
+      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-medium text-green-800 dark:text-green-200">
+            Sistema UV Activo
+          </span>
+        </div>
+        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+          Coordenadas independientes de la rotación de cámara
+        </p>
+      </div>
+      
       {/* Modo Actual */}
       <div className="flex items-center gap-2">
         <Badge variant={mode === 'place' ? 'default' : mode === 'drag' ? 'secondary' : 'outline'} className="text-xs">
@@ -148,11 +161,26 @@ export const ArrowPlacementControls = ({
                   className="flex items-center justify-between p-1.5 border rounded-md hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">
-                      {point.label || target?.title || 'Sin título'}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium truncate">
+                        {point.label || target?.title || 'Sin título'}
+                      </p>
+                      {/* Badge UV/Legacy */}
+                      {point.u !== undefined && point.v !== undefined ? (
+                        <Badge variant="outline" className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-[10px] px-1.5 py-0 border-green-200 dark:border-green-800">
+                          UV
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-[10px] px-1.5 py-0 border-orange-200 dark:border-orange-800">
+                          Legacy
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-[10px] text-muted-foreground">
-                      θ: {point.theta.toFixed(0)}°, φ: {point.phi.toFixed(0)}°
+                      {point.u !== undefined && point.v !== undefined 
+                        ? `UV: ${point.u.toFixed(3)}, ${point.v.toFixed(3)}`
+                        : `θ: ${point.theta.toFixed(0)}°, φ: ${point.phi.toFixed(0)}°`
+                      }
                     </p>
                   </div>
                   <div className="flex gap-0.5 ml-2">

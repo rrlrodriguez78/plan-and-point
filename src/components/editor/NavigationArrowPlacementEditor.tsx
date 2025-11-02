@@ -469,13 +469,27 @@ export const NavigationArrowPlacementEditor = ({
             )}
             
             {(mode === 'place' || mode === 'drag') && ghostPosition && (
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/90 text-white px-2 py-1 rounded text-xs z-10 font-mono max-w-[90%]">
-                <div className="text-[10px] text-green-400">Debug:</div>
-                <div className="flex gap-4">
-                  <span>θ:{ghostPosition.theta.toFixed(0)}°</span>
-                  <span>φ:{ghostPosition.phi.toFixed(0)}°</span>
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/90 text-white px-3 py-2 rounded text-xs z-10 font-mono max-w-[90%]">
+                <div className="text-[10px] text-green-400 font-bold mb-1">
+                  🎯 Sistema UV Activo
                 </div>
-                <div className="text-[10px] text-gray-400">
+                
+                {/* Coordenadas UV (principales) */}
+                {ghostPosition.u !== undefined && ghostPosition.v !== undefined && (
+                  <div className="flex gap-3 mb-1 text-yellow-300">
+                    <span>u: {ghostPosition.u.toFixed(3)}</span>
+                    <span>v: {ghostPosition.v.toFixed(3)}</span>
+                  </div>
+                )}
+                
+                {/* Coordenadas esféricas (secundarias/legacy) */}
+                <div className="flex gap-3 text-gray-400 text-[10px]">
+                  <span>θ: {ghostPosition.theta.toFixed(0)}°</span>
+                  <span>φ: {ghostPosition.phi.toFixed(0)}°</span>
+                </div>
+                
+                {/* Cámara */}
+                <div className="text-[10px] text-gray-500 mt-1">
                   cam: {lon.current.toFixed(0)}°/{lat.current.toFixed(0)}°
                 </div>
               </div>
