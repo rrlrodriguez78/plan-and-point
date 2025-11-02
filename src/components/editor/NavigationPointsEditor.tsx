@@ -1,0 +1,283 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { MapPin, X, Sparkles } from 'lucide-react';
+import { Hotspot, NavigationPoint } from '@/types/tour';
+
+interface NavigationPointsEditorProps {
+  hotspot: Hotspot;
+  allHotspots: Hotspot[];
+  onSave?: () => void;
+}
+
+export const NavigationPointsEditor = ({
+  hotspot,
+  allHotspots,
+  onSave
+}: NavigationPointsEditorProps) => {
+  const [points, setPoints] = useState<NavigationPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    loadNavigationPoints();
+  }, [hotspot.id]);
+  
+  const loadNavigationPoints = async () => {
+    const { data, error } = await supabase
+      .from('hotspot_navigation_points')
+      .select(`
+        *,
+        target_hotspot:to_hotspot_id(*)
+      `)
+      .eq('from_hotspot_id', hotspot.id)
+      .order('display_order');
+    
+    if (error) {
+      console.error('Error loading navigation points:', error);
+      return;
+    }
+    
+    if (data) setPoints(data as any);
+  };
+  
+  const addNavigationPoint = async (toHotspotId: string) => {
+    const toHotspot = allHotspots.find(h => h.id === toHotspotId);
+    if (!toHotspot) return;
+    
+    // Calcular theta aproximado basándose en posiciones en floor plan
+    const dx = toHotspot.x_position - hotspot.x_position;
+    const dy = toHotspot.y_position - hotspot.y_position;
+    const theta = Math.atan2(dx, dy) * (180 / Math.PI);
+    
+    const { error } = await supabase
+      .from('hotspot_navigation_points')
+      .insert({
+        from_hotspot_id: hotspot.id,
+        to_hotspot_id: toHotspotId,
+        theta,
+        phi: 90, // Horizonte por defecto
+        label: `Ir a ${toHotspot.title}`
+      });
+    
+    if (error) {
+      toast.error('Error al añadir punto de navegación');
+      return;
+    }
+    
+    toast.success('Punto de navegación añadido');
+    loadNavigationPoints();
+    onSave?.();
+  };
+  
+  const updateNavigationPoint = async (
+    pointId: string, 
+    updates: Partial<NavigationPoint>
+  ) => {
+    const { error } = await supabase
+      .from('hotspot_navigation_points')
+      .update(updates)
+      .eq('id', pointId);
+    
+    if (error) {
+      toast.error('Error al actualizar punto');
+      return;
+    }
+    
+    toast.success('Punto actualizado');
+    loadNavigationPoints();
+    onSave?.();
+  };
+  
+  const deleteNavigationPoint = async (pointId: string) => {
+    const { error } = await supabase
+      .from('hotspot_navigation_points')
+      .delete()
+      .eq('id', pointId);
+    
+    if (error) {
+      toast.error('Error al eliminar punto');
+      return;
+    }
+    
+    toast.success('Punto eliminado');
+    loadNavigationPoints();
+    onSave?.();
+  };
+  
+  const autoDetectConnections = async () => {
+    if (!hotspot.floor_plan_id) {
+      toast.error('Hotspot sin floor plan asignado');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('suggest_hotspot_connections', {
+        p_floor_plan_id: hotspot.floor_plan_id,
+        p_max_distance: 30
+      });
+      
+      if (error) throw error;
+      
+      if (data) {
+        const connectionsForThisHotspot = data.filter((c: any) => c.from_id === hotspot.id);
+        
+        if (connectionsForThisHotspot.length === 0) {
+          toast.info('No se encontraron conexiones cercanas');
+          return;
+        }
+        
+        // Crear puntos para las conexiones sugeridas
+        let added = 0;
+        for (const conn of connectionsForThisHotspot) {
+          // Verificar si ya existe
+          const exists = points.some(p => p.to_hotspot_id === conn.to_id);
+          if (!exists) {
+            await addNavigationPoint(conn.to_id);
+            added++;
+          }
+        }
+        
+        toast.success(`${added} conexiones añadidas automáticamente`);
+      }
+    } catch (error) {
+      console.error('Error auto-detecting connections:', error);
+      toast.error('Error al detectar conexiones');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const availableHotspots = allHotspots
+    .filter(h => h.id !== hotspot.id && h.has_panorama)
+    .filter(h => !points.some(p => p.to_hotspot_id === h.id));
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-5 w-5" />
+          Puntos de Navegación 3D
+        </CardTitle>
+        <CardDescription>
+          Define hacia dónde pueden navegar los usuarios desde "{hotspot.title}"
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Lista de puntos existentes */}
+        {points.length > 0 && (
+          <div className="space-y-3">
+            {points.map((point) => (
+              <div key={point.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span className="font-medium">
+                      {(point.target_hotspot as any)?.title || 'Destino'}
+                    </span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => deleteNavigationPoint(point.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Sliders para ajustar theta/phi */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Ángulo Horizontal (θ): {point.theta.toFixed(0)}°
+                    </label>
+                    <Slider
+                      value={[point.theta]}
+                      min={-180}
+                      max={180}
+                      step={5}
+                      onValueChange={([theta]) => 
+                        updateNavigationPoint(point.id, { theta })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Ángulo Vertical (φ): {point.phi.toFixed(0)}°
+                    </label>
+                    <Slider
+                      value={[point.phi]}
+                      min={0}
+                      max={180}
+                      step={5}
+                      onValueChange={([phi]) => 
+                        updateNavigationPoint(point.id, { phi })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {points.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <p>No hay puntos de navegación configurados</p>
+            <p className="text-sm">Añade conexiones manualmente o usa auto-detección</p>
+          </div>
+        )}
+        
+        {/* Botones de acción */}
+        <div className="flex gap-2">
+          {/* Dropdown para añadir nuevo punto */}
+          {availableHotspots.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex-1">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Añadir Punto
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-[300px] overflow-y-auto">
+                {availableHotspots.map(h => (
+                  <DropdownMenuItem 
+                    key={h.id}
+                    onClick={() => addNavigationPoint(h.id)}
+                  >
+                    {h.title}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          
+          {/* Botón de auto-sugerencias */}
+          <Button 
+            variant="secondary" 
+            className="flex-1"
+            onClick={autoDetectConnections}
+            disabled={loading}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Auto-detectar
+          </Button>
+        </div>
+        
+        {availableHotspots.length === 0 && points.length > 0 && (
+          <p className="text-sm text-muted-foreground text-center">
+            Todos los hotspots disponibles ya están conectados
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

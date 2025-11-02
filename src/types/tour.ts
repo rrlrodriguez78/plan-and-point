@@ -39,6 +39,7 @@ export interface Hotspot {
   floor_plan_id?: string;
   created_at?: string;
   style?: HotspotStyle;
+  navigation_points?: NavigationPoint[];
 }
 
 export interface PanoramaPhoto {
@@ -51,4 +52,25 @@ export interface PanoramaPhoto {
   display_order: number;
   capture_date?: string;
   created_at?: string;
+}
+
+export interface NavigationPoint {
+  id: string;
+  from_hotspot_id: string;
+  to_hotspot_id: string;
+  theta: number; // -180 a 180 grados
+  phi: number;   // 0 a 180 grados
+  height_offset?: number;
+  style?: {
+    color?: string;
+    size?: number;
+    icon?: string;
+  };
+  label?: string;
+  is_active: boolean;
+  display_order?: number;
+  created_at?: string;
+  
+  // Datos del hotspot destino (joined data)
+  target_hotspot?: Hotspot;
 }

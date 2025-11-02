@@ -778,6 +778,63 @@ export type Database = {
         }
         Relationships: []
       }
+      hotspot_navigation_points: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          from_hotspot_id: string
+          height_offset: number | null
+          id: string
+          is_active: boolean | null
+          label: string | null
+          phi: number
+          style: Json | null
+          theta: number
+          to_hotspot_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          from_hotspot_id: string
+          height_offset?: number | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          phi?: number
+          style?: Json | null
+          theta: number
+          to_hotspot_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          from_hotspot_id?: string
+          height_offset?: number | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          phi?: number
+          style?: Json | null
+          theta?: number
+          to_hotspot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotspot_navigation_points_from_hotspot_id_fkey"
+            columns: ["from_hotspot_id"]
+            isOneToOne: false
+            referencedRelation: "hotspots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotspot_navigation_points_to_hotspot_id_fkey"
+            columns: ["to_hotspot_id"]
+            isOneToOne: false
+            referencedRelation: "hotspots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotspots: {
         Row: {
           created_at: string
@@ -2028,6 +2085,15 @@ export type Database = {
           failed_backups: number
           successful_backups: number
           test_type: string
+        }[]
+      }
+      suggest_hotspot_connections: {
+        Args: { p_floor_plan_id: string; p_max_distance?: number }
+        Returns: {
+          distance: number
+          from_id: string
+          suggested_theta: number
+          to_id: string
         }[]
       }
       update_queue_item_status: {

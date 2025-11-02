@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/popover";
 import { format } from 'date-fns';
 import { enUS, es } from 'date-fns/locale';
-import { PanoramaPhoto, Hotspot, FloorPlan } from '@/types/tour';
+import { PanoramaPhoto, Hotspot, FloorPlan, NavigationPoint } from '@/types/tour';
 import { useUnifiedPointer } from '@/hooks/useUnifiedPointer';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { NavigationArrow3D } from './NavigationArrow3D';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -116,9 +118,37 @@ export default function PanoramaViewer({
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoadingScene, setIsLoadingScene] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [navigationPoints, setNavigationPoints] = useState<NavigationPoint[]>([]);
+  const [fadeTransition, setFadeTransition] = useState(false);
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 99998 : 30;
+
+  // Fetch navigation points para el hotspot activo
+  useEffect(() => {
+    if (!activePhoto?.hotspot_id) {
+      setNavigationPoints([]);
+      return;
+    }
+    
+    const fetchNavigationPoints = async () => {
+      const { data, error } = await supabase
+        .from('hotspot_navigation_points')
+        .select(`
+          *,
+          target_hotspot:to_hotspot_id(*)
+        `)
+        .eq('from_hotspot_id', activePhoto.hotspot_id)
+        .eq('is_active', true)
+        .order('display_order');
+      
+      if (!error && data) {
+        setNavigationPoints(data as any);
+      }
+    };
+    
+    fetchNavigationPoints();
+  }, [activePhoto?.hotspot_id]);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {
@@ -486,7 +516,12 @@ export default function PanoramaViewer({
   }, []);
 
   const handleNavClick = (hotspot: Hotspot) => {
-    onNavigate(hotspot);
+    setFadeTransition(true);
+    
+    setTimeout(() => {
+      onNavigate(hotspot);
+      setTimeout(() => setFadeTransition(false), 300);
+    }, 300);
   };
 
   const handleDateSelect = (date: string) => {
@@ -536,7 +571,22 @@ export default function PanoramaViewer({
           className="panorama-container fullscreen-container fixed inset-0 bg-black flex items-center justify-center overflow-hidden select-none"
           style={{ zIndex: containerZIndex, isolation: 'isolate' }}
         >
-          <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+          <div className={`relative w-full h-full transition-opacity duration-300 ${fadeTransition ? 'opacity-0' : 'opacity-100'}`}>
+            <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+            {sceneRef.current && cameraRef.current && (
+              <NavigationArrow3D
+                navigationPoints={navigationPoints}
+                scene={sceneRef.current}
+                camera={cameraRef.current}
+                onPointClick={(targetHotspotId) => {
+                  const targetHotspot = allHotspotsOnFloor.find(h => h.id === targetHotspotId);
+                  if (targetHotspot) {
+                    handleNavClick(targetHotspot);
+                  }
+                }}
+              />
+            )}
+          </div>
           
           {/* Loading overlay mientras se inicializa Three.js */}
           {isLoadingScene && !loadingError && (
