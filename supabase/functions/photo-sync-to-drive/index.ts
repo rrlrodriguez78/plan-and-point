@@ -203,7 +203,11 @@ serve(async (req) => {
     const { action, photoId, tenantId } = await req.json();
 
     if (action === 'sync_photo') {
-      console.log('📸 Starting photo sync for photo:', photoId);
+      console.log('📸 Photo sync started:', {
+        photoId,
+        tenantId,
+        timestamp: new Date().toISOString()
+      });
 
       // Obtener información de la foto con sus relaciones
       const { data: photo, error: photoError } = await supabase
@@ -239,14 +243,23 @@ serve(async (req) => {
       // Obtener backup destination activo para este tenant
       const { data: destination, error: destError } = await supabase
         .from('backup_destinations')
-        .select('*')
+        .select(`
+          id,
+          tenant_id,
+          cloud_provider,
+          cloud_folder_id,
+          cloud_folder_path,
+          cloud_access_token,
+          cloud_refresh_token,
+          is_active
+        `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .eq('cloud_provider', 'google_drive')
         .single();
 
       if (destError || !destination) {
-        console.log('⚠️ No active Google Drive destination found for tenant');
+        console.log('⚠️ No active Google Drive destination found for tenant:', tenantId);
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -255,6 +268,12 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      console.log('📂 Destination found:', {
+        destinationId: destination.id,
+        provider: destination.cloud_provider,
+        rootFolder: destination.cloud_folder_id
+      });
 
       // Desencriptar tokens
       const accessToken = await decryptToken(destination.cloud_access_token);
@@ -312,13 +331,20 @@ serve(async (req) => {
           }
         });
 
-      console.log('✅ Photo sync completed successfully');
+      const cloudFilePath = `/${tour.title}/puntos/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`;
+      
+      console.log('✅ Photo synced successfully:', {
+        driveFileId,
+        cloudFilePath,
+        photoId: photo.id,
+        fileSize: photoBlob.size
+      });
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           driveFileId,
-          path: `${tour.title}/puntos/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`
+          path: cloudFilePath
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -330,12 +356,17 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Error in photo-sync-to-drive:', error);
+    console.error('❌ Photo sync failed:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
     
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
       }),
       { 
         status: 500, 
