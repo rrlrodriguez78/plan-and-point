@@ -430,7 +430,7 @@ serve(async (req) => {
           hotspot_id: hotspot.id,
           photo_id: photo.id,
           local_file_url: photo.photo_url,
-          local_file_type: 'panorama_photo',
+          local_file_type: 'photo_original',
           cloud_file_id: driveFileId,
           cloud_file_path: `/${tour.title}/${floorPlan.name}/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`,
           cloud_file_name: fileName,
