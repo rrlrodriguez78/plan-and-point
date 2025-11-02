@@ -330,7 +330,7 @@ export default function HotspotModal({
           </TabsContent>
 
           <TabsContent value="navigation" className="space-y-4 mt-4">
-            {initialData?.id && formData.has_panorama && tourType === 'tour_360' ? (
+            {initialData?.id && initialData.has_panorama && tourType === 'tour_360' ? (
               <NavigationPointsEditor
                 hotspot={formData as Hotspot}
                 allHotspots={allHotspots}
