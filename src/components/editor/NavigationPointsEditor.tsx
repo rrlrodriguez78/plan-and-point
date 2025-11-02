@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -21,6 +21,8 @@ export const NavigationPointsEditor = ({
 }: NavigationPointsEditorProps) => {
   const [points, setPoints] = useState<NavigationPoint[]>([]);
   const [loading, setLoading] = useState(false);
+  const [localValues, setLocalValues] = useState<Record<string, { theta: number; phi: number }>>({});
+  const debounceTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   
   useEffect(() => {
     loadNavigationPoints();
@@ -87,10 +89,31 @@ export const NavigationPointsEditor = ({
       return;
     }
     
-    toast.success('Punto actualizado');
     loadNavigationPoints();
     onSave?.();
   };
+
+  const debouncedUpdate = useCallback((pointId: string, field: 'theta' | 'phi', value: number) => {
+    // Actualizar valor local inmediatamente (para UI responsiva)
+    setLocalValues(prev => ({
+      ...prev,
+      [pointId]: {
+        ...prev[pointId],
+        [field]: value
+      }
+    }));
+
+    // Limpiar timeout anterior si existe
+    if (debounceTimeouts.current[`${pointId}-${field}`]) {
+      clearTimeout(debounceTimeouts.current[`${pointId}-${field}`]);
+    }
+
+    // Crear nuevo timeout para actualizar BD
+    debounceTimeouts.current[`${pointId}-${field}`] = setTimeout(() => {
+      updateNavigationPoint(pointId, { [field]: value });
+      delete debounceTimeouts.current[`${pointId}-${field}`];
+    }, 500);
+  }, []);
   
   const deleteNavigationPoint = async (pointId: string) => {
     const { error } = await supabase
@@ -193,15 +216,15 @@ export const NavigationPointsEditor = ({
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Ángulo Horizontal (θ): {point.theta.toFixed(0)}°
+                      Ángulo Horizontal (θ): {(localValues[point.id]?.theta ?? point.theta).toFixed(0)}°
                     </label>
                     <Slider
-                      value={[point.theta]}
+                      value={[localValues[point.id]?.theta ?? point.theta]}
                       min={-180}
                       max={180}
                       step={5}
                       onValueChange={([theta]) => 
-                        updateNavigationPoint(point.id, { theta })
+                        debouncedUpdate(point.id, 'theta', theta)
                       }
                       className="mt-2"
                     />
@@ -209,15 +232,15 @@ export const NavigationPointsEditor = ({
                   
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Ángulo Vertical (φ): {point.phi.toFixed(0)}°
+                      Ángulo Vertical (φ): {(localValues[point.id]?.phi ?? point.phi).toFixed(0)}°
                     </label>
                     <Slider
-                      value={[point.phi]}
+                      value={[localValues[point.id]?.phi ?? point.phi]}
                       min={0}
                       max={180}
                       step={5}
                       onValueChange={([phi]) => 
-                        updateNavigationPoint(point.id, { phi })
+                        debouncedUpdate(point.id, 'phi', phi)
                       }
                       className="mt-2"
                     />
