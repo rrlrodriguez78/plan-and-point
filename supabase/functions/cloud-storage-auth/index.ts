@@ -669,7 +669,7 @@ serve(async (req) => {
       
       // Try to auto-close multiple times
       function attemptClose() {
-        const attempts = [0, 500, 1000, 2000, 3000];
+        const attempts = [3000, 3500, 4000, 4500, 5000];
         let closedSuccessfully = false;
         
         attempts.forEach(function(delay) {
@@ -1402,7 +1402,7 @@ serve(async (req) => {
       
       // Try to auto-close multiple times
       function attemptClose() {
-        const attempts = [0, 500, 1000, 2000, 3000];
+        const attempts = [3000, 3500, 4000, 4500, 5000];
         let closedSuccessfully = false;
         
         attempts.forEach(function(delay) {
