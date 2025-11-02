@@ -303,29 +303,53 @@ serve(async (req) => {
 
         if (existingDestination) {
           // UPDATE EXISTING DESTINATION
-          console.log('🔄 Updating existing destination...');
+          console.log('🔄 Updating existing destination...', {
+            destinationId: existingDestination.id,
+            tenantId: tenantId,
+            provider: provider
+          });
           isReconnection = true;
           destinationId = existingDestination.id;
 
-          const { error: updateError } = await supabase
+          const updateData = {
+            cloud_access_token: encryptedAccessToken,
+            cloud_refresh_token: encryptedRefreshToken,
+            cloud_folder_id: folderId,
+            cloud_folder_path: '/VirtualTours_Backups',
+            is_active: true,
+            updated_at: new Date().toISOString()
+          };
+
+          console.log('📝 Attempting update with data:', {
+            destinationId,
+            hasAccessToken: !!updateData.cloud_access_token,
+            hasRefreshToken: !!updateData.cloud_refresh_token,
+            folderId: updateData.cloud_folder_id,
+            is_active: updateData.is_active
+          });
+
+          const { data: updateResult, error: updateError } = await supabase
             .from('backup_destinations')
-            .update({
-              cloud_access_token: encryptedAccessToken,
-              cloud_refresh_token: encryptedRefreshToken,
-              cloud_folder_id: folderId,
-              cloud_folder_path: '/VirtualTours_Backups',
-              is_active: true,
-              last_backup_at: new Date().toISOString()
-            })
-            .eq('id', destinationId);
+            .update(updateData)
+            .eq('id', destinationId)
+            .select();
 
           if (updateError) {
-            console.error('❌ Failed to update destination:', updateError);
+            console.error('❌ Failed to update destination:', {
+              error: updateError,
+              code: updateError.code,
+              message: updateError.message,
+              details: updateError.details,
+              hint: updateError.hint
+            });
             const appUrl = Deno.env.get('APP_URL');
-            return Response.redirect(`${appUrl}/app/backups?error=update_failed`, 302);
+            return Response.redirect(`${appUrl}/app/backups?error=update_failed&msg=${encodeURIComponent(updateError.message)}`, 302);
           }
 
-          console.log('✅ Destination reconnected successfully');
+          console.log('✅ Destination reconnected successfully:', {
+            updated: updateResult,
+            rowsAffected: updateResult?.length || 0
+          });
 
         } else {
           // CREATE NEW DESTINATION
