@@ -49,6 +49,27 @@ serve(async (req) => {
     for (const item of queueItems) {
       console.log(`🔄 Processing photo ${item.photo_id} (attempt ${item.attempts + 1})`);
       
+      // FASE 2: Verificar si el job sigue activo antes de procesar
+      const { data: jobStatus } = await supabase
+        .from('sync_jobs')
+        .select('status')
+        .eq('tour_id', item.tour_id)
+        .eq('status', 'processing')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (!jobStatus) {
+        console.log(`⏭️ Skipping photo ${item.photo_id} - job no longer active`);
+        // Marcar como failed porque el job fue cancelado
+        await supabase.rpc('update_queue_item_status', {
+          p_queue_id: item.id,
+          p_status: 'failed',
+          p_error_message: 'Job was cancelled or completed'
+        });
+        continue;
+      }
+      
       // Marcar como processing
       await supabase.rpc('update_queue_item_status', {
         p_queue_id: item.id,

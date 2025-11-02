@@ -19,13 +19,14 @@ serve(async (req) => {
     console.log('🔍 Checking for stalled sync jobs...');
 
     // Find jobs stuck in processing for more than 5 minutes
+    // ARREGLADO: Usar created_at en lugar de updated_at (que no existe en la tabla)
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
     const { data: stalledJobs, error: fetchError } = await supabase
       .from('sync_jobs')
       .select('*')
       .eq('status', 'processing')
-      .lt('updated_at', fiveMinutesAgo);
+      .lt('created_at', fiveMinutesAgo);
 
     if (fetchError) {
       console.error('Error fetching stalled jobs:', fetchError);

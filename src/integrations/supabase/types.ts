@@ -1850,7 +1850,16 @@ export type Database = {
           deleted_count: number
         }[]
       }
+      cleanup_queue_for_job: { Args: { p_job_id: string }; Returns: number }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
+      cleanup_stalled_jobs: {
+        Args: never
+        Returns: {
+          cleaned_job_id: string
+          stalled_for_minutes: number
+          tour_id: string
+        }[]
+      }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
       delete_cloud_file_mapping: {
         Args: { p_mapping_id: string }

@@ -626,7 +626,20 @@ serve(async (req) => {
     }
 
     if (action === 'cancel_job') {
-      // Cancel job
+      // FASE 2: Limpiar cola antes de cancelar el job
+      console.log(`🛑 Cancelling job ${jobId}...`);
+      
+      // 1. Limpiar la cola (eliminar pending, marcar processing como failed)
+      const { data: cleanupCount, error: cleanupError } = await supabase
+        .rpc('cleanup_queue_for_job', { p_job_id: jobId });
+      
+      if (cleanupError) {
+        console.warn('⚠️ Error cleaning up queue:', cleanupError);
+      } else {
+        console.log(`🧹 Cleaned up ${cleanupCount || 0} pending photos from queue`);
+      }
+      
+      // 2. Cancelar el job
       const { error: cancelError } = await supabase
         .from('sync_jobs')
         .update({ 
@@ -651,7 +664,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true,
-          message: 'Job cancelled'
+          message: 'Job cancelled and queue cleaned up',
+          cleanedQueueItems: cleanupCount || 0
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
