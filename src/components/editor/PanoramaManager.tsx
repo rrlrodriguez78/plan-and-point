@@ -34,6 +34,11 @@ interface PanoramaManagerProps {
   hotspotId: string;
 }
 
+interface TourInfo {
+  tourId: string;
+  tenantId: string;
+}
+
 const imageVersions = {
   original: {
     maxWidth: 4000,
@@ -59,6 +64,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
   const [photos, setPhotos] = useState<PanoramaPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
   
   // Recuperar la última fecha usada de localStorage, o usar hoy por defecto
   const [uploadDate, setUploadDate] = useState<Date>(() => {
@@ -77,7 +83,46 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
   useEffect(() => {
     loadPhotos();
+    loadTourInfo();
   }, [hotspotId]);
+
+  const loadTourInfo = async () => {
+    try {
+      // Get tour_id and tenant_id from hotspot
+      const { data: hotspot, error: hotspotError } = await supabase
+        .from('hotspots')
+        .select('floor_plan_id')
+        .eq('id', hotspotId)
+        .single();
+
+      if (hotspotError) throw hotspotError;
+
+      const { data: floorPlan, error: floorError } = await supabase
+        .from('floor_plans')
+        .select('tour_id')
+        .eq('id', hotspot.floor_plan_id)
+        .single();
+
+      if (floorError) throw floorError;
+
+      const { data: tour, error: tourError } = await supabase
+        .from('virtual_tours')
+        .select('id, tenant_id')
+        .eq('id', floorPlan.tour_id)
+        .single();
+
+      if (tourError) throw tourError;
+
+      setTourInfo({
+        tourId: tour.id,
+        tenantId: tour.tenant_id
+      });
+
+      console.log('🔄 Tour info loaded for sync:', { tourId: tour.id, tenantId: tour.tenant_id });
+    } catch (error) {
+      console.error('Error loading tour info:', error);
+    }
+  };
 
   const loadPhotos = async () => {
     try {
@@ -173,6 +218,42 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
     });
   };
 
+  // Helper function to upload with retry logic
+  const uploadWithRetry = async (
+    bucket: string, 
+    path: string, 
+    blob: Blob, 
+    maxRetries = 3
+  ): Promise<any> => {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await supabase.storage.from(bucket).upload(path, blob);
+        if (result.error) throw result.error;
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Retry only on 502 errors
+        if (error.message?.includes('502') || error.statusCode === 502) {
+          console.warn(`⚠️ Upload attempt ${attempt}/${maxRetries} failed with 502, retrying...`);
+          
+          if (attempt < maxRetries) {
+            // Wait 2 seconds before retry
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+        }
+        
+        // For other errors, throw immediately
+        throw error;
+      }
+    }
+    
+    throw lastError;
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
     if (!file) return;
@@ -194,11 +275,11 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       const timestamp = Date.now();
       const baseFileName = `${hotspotId}/${timestamp}`;
       
-      // Create optimized versions using centralized utility
+      // Create optimized versions with REDUCED sizes to avoid 502
       const versions = await createImageVersions(file, [
-        { name: 'original', options: { maxWidth: 4000, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
-        { name: 'mobile', options: { maxWidth: 1920, quality: 0.85, format: 'webp', maxSizeMB: 10 } },
-        { name: 'thumbnail', options: { maxWidth: 400, quality: 0.8, format: 'webp', maxSizeMB: 10 } }
+        { name: 'original', options: { maxWidth: 3000, quality: 0.75, format: 'webp', maxSizeMB: 10 } },
+        { name: 'mobile', options: { maxWidth: 1280, quality: 0.75, format: 'webp', maxSizeMB: 10 } },
+        { name: 'thumbnail', options: { maxWidth: 400, quality: 0.7, format: 'webp', maxSizeMB: 10 } }
       ]);
       
       // Calculate compression stats
@@ -216,18 +297,35 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         { duration: 5000 }
       );
 
-      // Upload all 3 versions to Supabase Storage
+      // Upload SEQUENTIALLY with retry logic to avoid 502
       setUploadProgress({ progress: 70, status: t('panorama.uploading') });
       
-      const [originalUpload, mobileUpload, thumbnailUpload] = await Promise.all([
-        supabase.storage.from('tour-images').upload(`${baseFileName}.${versions.original.format}`, versions.original.blob),
-        supabase.storage.from('tour-images').upload(`${baseFileName}_mobile.${versions.mobile.format}`, versions.mobile.blob),
-        supabase.storage.from('tour-images').upload(`${baseFileName}_thumb.${versions.thumbnail.format}`, versions.thumbnail.blob),
-      ]);
-
-      if (originalUpload.error) throw originalUpload.error;
-      if (mobileUpload.error) throw mobileUpload.error;
-      if (thumbnailUpload.error) throw thumbnailUpload.error;
+      console.log('🔄 Starting sequential upload with retry...');
+      
+      const originalUpload = await uploadWithRetry(
+        'tour-images',
+        `${baseFileName}.${versions.original.format}`,
+        versions.original.blob
+      );
+      console.log('✅ Original uploaded');
+      
+      setUploadProgress({ progress: 80, status: t('panorama.uploading') });
+      
+      const mobileUpload = await uploadWithRetry(
+        'tour-images',
+        `${baseFileName}_mobile.${versions.mobile.format}`,
+        versions.mobile.blob
+      );
+      console.log('✅ Mobile uploaded');
+      
+      setUploadProgress({ progress: 85, status: t('panorama.uploading') });
+      
+      const thumbnailUpload = await uploadWithRetry(
+        'tour-images',
+        `${baseFileName}_thumb.${versions.thumbnail.format}`,
+        versions.thumbnail.blob
+      );
+      console.log('✅ Thumbnail uploaded');
       
       setUploadProgress({ progress: 90, status: t('panorama.finalizing') });
 
@@ -245,7 +343,7 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
         .getPublicUrl(`${baseFileName}_thumb.${versions.thumbnail.format}`);
 
       // Save to database with all 3 URLs and original filename
-      const { error: dbError } = await supabase
+      const { data: insertedPhoto, error: dbError } = await supabase
         .from('panorama_photos')
         .insert({
           hotspot_id: hotspotId,
@@ -255,7 +353,9 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
           display_order: photos.length,
           capture_date: format(uploadDate, 'yyyy-MM-dd'),
           original_filename: file.name,
-        });
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
 
@@ -263,6 +363,39 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
       toast.success(t('panorama.uploadSuccess'));
       
       localStorage.setItem('lastUploadDate', format(uploadDate, 'yyyy-MM-dd'));
+      
+      // Sync to Google Drive (non-blocking)
+      if (insertedPhoto && tourInfo) {
+        console.log('🔄 Attempting to sync photo to Google Drive...', {
+          photoId: insertedPhoto.id,
+          tourId: tourInfo.tourId,
+          tenantId: tourInfo.tenantId
+        });
+
+        supabase.functions
+          .invoke('photo-sync-to-drive', {
+            body: { 
+              action: 'sync_photo',
+              photoId: insertedPhoto.id,
+              tourId: tourInfo.tourId,
+              tenantId: tourInfo.tenantId
+            }
+          })
+          .then(({ data, error }) => {
+            if (error) {
+              console.warn('⚠️ Photo sync to Drive failed:', error);
+            } else {
+              console.log('✅ Photo synced to Drive:', data);
+              toast.success('Photo synced to Google Drive!');
+            }
+          })
+          .catch(err => {
+            console.warn('⚠️ Photo sync to Drive failed:', err);
+          });
+      } else {
+        console.warn('⚠️ Cannot sync to Drive: missing tourInfo or insertedPhoto');
+      }
+      
       loadPhotos();
     } catch (error: any) {
       console.error('Error uploading photo:', error);
