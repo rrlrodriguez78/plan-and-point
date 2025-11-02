@@ -320,7 +320,7 @@ serve(async (req) => {
     const { action, tourId, tenantId, jobId } = body;
     console.log(`📥 Received request - Action: ${action}, JobID: ${jobId}, TourID: ${tourId}`);
 
-    // Handle verify_and_resync action - MEJORADO
+    // Handle verify_and_resync action - MEJORADO con FASE 3
     if (action === 'verify_and_resync') {
       console.log('🔍 Verifying Google Drive files and re-syncing missing...');
       
@@ -329,6 +329,17 @@ serve(async (req) => {
           JSON.stringify({ error: 'tourId and tenantId are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // FASE 3: Limpiar cola antes de re-encolar
+      console.log('🧹 Resetting queue for tour before re-sync...');
+      const { data: resetCount, error: resetError } = await supabase
+        .rpc('reset_queue_for_tour', { p_tour_id: tourId });
+      
+      if (resetError) {
+        console.warn('⚠️ Failed to reset queue:', resetError);
+      } else {
+        console.log(`✅ Queue reset: ${resetCount} old items removed`);
       }
 
       // Obtener y VERIFICAR destino con la nueva función

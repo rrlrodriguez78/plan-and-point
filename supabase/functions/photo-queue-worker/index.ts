@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
 
-const BATCH_SIZE = 5; // Procesar 5 fotos por invocación del worker
+const BATCH_SIZE = 12; // FASE 4: Aumentado de 5 a 12 para mejor throughput
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +20,9 @@ serve(async (req) => {
   );
   
   console.log('🔄 Photo queue worker started');
+  
+  // FASE 4: Performance tracking
+  const batchStartTime = Date.now();
   
   try {
     // 1. Obtener próximas fotos a procesar
@@ -198,7 +201,15 @@ serve(async (req) => {
       }
     }
     
+    // FASE 4: Performance logs
+    const batchEndTime = Date.now();
+    const batchDuration = (batchEndTime - batchStartTime) / 1000;
+    const totalProcessed = successCount + failCount;
+    const avgTimePerPhoto = totalProcessed > 0 ? batchDuration / totalProcessed : 0;
+    const photosPerMinute = totalProcessed > 0 ? (totalProcessed / batchDuration) * 60 : 0;
+    
     console.log(`✅ Batch processed: ${successCount} success, ${failCount} failed`);
+    console.log(`⏱️ Performance: ${batchDuration.toFixed(2)}s total, ${avgTimePerPhoto.toFixed(2)}s/photo, ~${photosPerMinute.toFixed(1)} photos/min`);
     
     // 4. Verificar si quedan fotos pendientes en la cola por cada tour
     const processedTours: Set<string> = new Set();

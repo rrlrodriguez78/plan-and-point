@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon, Map, Upload, RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
+import { InfoIcon, Map, Upload, RefreshCw, AlertTriangle, ExternalLink, RotateCcw } from "lucide-react";
 import { SyncProgressDialog } from "./SyncProgressDialog";
+import { QueueStatusIndicator } from "./QueueStatusIndicator";
 
 interface Tour {
   id: string;
@@ -413,6 +414,39 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
   };
 
+  // FASE 5: Retry failed photos
+  const handleRetryFailed = async () => {
+    if (!selectedTourId) {
+      toast.error('Select a tour');
+      return;
+    }
+
+    try {
+      // Reset failed items in queue for re-processing
+      const { error } = await supabase
+        .from('photo_sync_queue')
+        .update({ 
+          status: 'pending', 
+          attempts: 0,
+          error_message: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tour_id', selectedTourId)
+        .eq('status', 'failed');
+
+      if (error) throw error;
+
+      toast.success('Failed photos queued for retry');
+      
+      // Trigger worker to process the queue
+      await supabase.functions.invoke('photo-queue-worker', {});
+      
+    } catch (error) {
+      console.error('Retry failed error:', error);
+      toast.error('Failed to retry photos');
+    }
+  };
+
   const handleSyncAll = async () => {
     if (!selectedTourId) {
       toast.error('Select a tour');
@@ -424,6 +458,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     setAlreadySyncedCount(0);
     setFloorPlanProgress(null);
     setFloorPlanErrors([]);
+    setQuotaError(false); // Reset quota error
 
     try {
       // STEP 1: Sync Floor Plans
@@ -502,6 +537,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         open={showProgressDialog}
         job={currentJob}
         alreadySynced={alreadySyncedCount}
+        tourId={selectedTourId}
         onClose={() => setShowProgressDialog(false)}
         onCancel={handleCancelJob}
       />
@@ -588,7 +624,23 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
             <RefreshCw className={`h-5 w-5 mr-2 ${verifying ? 'animate-spin' : ''}`} />
             {verifying ? "Verifying..." : "Verify Missing"}
           </Button>
+
+          <Button 
+            onClick={handleRetryFailed}
+            disabled={!selectedTourId || syncingAll || verifying}
+            variant="secondary"
+            className="w-full h-11 md:h-10 md:col-span-2"
+            size="lg"
+          >
+            <RotateCcw className="h-5 w-5 mr-2" />
+            Retry Failed Photos
+          </Button>
         </div>
+
+        {/* FASE 5: Queue Status Indicator */}
+        {selectedTourId && (
+          <QueueStatusIndicator tourId={selectedTourId} className="pt-2" />
+        )}
 
         {progress && (
           <div className="space-y-3 pt-4 border-t">

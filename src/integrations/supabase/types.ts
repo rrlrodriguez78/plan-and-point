@@ -2001,6 +2001,7 @@ export type Database = {
         Args: { _notes?: string; _rejected_by: string; _user_id: string }
         Returns: undefined
       }
+      reset_queue_for_tour: { Args: { p_tour_id: string }; Returns: number }
       run_backup_system_tests: {
         Args: never
         Returns: {
