@@ -225,6 +225,39 @@ export default function FloorPlanManager({
         
         console.log('✅ Floor Plan Created Successfully:', data);
         
+        // Sync floor plan image to Google Drive (after creation)
+        if (data.id && data.image_url && tour?.id && tour?.tenant_id) {
+          console.log('🗺️ Syncing new floor plan image to Google Drive...', {
+            floorPlanId: data.id,
+            imageUrl: data.image_url,
+            tourId: tour.id,
+            tenantId: tour.tenant_id,
+            fileName: data.image_url.split('/').pop()
+          });
+
+          supabase.functions
+            .invoke('photo-sync-to-drive', {
+              body: { 
+                action: 'sync_floor_plan',
+                floorPlanId: data.id,
+                imageUrl: data.image_url,
+                tourId: tour.id,
+                tenantId: tour.tenant_id,
+                fileName: data.image_url.split('/').pop() || `floor_plan_${data.id}.webp`
+              }
+            })
+            .then(({ data: syncData, error: syncError }) => {
+              if (syncError) {
+                console.warn('⚠️ Floor plan sync failed:', syncError);
+              } else {
+                console.log('✅ Floor plan synced to Drive:', syncData);
+              }
+            })
+            .catch(err => {
+              console.error('❌ Sync error:', err);
+            });
+        }
+        
         onFloorPlansUpdate([...floorPlans, data]);
       } else {
         const { error } = await supabase
@@ -239,6 +272,38 @@ export default function FloorPlanManager({
           .eq('id', editingFloorPlan.id!);
         
         if (error) throw error;
+        
+        // Sync updated floor plan image to Google Drive
+        if (editingFloorPlan.id && editingFloorPlan.image_url && tour?.id && tour?.tenant_id) {
+          console.log('🗺️ Syncing updated floor plan image to Google Drive...', {
+            floorPlanId: editingFloorPlan.id,
+            imageUrl: editingFloorPlan.image_url,
+            tourId: tour.id,
+            tenantId: tour.tenant_id
+          });
+
+          supabase.functions
+            .invoke('photo-sync-to-drive', {
+              body: { 
+                action: 'sync_floor_plan',
+                floorPlanId: editingFloorPlan.id,
+                imageUrl: editingFloorPlan.image_url,
+                tourId: tour.id,
+                tenantId: tour.tenant_id,
+                fileName: editingFloorPlan.image_url.split('/').pop() || `floor_plan_${editingFloorPlan.id}.webp`
+              }
+            })
+            .then(({ data: syncData, error: syncError }) => {
+              if (syncError) {
+                console.warn('⚠️ Floor plan sync failed:', syncError);
+              } else {
+                console.log('✅ Floor plan synced to Drive:', syncData);
+              }
+            })
+            .catch(err => {
+              console.error('❌ Sync error:', err);
+            });
+        }
         
         const updatedFloorPlans = floorPlans.map(fp =>
           fp.id === editingFloorPlan.id ? { ...fp, ...editingFloorPlan } as FloorPlan : fp
@@ -334,36 +399,6 @@ export default function FloorPlanManager({
         width: result.width,
         height: result.height
       }));
-
-      // Sync floor plan image to Google Drive (non-blocking)
-      if (tour?.id && tour?.tenant_id && editingFloorPlan?.id) {
-        console.log('🗺️ Syncing floor plan image to Google Drive...', {
-          floorPlanId: editingFloorPlan.id,
-          imageUrl: publicUrl,
-          tourId: tour.id,
-          tenantId: tour.tenant_id,
-          fileName: fileName
-        });
-
-        supabase.functions
-          .invoke('photo-sync-to-drive', {
-            body: { 
-              action: 'sync_floor_plan',
-              floorPlanId: editingFloorPlan.id,
-              imageUrl: publicUrl,
-              tourId: tour.id,
-              tenantId: tour.tenant_id,
-              fileName: fileName
-            }
-          })
-          .then(({ data, error }) => {
-            if (error) {
-              console.warn('⚠️ Floor plan sync failed:', error);
-            } else {
-              console.log('✅ Floor plan synced to Drive:', data);
-            }
-          });
-      }
     } catch (error: any) {
       console.error('Error uploading floor plan file:', error);
       alert(error.message || t('floorPlan.errorUploading'));
