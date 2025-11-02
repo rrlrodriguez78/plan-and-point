@@ -593,7 +593,7 @@ serve(async (req) => {
           tour_id: tour.id,
           floor_plan_id: floorPlan.id,
           local_file_url: imageUrl,
-          local_file_type: 'floor_plan_image',
+          local_file_type: 'floor_plan',
           cloud_file_id: driveFileId,
           cloud_file_path: cloudFilePath,
           cloud_file_name: originalFileName,
