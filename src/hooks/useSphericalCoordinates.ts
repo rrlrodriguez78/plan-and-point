@@ -108,8 +108,8 @@ export const useSphericalCoordinates = () => {
     radius: number = 480,
     heightOffset: number = 0
   ): CartesianCoordinates => {
-    // Invertir theta para matchear con la esfera invertida
-    const thetaRad = THREE.MathUtils.degToRad(-theta);
+    // Usar theta ya corregido de screenToSpherical
+    const thetaRad = THREE.MathUtils.degToRad(theta);
     const phiRad = THREE.MathUtils.degToRad(phi);
     
     const x = radius * Math.sin(phiRad) * Math.cos(thetaRad);
@@ -121,7 +121,7 @@ export const useSphericalCoordinates = () => {
       thetaRad: thetaRad,
       phiRad: phiRad,
       output: { x, y, z },
-      note: 'theta invertido en conversión'
+      note: 'usando theta ya corregido de screenToSpherical'
     });
     
     return { x, y, z };
