@@ -38,8 +38,8 @@ const BackupsPage: React.FC = () => {
 
     if (success === 'connected' || success === 'reconnected') {
       const message = success === 'reconnected' 
-        ? 'Conexión restablecida exitosamente' 
-        : 'Google Drive conectado exitosamente';
+        ? 'Connection restored successfully' 
+        : 'Google Drive connected successfully';
       toast.success(message);
       // Clear the URL params
       setSearchParams({});
@@ -47,7 +47,7 @@ const BackupsPage: React.FC = () => {
       // Force reload to show updated data
       window.location.reload();
     } else if (error) {
-      toast.error(`Error al conectar: ${error}`);
+      toast.error(`Connection error: ${error}`);
       // Clear the URL params
       setSearchParams({});
     }
@@ -70,10 +70,10 @@ const BackupsPage: React.FC = () => {
         </div>
         
         <Tabs defaultValue="settings" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="settings">⚙️ Google Drive Settings</TabsTrigger>
-            <TabsTrigger value="sync">🔄 Sync Existing Photos</TabsTrigger>
-            <TabsTrigger value="history">📜 Sync History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+            <TabsTrigger value="settings">⚙️ Settings</TabsTrigger>
+            <TabsTrigger value="sync">🔄 Sync Photos</TabsTrigger>
+            <TabsTrigger value="history">📜 History</TabsTrigger>
           </TabsList>
           
           <TabsContent value="settings" className="space-y-6">

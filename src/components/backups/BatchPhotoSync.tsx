@@ -99,7 +99,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         }, 2000);
         pollingIntervalRef.current = intervalId;
         
-        toast.info('Reanudando sincronización en progreso...');
+        toast.info('Resuming synchronization in progress...');
       }
     };
     
@@ -120,7 +120,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       setTours(data || []);
     } catch (error) {
       console.error('Error loading tours:', error);
-      toast.error('Error al cargar tours');
+      toast.error('Error loading tours');
     } finally {
       setLoading(false);
     }
@@ -152,14 +152,14 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           if (data.job.status === 'completed') {
             const successCount = data.job.processed_items - data.job.failed_items;
             if (data.job.failed_items === 0) {
-              toast.success(`✅ ${successCount} fotos sincronizadas exitosamente`);
+              toast.success(`✅ ${successCount} photos synced successfully`);
             } else {
-              toast.warning(`⚠️ ${successCount} sincronizadas, ${data.job.failed_items} fallidas`);
+              toast.warning(`⚠️ ${successCount} synced, ${data.job.failed_items} failed`);
             }
           } else if (data.job.status === 'cancelled') {
-            toast.info('Sincronización cancelada');
+            toast.info('Sync cancelled');
           } else if (data.job.status === 'failed') {
-            toast.error('Sincronización fallida');
+            toast.error('Sync failed');
           }
         }
       }
@@ -199,19 +199,19 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       if (error) throw error;
 
       if (data.success) {
-        toast.info('Cancelando sincronización...');
+        toast.info('Cancelling sync...');
         // Update will come from next poll
       }
     } catch (error) {
       console.error('Error cancelling job:', error);
-      toast.error('Error al cancelar');
+      toast.error('Error cancelling');
     }
   };
 
   // New handleSync with job-based approach
   const handleSync = async () => {
     if (!selectedTourId) {
-      toast.error('Selecciona un tour');
+      toast.error('Select a tour');
       return;
     }
 
@@ -233,7 +233,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       if (data.success && data.jobId) {
         setAlreadySyncedCount(data.alreadySynced || 0);
         setShowProgressDialog(true);
-        toast.info(`🚀 Iniciando sincronización de ${data.totalPhotos} fotos...`);
+        toast.info(`🚀 Starting sync of ${data.totalPhotos} photos...`);
         
         // Start polling for progress
         startPolling(data.jobId);
@@ -251,7 +251,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
   const handleSyncFloorPlans = async () => {
     if (!selectedTourId) {
-      toast.error('Selecciona un tour');
+      toast.error('Select a tour');
       return;
     }
 
@@ -279,16 +279,16 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         setFloorPlanErrors(data.errors || []);
 
         if (data.failed === 0) {
-          toast.success(`✅ ${data.synced} planos de piso sincronizados`);
+          toast.success(`✅ ${data.synced} floor plans synced`);
         } else {
-          toast.warning(`⚠️ ${data.synced} sincronizados, ${data.failed} fallidos`);
+          toast.warning(`⚠️ ${data.synced} synced, ${data.failed} failed`);
         }
       } else {
         throw new Error(data.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Floor plan sync error:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al sincronizar planos');
+      toast.error(error instanceof Error ? error.message : 'Error syncing floor plans');
     } finally {
       setSyncingFloorPlans(false);
     }
@@ -296,7 +296,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
   const handleSyncAll = async () => {
     if (!selectedTourId) {
-      toast.error('Selecciona un tour');
+      toast.error('Select a tour');
       return;
     }
 
@@ -307,8 +307,8 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     setFloorPlanErrors([]);
 
     try {
-      // PASO 1: Sincronizar Floor Plans
-      toast.info('🗺️ Paso 1/2: Sincronizando planos de piso...');
+      // STEP 1: Sync Floor Plans
+      toast.info('🗺️ Step 1/2: Syncing floor plans...');
       setSyncingFloorPlans(true);
 
       const floorPlansResult = await supabase.functions.invoke('sync-all-floor-plans', {
@@ -330,16 +330,16 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         setFloorPlanErrors(floorPlansResult.data.errors || []);
 
         if (floorPlansResult.data.failed === 0) {
-          toast.success(`✅ Paso 1/2: ${floorPlansResult.data.synced} planos sincronizados`);
+          toast.success(`✅ Step 1/2: ${floorPlansResult.data.synced} floor plans synced`);
         } else {
-          toast.warning(`⚠️ Paso 1/2: ${floorPlansResult.data.synced} planos sincronizados, ${floorPlansResult.data.failed} fallidos`);
+          toast.warning(`⚠️ Step 1/2: ${floorPlansResult.data.synced} floor plans synced, ${floorPlansResult.data.failed} failed`);
         }
       }
 
       setSyncingFloorPlans(false);
 
-      // PASO 2: Sincronizar Fotos con job system
-      toast.info('📸 Paso 2/2: Sincronizando fotos panorámicas...');
+      // STEP 2: Sync Photos with job system
+      toast.info('📸 Step 2/2: Syncing panoramic photos...');
       setSyncing(true);
 
       const photosResult = await supabase.functions.invoke('batch-sync-photos', {
@@ -355,7 +355,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       if (photosResult.data.success && photosResult.data.jobId) {
         setAlreadySyncedCount(photosResult.data.alreadySynced || 0);
         setShowProgressDialog(true);
-        toast.info(`🚀 Sincronizando ${photosResult.data.totalPhotos} fotos...`);
+        toast.info(`🚀 Syncing ${photosResult.data.totalPhotos} photos...`);
         
         // Start polling for progress
         startPolling(photosResult.data.jobId);
@@ -365,7 +365,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
     } catch (error) {
       console.error('Sync all error:', error);
-      toast.error(error instanceof Error ? error.message : 'Error durante la sincronización');
+      toast.error(error instanceof Error ? error.message : 'Error during sync');
     } finally {
       setSyncing(false);
       setSyncingFloorPlans(false);
@@ -391,22 +391,22 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          Sincronizar Fotos Existentes
+          Sync Existing Photos
         </CardTitle>
         <CardDescription>
-          Sincroniza retroactivamente las fotos de un tour a Google Drive
+          Retroactively sync photos from a tour to Google Drive
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Seleccionar Tour</label>
+          <label className="text-base md:text-sm font-medium">Select Tour</label>
           <Select
             value={selectedTourId}
             onValueChange={setSelectedTourId}
             disabled={loading || syncing || syncingFloorPlans || syncingAll}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona un tour..." />
+            <SelectTrigger className="h-11 md:h-10">
+              <SelectValue placeholder="Select a tour..." />
             </SelectTrigger>
             <SelectContent>
               {tours.map(tour => (
@@ -421,49 +421,49 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         <Button 
           onClick={handleSyncAll}
           disabled={!selectedTourId || syncingAll}
-          className="w-full"
+          className="w-full h-11 md:h-10"
           size="lg"
         >
           <Upload className="h-5 w-5 mr-2" />
           {syncingAll 
             ? syncingFloorPlans 
-              ? "📍 Sincronizando planos..." 
+              ? "📍 Syncing floor plans..." 
               : syncing 
-                ? "📸 Sincronizando fotos..." 
-                : "Sincronizando..."
-            : "Sincronizar Todo (Planos + Fotos)"
+                ? "📸 Syncing photos..." 
+                : "Syncing..."
+            : "Sync All (Floor Plans + Photos)"
           }
         </Button>
 
         {progress && (
           <div className="space-y-3 pt-4 border-t">
-            <div className="font-semibold text-sm">Fotos Panorámicas</div>
+            <div className="font-semibold text-base md:text-sm">Panoramic Photos</div>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium">Progreso</span>
+              <div className="flex justify-between text-base md:text-sm">
+                <span className="font-medium">Progress</span>
                 <span className="text-muted-foreground">
-                  {progress.synced + progress.failed} / {progress.total} fotos
+                  {progress.synced + progress.failed} / {progress.total} photos
                 </span>
               </div>
               <Progress value={((progress.synced + progress.failed) / progress.total) * 100} className="h-2" />
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-base md:text-sm">
               <div className="bg-green-50 dark:bg-green-950 p-3 rounded border border-green-200 dark:border-green-800">
-                <div className="text-green-600 dark:text-green-400 font-medium">✓ Sincronizadas</div>
+                <div className="text-green-600 dark:text-green-400 font-medium">✓ Synced</div>
                 <div className="text-2xl font-bold text-green-700 dark:text-green-300">{progress.synced}</div>
               </div>
 
               {progress.alreadySynced > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
-                  <div className="text-blue-600 dark:text-blue-400 font-medium">⏭ Ya existían</div>
+                  <div className="text-blue-600 dark:text-blue-400 font-medium">⏭ Already synced</div>
                   <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{progress.alreadySynced}</div>
                 </div>
               )}
 
               {progress.failed > 0 && (
                 <div className="bg-red-50 dark:bg-red-950 p-3 rounded border border-red-200 dark:border-red-800">
-                  <div className="text-red-600 dark:text-red-400 font-medium">✗ Fallidas</div>
+                  <div className="text-red-600 dark:text-red-400 font-medium">✗ Failed</div>
                   <div className="text-2xl font-bold text-red-700 dark:text-red-300">{progress.failed}</div>
                 </div>
               )}
@@ -473,7 +473,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
               <Alert variant="destructive">
                 <InfoIcon className="h-4 w-4" />
                 <AlertDescription>
-                  <div className="font-semibold mb-1">Errores encontrados:</div>
+                  <div className="font-semibold mb-1">Errors found:</div>
                   <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
                     {errors.map((err, idx) => (
                       <li key={idx} className="font-mono">
@@ -489,33 +489,33 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
         {floorPlanProgress && (
           <div className="space-y-3 pt-4 border-t">
-            <div className="font-semibold text-sm">Planos de Piso</div>
+            <div className="font-semibold text-base md:text-sm">Floor Plans</div>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium">Progreso</span>
+              <div className="flex justify-between text-base md:text-sm">
+                <span className="font-medium">Progress</span>
                 <span className="text-muted-foreground">
-                  {floorPlanProgress.synced + floorPlanProgress.failed} / {floorPlanProgress.total} planos
+                  {floorPlanProgress.synced + floorPlanProgress.failed} / {floorPlanProgress.total} floor plans
                 </span>
               </div>
               <Progress value={((floorPlanProgress.synced + floorPlanProgress.failed) / floorPlanProgress.total) * 100} className="h-2" />
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-base md:text-sm">
               <div className="bg-green-50 dark:bg-green-950 p-3 rounded border border-green-200 dark:border-green-800">
-                <div className="text-green-600 dark:text-green-400 font-medium">✓ Sincronizados</div>
+                <div className="text-green-600 dark:text-green-400 font-medium">✓ Synced</div>
                 <div className="text-2xl font-bold text-green-700 dark:text-green-300">{floorPlanProgress.synced}</div>
               </div>
 
               {floorPlanProgress.alreadySynced > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
-                  <div className="text-blue-600 dark:text-blue-400 font-medium">⏭ Ya existían</div>
+                  <div className="text-blue-600 dark:text-blue-400 font-medium">⏭ Already synced</div>
                   <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{floorPlanProgress.alreadySynced}</div>
                 </div>
               )}
 
               {floorPlanProgress.failed > 0 && (
                 <div className="bg-red-50 dark:bg-red-950 p-3 rounded border border-red-200 dark:border-red-800">
-                  <div className="text-red-600 dark:text-red-400 font-medium">✗ Fallidos</div>
+                  <div className="text-red-600 dark:text-red-400 font-medium">✗ Failed</div>
                   <div className="text-2xl font-bold text-red-700 dark:text-red-300">{floorPlanProgress.failed}</div>
                 </div>
               )}
@@ -525,7 +525,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
               <Alert variant="destructive">
                 <InfoIcon className="h-4 w-4" />
                 <AlertDescription>
-                  <div className="font-semibold mb-1">Errores encontrados:</div>
+                  <div className="font-semibold mb-1">Errors found:</div>
                   <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
                     {floorPlanErrors.map((error, idx) => (
                       <li key={idx} className="font-mono">{error}</li>

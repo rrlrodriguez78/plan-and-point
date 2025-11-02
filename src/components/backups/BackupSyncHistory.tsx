@@ -20,10 +20,10 @@ export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
     try {
       setIsClearing(true);
       await clearSyncHistory();
-      toast.success('Historial eliminado correctamente');
+      toast.success('History cleared successfully');
     } catch (error) {
       console.error('Error clearing history:', error);
-      toast.error('Error al eliminar el historial');
+      toast.error('Error clearing history');
     } finally {
       setIsClearing(false);
     }
@@ -85,23 +85,24 @@ export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
                   variant="destructive"
                   size="sm"
                   disabled={isClearing}
+                  className="h-11 md:h-9"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Borrar Historial
+                  Clear History
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>¿Borrar todo el historial?</AlertDialogTitle>
+                  <AlertDialogTitle>Clear all history?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción eliminará permanentemente todos los registros de sincronización.
-                    Los archivos en Google Drive NO se eliminarán, solo el historial local.
+                    This action will permanently delete all sync records.
+                    Files in Google Drive will NOT be deleted, only the local history.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleClearHistory}>
-                    Borrar Todo
+                    Clear All
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -121,7 +122,7 @@ export const BackupSyncHistory: React.FC<Props> = ({ tenantId }) => {
             {syncHistory.map((sync) => (
               <div
                 key={sync.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                className="flex flex-col md:flex-row md:items-center md:justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors gap-4"
               >
                 <div className="flex items-center gap-3 flex-1">
                   {getStatusIcon(sync.status)}

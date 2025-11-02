@@ -84,7 +84,7 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
       setTours(data || []);
     } catch (error) {
       console.error('Error loading tours:', error);
-      toast.error('Error al cargar tours');
+      toast.error('Error loading tours');
     } finally {
       setLoadingTours(false);
     }
@@ -110,18 +110,18 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
 
   const handleToggleAutoBackup = async (tourId: string, enabled: boolean) => {
     if (enabled && !destination) {
-      toast.error('Primero debes conectar Google Drive');
+      toast.error('Connect Google Drive first');
       return;
     }
 
     if (enabled && destination && !destination.is_active) {
-      toast.error('El destino de Google Drive está inactivo. Reconéctalo primero.');
+      toast.error('Google Drive destination is inactive. Reconnect it first.');
       return;
     }
 
     if (enabled && destination) {
       await enableAutoBackup(tourId, destination.id);
-      toast.success('Auto-backup reactivado para este tour');
+      toast.success('Auto-backup enabled for this tour');
       
       // Trigger manual de backup inicial
       try {
@@ -136,7 +136,7 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
       }
     } else {
       await disableAutoBackup(tourId);
-      toast.success('Auto-backup desactivado para este tour');
+      toast.success('Auto-backup disabled for this tour');
     }
   };
 
@@ -160,15 +160,15 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>⚠️ Google Drive no conectado</CardTitle>
+          <CardTitle>⚠️ Google Drive Not Connected</CardTitle>
           <CardDescription>
-            Antes de configurar backups automáticos, debes conectar tu cuenta de Google Drive.
+            Before configuring automatic backups, connect your Google Drive account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Conecta tu cuenta de Google Drive arriba para habilitar backups automáticos.
-            Una vez conectado, todos los tours nuevos se respaldarán automáticamente.
+          <p className="text-base md:text-sm text-muted-foreground mb-4">
+            Connect your Google Drive account above to enable automatic backups.
+            Once connected, all new tours will be backed up automatically.
           </p>
         </CardContent>
       </Card>
@@ -180,17 +180,17 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings2 className="h-5 w-5" />
-          Configurar Backup Automático por Tour
+          Configure Auto-Backup per Tour
         </CardTitle>
         <CardDescription>
-          Todos los tours nuevos se respaldan automáticamente en Google Drive. 
-          Puedes desactivar el backup para tours específicos usando el switch a la derecha.
+          All new tours are automatically backed up to Google Drive. 
+          You can disable backup for specific tours using the switch on the right.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {tours.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No tienes tours creados aún. Crea un tour para configurar backups automáticos.
+          <p className="text-base md:text-sm text-muted-foreground text-center py-8">
+            No tours created yet. Create a tour to configure automatic backups.
           </p>
         ) : (
           tours.map((tour) => {
@@ -200,29 +200,29 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
             return (
               <div
                 key={tour.id}
-                className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                className="flex flex-col md:flex-row md:items-start md:justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors gap-4"
               >
                 <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{tour.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-medium text-base md:text-sm">{tour.title}</h3>
                     {isEnabled ? (
                       <Badge variant="secondary" className="text-xs">
                         <Cloud className="h-3 w-3 mr-1" />
-                        Backup automático
+                        Auto-backup
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-xs opacity-60">
-                        Sin backup
+                        No backup
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-1">
-                    {tour.description || 'Sin descripción'}
+                  <p className="text-base md:text-sm text-muted-foreground line-clamp-1">
+                    {tour.description || 'No description'}
                   </p>
                   {config?.last_auto_backup_at && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <p className="text-sm md:text-xs text-muted-foreground flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      Último backup: {new Date(config.last_auto_backup_at).toLocaleDateString('es-ES', {
+                      Last backup: {new Date(config.last_auto_backup_at).toLocaleDateString('en-US', {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',
@@ -232,27 +232,27 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 ml-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   {isEnabled && (
                     <>
                       <Select
                         value={config?.backup_type || 'full_backup'}
                         onValueChange={(value) => handleChangeBackupType(tour.id, value as any)}
                       >
-                        <SelectTrigger className="w-[140px]">
+                        <SelectTrigger className="w-full sm:w-[140px] h-11 md:h-10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="full_backup">
                             <div className="flex items-center gap-2">
                               <HardDrive className="h-4 w-4" />
-                              Completo
+                              Full Backup
                             </div>
                           </SelectItem>
                           <SelectItem value="media_only">
                             <div className="flex items-center gap-2">
                               <Cloud className="h-4 w-4" />
-                              Solo Medios
+                              Media Only
                             </div>
                           </SelectItem>
                         </SelectContent>
@@ -262,13 +262,13 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
                         value={config?.backup_frequency || 'immediate'}
                         onValueChange={(value) => handleChangeFrequency(tour.id, value as any)}
                       >
-                        <SelectTrigger className="w-[130px]">
+                        <SelectTrigger className="w-full sm:w-[130px] h-11 md:h-10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="immediate">Inmediato</SelectItem>
-                          <SelectItem value="daily">Diario</SelectItem>
-                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
                         </SelectContent>
                       </Select>
                     </>
@@ -277,6 +277,7 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
                   <Switch
                     checked={isEnabled}
                     onCheckedChange={(enabled) => handleToggleAutoBackup(tour.id, enabled)}
+                    className="scale-125 sm:scale-100"
                   />
                 </div>
               </div>
@@ -285,13 +286,13 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
         )}
 
         <div className="pt-4 border-t">
-          <h4 className="text-sm font-medium mb-2">ℹ️ Información</h4>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• <strong>Inmediato:</strong> El backup se hace cada vez que editas el tour</li>
-            <li>• <strong>Diario:</strong> Se hace un backup una vez al día (a las 00:00)</li>
-            <li>• <strong>Semanal:</strong> Se hace un backup una vez a la semana</li>
-            <li>• <strong>Completo:</strong> Incluye datos y archivos multimedia</li>
-            <li>• <strong>Solo Medios:</strong> Solo fotos y videos del tour</li>
+          <h4 className="text-base md:text-sm font-medium mb-2">ℹ️ Information</h4>
+          <ul className="text-base md:text-sm text-muted-foreground space-y-1">
+            <li>• <strong>Immediate:</strong> Backup happens every time you edit the tour</li>
+            <li>• <strong>Daily:</strong> One backup per day (at 00:00)</li>
+            <li>• <strong>Weekly:</strong> One backup per week</li>
+            <li>• <strong>Full Backup:</strong> Includes data and media files</li>
+            <li>• <strong>Media Only:</strong> Only photos and videos</li>
           </ul>
         </div>
       </CardContent>

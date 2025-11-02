@@ -30,7 +30,7 @@ const BackupSettings: React.FC<BackupSettingsProps> = ({ tenantId }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Google Drive Connection */}
-          <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-blue-600 font-bold">G</span>
@@ -46,11 +46,12 @@ const BackupSettings: React.FC<BackupSettingsProps> = ({ tenantId }) => {
             </div>
             
             {activeDestination?.cloud_provider === 'google_drive' ? (
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
                 <Button 
                   variant="outline" 
                   onClick={() => testConnection(activeDestination.id)}
                   disabled={loadingProvider === 'testing'}
+                  className="h-11 md:h-10 w-full sm:w-auto"
                 >
                   {loadingProvider === 'testing' ? 'Testing...' : 'Test Connection'}
                 </Button>
@@ -58,6 +59,7 @@ const BackupSettings: React.FC<BackupSettingsProps> = ({ tenantId }) => {
                   variant="destructive"
                   onClick={() => disconnectProvider(activeDestination.id)}
                   disabled={loadingProvider === 'disconnecting'}
+                  className="h-11 md:h-10 w-full sm:w-auto"
                 >
                   {loadingProvider === 'disconnecting' ? 'Disconnecting...' : 'Disconnect'}
                 </Button>
@@ -66,7 +68,7 @@ const BackupSettings: React.FC<BackupSettingsProps> = ({ tenantId }) => {
               <Button 
                 onClick={() => connectProvider('google_drive')}
                 disabled={loadingProvider === 'google_drive'}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 h-11 md:h-10 w-full sm:w-auto"
               >
                 {loadingProvider === 'google_drive' ? 'Connecting...' : 'Connect'}
               </Button>
