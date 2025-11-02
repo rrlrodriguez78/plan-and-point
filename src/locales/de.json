@@ -330,6 +330,7 @@
     "information": "Information",
     "style": "Stil",
     "photos360": "360°-Fotos",
+    "navigation": "3D-Navigation",
     "media": "Medien",
     "title": "Titel",
     "titleRequired": "Titel ist erforderlich",
@@ -348,7 +349,11 @@
     "creating": "Erstellen",
     "errorSaving": "Fehler beim Speichern des Hotspots",
     "imageUploaded": "Bild erfolgreich hochgeladen",
-    "uploadError": "Fehler beim Hochladen des Bildes"
+    "uploadError": "Fehler beim Hochladen des Bildes",
+    "navigationUnavailable": "Navigation nicht verfügbar",
+    "saveFirstForNavigation": "Speichern Sie zuerst den Hotspot, um die Navigation zu konfigurieren",
+    "addPanoramasFirst": "Fügen Sie 360°-Fotos hinzu, bevor Sie die Navigation konfigurieren",
+    "navigationUpdated": "Navigationspunkte aktualisiert"
   },
   "panorama": {
     "upload": "360°-Foto Hochladen",

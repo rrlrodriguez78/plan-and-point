@@ -1019,6 +1019,7 @@ const Editor = () => {
         onSave={handleSaveHotspot}
         initialData={editingHotspot || undefined}
         mode={editingHotspot?.id ? 'edit' : 'create'}
+        allHotspots={hotspots}
       />
 
       {/* Hotspot List Manager */}

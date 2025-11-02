@@ -353,6 +353,7 @@
     "information": "Information",
     "style": "Style",
     "photos360": "360° Photos",
+    "navigation": "3D Navigation",
     "media": "Media",
     "title": "Title",
     "titleRequired": "Title is required",
@@ -371,7 +372,11 @@
     "creating": "Create",
     "errorSaving": "Error saving hotspot",
     "imageUploaded": "Image uploaded successfully",
-    "uploadError": "Error uploading image"
+    "uploadError": "Error uploading image",
+    "navigationUnavailable": "Navigation not available",
+    "saveFirstForNavigation": "Save the hotspot first to configure navigation",
+    "addPanoramasFirst": "Add 360° photos before configuring navigation",
+    "navigationUpdated": "Navigation points updated"
   },
   "panorama": {
     "upload": "Upload 360° Photo",

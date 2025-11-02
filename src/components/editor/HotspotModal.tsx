@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart, Eye } from 'lucide-react';
+import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart, Eye, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import PanoramaManager from './PanoramaManager';
+import { NavigationPointsEditor } from './NavigationPointsEditor';
 import { useTranslation } from 'react-i18next';
 import { Hotspot } from '@/types/tour';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +22,7 @@ interface HotspotModalProps {
   onSave: (data: HotspotData) => Promise<void>;
   initialData?: HotspotData;
   mode: 'create' | 'edit';
+  allHotspots?: Hotspot[];
 }
 
 export default function HotspotModal({
@@ -29,6 +31,7 @@ export default function HotspotModal({
   onSave,
   initialData,
   mode,
+  allHotspots = [],
 }: HotspotModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('info');
@@ -129,7 +132,7 @@ export default function HotspotModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="info" className="gap-2">
               <Info className="w-4 h-4" />
               {t('hotspot.information')}
@@ -141,6 +144,10 @@ export default function HotspotModal({
             <TabsTrigger value="panorama" className="gap-2">
               <Eye className="w-4 h-4" />
               {t('hotspot.photos360')}
+            </TabsTrigger>
+            <TabsTrigger value="navigation" className="gap-2">
+              <Compass className="w-4 h-4" />
+              {t('hotspot.navigation')}
             </TabsTrigger>
             <TabsTrigger value="media" className="gap-2">
               <Camera className="w-4 h-4" />
@@ -314,6 +321,31 @@ export default function HotspotModal({
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p className="text-sm">{t('hotspot.saveFirst')}</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="navigation" className="space-y-4 mt-4">
+            {initialData?.id && formData.has_panorama ? (
+              <NavigationPointsEditor
+                hotspot={formData as Hotspot}
+                allHotspots={allHotspots}
+                onSave={() => {
+                  toast.success(t('hotspot.navigationUpdated'));
+                }}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Compass className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm font-medium mb-2">
+                  {t('hotspot.navigationUnavailable')}
+                </p>
+                <p className="text-xs">
+                  {!initialData?.id 
+                    ? t('hotspot.saveFirstForNavigation')
+                    : t('hotspot.addPanoramasFirst')
+                  }
+                </p>
               </div>
             )}
           </TabsContent>
