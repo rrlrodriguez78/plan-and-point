@@ -534,15 +534,15 @@ serve(async (req) => {
       const accessToken = await decryptToken(destination.cloud_access_token);
       const refreshToken = await decryptToken(destination.cloud_refresh_token);
 
-      // Crear estructura: VirtualTours_Backups/[Tour]/planos-de-piso/
+      // Crear estructura: VirtualTours_Backups/[Tour]/[FloorPlanName]/
       const rootFolderId = destination.cloud_folder_id;
       const tourFolderId = await findOrCreateFolder(accessToken, tour.title, rootFolderId);
-      const planosFolderId = await findOrCreateFolder(accessToken, 'planos-de-piso', tourFolderId);
+      const floorPlanFolderId = await findOrCreateFolder(accessToken, floorPlan.name, tourFolderId);
 
       console.log('📁 Folder structure for floor plan:', {
         root: rootFolderId,
         tour: tourFolderId,
-        planos: planosFolderId
+        floorPlan: floorPlanFolderId
       });
 
       // Descargar imagen del storage
@@ -565,7 +565,7 @@ serve(async (req) => {
       let driveFileId = await findExistingFile(
         accessToken,
         originalFileName,
-        planosFolderId
+        floorPlanFolderId
       );
 
       // If file doesn't exist, upload it
@@ -575,7 +575,7 @@ serve(async (req) => {
           refreshToken,
           imageBlob,
           originalFileName,
-          planosFolderId,
+          floorPlanFolderId,
           supabase,
           destination.id
         );
@@ -584,7 +584,7 @@ serve(async (req) => {
       }
 
       // Registrar en cloud_file_mappings
-      const cloudFilePath = `/${tour.title}/planos-de-piso/${originalFileName}`;
+      const cloudFilePath = `/${tour.title}/${floorPlan.name}/${originalFileName}`;
       
       await supabase
         .from('cloud_file_mappings')
