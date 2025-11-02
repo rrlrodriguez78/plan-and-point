@@ -599,6 +599,7 @@ const Viewer = () => {
                 setSelectedHotspot(null);
               }}
               hotspotsByFloor={hotspotsByFloor}
+              tourType={tourType}
             />
           )}
 

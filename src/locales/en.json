@@ -376,7 +376,8 @@
     "navigationUnavailable": "Navigation not available",
     "saveFirstForNavigation": "Save the hotspot first to configure navigation",
     "addPanoramasFirst": "Add 360° photos before configuring navigation",
-    "navigationUpdated": "Navigation points updated"
+    "navigationUpdated": "Navigation points updated",
+    "onlyFor360Tours": "3D navigation is only available for 360° tours"
   },
   "panorama": {
     "upload": "Upload 360° Photo",

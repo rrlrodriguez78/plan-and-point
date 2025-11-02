@@ -1020,6 +1020,7 @@ const Editor = () => {
         initialData={editingHotspot || undefined}
         mode={editingHotspot?.id ? 'edit' : 'create'}
         allHotspots={hotspots}
+        tourType={tour?.tour_type}
       />
 
       {/* Hotspot List Manager */}

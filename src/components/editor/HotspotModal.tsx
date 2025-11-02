@@ -23,6 +23,7 @@ interface HotspotModalProps {
   initialData?: HotspotData;
   mode: 'create' | 'edit';
   allHotspots?: Hotspot[];
+  tourType?: 'tour_360' | 'photo_tour';
 }
 
 export default function HotspotModal({
@@ -32,6 +33,7 @@ export default function HotspotModal({
   initialData,
   mode,
   allHotspots = [],
+  tourType,
 }: HotspotModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('info');
@@ -132,7 +134,7 @@ export default function HotspotModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className={`grid w-full ${tourType === 'tour_360' ? 'grid-cols-5' : 'grid-cols-4'}`}>
             <TabsTrigger value="info" className="gap-2">
               <Info className="w-4 h-4" />
               {t('hotspot.information')}
@@ -145,10 +147,12 @@ export default function HotspotModal({
               <Eye className="w-4 h-4" />
               {t('hotspot.photos360')}
             </TabsTrigger>
-            <TabsTrigger value="navigation" className="gap-2">
-              <Compass className="w-4 h-4" />
-              {t('hotspot.navigation')}
-            </TabsTrigger>
+            {tourType === 'tour_360' && (
+              <TabsTrigger value="navigation" className="gap-2">
+                <Compass className="w-4 h-4" />
+                {t('hotspot.navigation')}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="media" className="gap-2">
               <Camera className="w-4 h-4" />
               {t('hotspot.media')}
@@ -326,7 +330,7 @@ export default function HotspotModal({
           </TabsContent>
 
           <TabsContent value="navigation" className="space-y-4 mt-4">
-            {initialData?.id && formData.has_panorama ? (
+            {initialData?.id && formData.has_panorama && tourType === 'tour_360' ? (
               <NavigationPointsEditor
                 hotspot={formData as Hotspot}
                 allHotspots={allHotspots}
@@ -341,9 +345,11 @@ export default function HotspotModal({
                   {t('hotspot.navigationUnavailable')}
                 </p>
                 <p className="text-xs">
-                  {!initialData?.id 
-                    ? t('hotspot.saveFirstForNavigation')
-                    : t('hotspot.addPanoramasFirst')
+                  {tourType !== 'tour_360'
+                    ? t('hotspot.onlyFor360Tours')
+                    : !initialData?.id 
+                      ? t('hotspot.saveFirstForNavigation')
+                      : t('hotspot.addPanoramasFirst')
                   }
                 </p>
               </div>
