@@ -48,10 +48,10 @@ export const ArrowPlacementControls = ({
   };
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Modo Actual */}
       <div className="flex items-center gap-2">
-        <Badge variant={mode === 'place' ? 'default' : mode === 'drag' ? 'secondary' : 'outline'}>
+        <Badge variant={mode === 'place' ? 'default' : mode === 'drag' ? 'secondary' : 'outline'} className="text-xs">
           {mode === 'place' && (
             <>
               <MousePointer2 className="w-3 h-3 mr-1" />
@@ -75,16 +75,16 @@ export const ArrowPlacementControls = ({
       
       {/* Instrucciones según modo */}
       {mode === 'place' && (
-        <Alert>
-          <AlertDescription className="text-sm">
+        <Alert className="py-2">
+          <AlertDescription className="text-xs">
             Haz click en el panorama donde quieres colocar la flecha. Presiona ESC para cancelar.
           </AlertDescription>
         </Alert>
       )}
       
       {mode === 'drag' && (
-        <Alert>
-          <AlertDescription className="text-sm">
+        <Alert className="py-2">
+          <AlertDescription className="text-xs">
             Arrastra la flecha a la nueva posición. Haz click para fijarla.
           </AlertDescription>
         </Alert>
@@ -138,39 +138,41 @@ export const ArrowPlacementControls = ({
       {/* Lista de flechas existentes */}
       {existingPoints.length > 0 && (
         <div className="space-y-2">
-          <label className="text-sm font-medium">Flechas existentes:</label>
-          <div className="space-y-2">
+          <label className="text-xs font-medium">Flechas existentes:</label>
+          <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-2">
             {existingPoints.map((point) => {
               const target = availableTargets.find(t => t.id === point.to_hotspot_id);
               return (
                 <div
                   key={point.id}
-                  className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-1.5 border rounded-md hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">
                       {point.label || target?.title || 'Sin título'}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground">
                       θ: {point.theta.toFixed(0)}°, φ: {point.phi.toFixed(0)}°
                     </p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-0.5 ml-2">
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => onEditPoint(point)}
                       disabled={disabled}
+                      className="h-7 w-7 p-0"
                     >
-                      <Hand className="w-4 h-4" />
+                      <Hand className="w-3 h-3" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => onDeletePoint(point.id)}
                       disabled={disabled}
+                      className="h-7 w-7 p-0"
                     >
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                      <Trash2 className="w-3 h-3 text-destructive" />
                     </Button>
                   </div>
                 </div>

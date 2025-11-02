@@ -415,13 +415,13 @@ export const NavigationArrowPlacementEditor = ({
   };
   
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
       {/* Visor 3D */}
-      <Card>
+      <Card className="lg:sticky lg:top-4">
         <CardContent className="p-0">
           <div
             ref={mountRef}
-            className="relative w-full h-[500px] bg-black rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"
+            className="relative w-full h-[500px] lg:h-[calc(100vh-200px)] bg-black rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"
             onMouseDown={handlePointerDown}
             onMouseMove={handlePointerMove}
             onMouseUp={handlePointerUp}
@@ -444,17 +444,19 @@ export const NavigationArrowPlacementEditor = ({
       </Card>
       
       {/* Controles */}
-      <ArrowPlacementControls
-        mode={mode}
-        onModeChange={setMode}
-        targetHotspot={targetHotspot}
-        onTargetChange={setTargetHotspot}
-        availableTargets={availableTargets}
-        existingPoints={points}
-        onDeletePoint={deleteArrow}
-        onEditPoint={startEditingPoint}
-        disabled={loading}
-      />
+      <div className="lg:h-[calc(100vh-200px)] lg:overflow-y-auto">
+        <ArrowPlacementControls
+          mode={mode}
+          onModeChange={setMode}
+          targetHotspot={targetHotspot}
+          onTargetChange={setTargetHotspot}
+          availableTargets={availableTargets}
+          existingPoints={points}
+          onDeletePoint={deleteArrow}
+          onEditPoint={startEditingPoint}
+          disabled={loading}
+        />
+      </div>
     </div>
   );
 };
