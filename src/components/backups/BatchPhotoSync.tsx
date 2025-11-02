@@ -3,15 +3,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon, Map, Upload } from "lucide-react";
+import { SyncProgressDialog } from "./SyncProgressDialog";
 
 interface Tour {
   id: string;
   title: string;
   tenant_id: string;
+}
+
+interface SyncJob {
+  id: string;
+  status: 'processing' | 'completed' | 'failed' | 'cancelled';
+  total_items: number;
+  processed_items: number;
+  failed_items: number;
+  error_messages: Array<{ photoId: string; error: string }>;
 }
 
 interface Props {
@@ -25,6 +35,14 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
   const [syncing, setSyncing] = useState(false);
   const [syncingFloorPlans, setSyncingFloorPlans] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
+  
+  // New job-based states
+  const [currentJob, setCurrentJob] = useState<SyncJob | null>(null);
+  const [alreadySyncedCount, setAlreadySyncedCount] = useState(0);
+  const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Old progress states (for floor plans)
   const [progress, setProgress] = useState<{
     synced: number;
     failed: number;
@@ -42,6 +60,13 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
   useEffect(() => {
     loadTours();
+    
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, [tenantId]);
 
   const loadTours = async () => {
@@ -63,6 +88,89 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
   };
 
+  // Poll job progress
+  const pollJobProgress = useCallback(async (jobId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-sync-photos', {
+        body: {
+          action: 'get_progress',
+          jobId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.job) {
+        setCurrentJob(data.job);
+
+        // Stop polling if job is complete
+        if (['completed', 'failed', 'cancelled'].includes(data.job.status)) {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+
+          // Show final notification
+          if (data.job.status === 'completed') {
+            const successCount = data.job.processed_items - data.job.failed_items;
+            if (data.job.failed_items === 0) {
+              toast.success(`✅ ${successCount} fotos sincronizadas exitosamente`);
+            } else {
+              toast.warning(`⚠️ ${successCount} sincronizadas, ${data.job.failed_items} fallidas`);
+            }
+          } else if (data.job.status === 'cancelled') {
+            toast.info('Sincronización cancelada');
+          } else if (data.job.status === 'failed') {
+            toast.error('Sincronización fallida');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error polling job:', error);
+    }
+  }, []);
+
+  // Start polling
+  const startPolling = useCallback((jobId: string) => {
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    // Poll immediately
+    pollJobProgress(jobId);
+
+    // Then poll every 2 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      pollJobProgress(jobId);
+    }, 2000);
+  }, [pollJobProgress]);
+
+  // Cancel job
+  const handleCancelJob = async () => {
+    if (!currentJob) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-sync-photos', {
+        body: {
+          action: 'cancel_job',
+          jobId: currentJob.id
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.info('Cancelando sincronización...');
+        // Update will come from next poll
+      }
+    } catch (error) {
+      console.error('Error cancelling job:', error);
+      toast.error('Error al cancelar');
+    }
+  };
+
+  // New handleSync with job-based approach
   const handleSync = async () => {
     if (!selectedTourId) {
       toast.error('Selecciona un tour');
@@ -70,12 +178,13 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
 
     setSyncing(true);
-    setProgress(null);
-    setErrors([]);
+    setCurrentJob(null);
+    setAlreadySyncedCount(0);
 
     try {
       const { data, error } = await supabase.functions.invoke('batch-sync-photos', {
         body: {
+          action: 'start_job',
           tourId: selectedTourId,
           tenantId: tenantId
         }
@@ -83,22 +192,16 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
       if (error) throw error;
 
-      if (data.success) {
-        setProgress({
-          synced: data.synced,
-          failed: data.failed,
-          total: data.total,
-          alreadySynced: data.alreadySynced || 0
-        });
-        setErrors(data.errors || []);
-
-        if (data.failed === 0) {
-          toast.success(`✅ ${data.synced} fotos sincronizadas exitosamente`);
-        } else {
-          toast.warning(`⚠️ ${data.synced} sincronizadas, ${data.failed} fallidas`);
-        }
-      } else {
-        throw new Error(data.error || 'Unknown error');
+      if (data.success && data.jobId) {
+        setAlreadySyncedCount(data.alreadySynced || 0);
+        setShowProgressDialog(true);
+        toast.info(`🚀 Iniciando sincronización de ${data.totalPhotos} fotos...`);
+        
+        // Start polling for progress
+        startPolling(data.jobId);
+      } else if (data.success && !data.jobId) {
+        // No photos to sync
+        toast.info(data.message);
       }
     } catch (error) {
       console.error('Sync error:', error);
@@ -160,9 +263,9 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
 
     setSyncingAll(true);
-    setProgress(null);
+    setCurrentJob(null);
+    setAlreadySyncedCount(0);
     setFloorPlanProgress(null);
-    setErrors([]);
     setFloorPlanErrors([]);
 
     try {
@@ -197,12 +300,13 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
       setSyncingFloorPlans(false);
 
-      // PASO 2: Sincronizar Fotos
+      // PASO 2: Sincronizar Fotos con job system
       toast.info('📸 Paso 2/2: Sincronizando fotos panorámicas...');
       setSyncing(true);
 
       const photosResult = await supabase.functions.invoke('batch-sync-photos', {
         body: {
+          action: 'start_job',
           tourId: selectedTourId,
           tenantId: tenantId
         }
@@ -210,23 +314,15 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
       if (photosResult.error) throw photosResult.error;
 
-      if (photosResult.data.success) {
-        setProgress({
-          synced: photosResult.data.synced,
-          failed: photosResult.data.failed,
-          total: photosResult.data.total,
-          alreadySynced: photosResult.data.alreadySynced || 0
-        });
-        setErrors(photosResult.data.errors || []);
-
-        if (photosResult.data.failed === 0) {
-          toast.success(`✅ Paso 2/2: ${photosResult.data.synced} fotos sincronizadas`);
-          toast.success('🎉 Sincronización completa exitosa', {
-            description: `${floorPlansResult.data.synced} planos + ${photosResult.data.synced} fotos`
-          });
-        } else {
-          toast.warning(`⚠️ Paso 2/2: ${photosResult.data.synced} fotos sincronizadas, ${photosResult.data.failed} fallidas`);
-        }
+      if (photosResult.data.success && photosResult.data.jobId) {
+        setAlreadySyncedCount(photosResult.data.alreadySynced || 0);
+        setShowProgressDialog(true);
+        toast.info(`🚀 Sincronizando ${photosResult.data.totalPhotos} fotos...`);
+        
+        // Start polling for progress
+        startPolling(photosResult.data.jobId);
+      } else if (photosResult.data.success && !photosResult.data.jobId) {
+        toast.info(photosResult.data.message);
       }
 
     } catch (error) {
@@ -244,7 +340,16 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     : 0;
 
   return (
-    <Card>
+    <>
+      <SyncProgressDialog 
+        open={showProgressDialog}
+        job={currentJob}
+        alreadySynced={alreadySyncedCount}
+        onClose={() => setShowProgressDialog(false)}
+        onCancel={handleCancelJob}
+      />
+      
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
@@ -395,5 +500,6 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };

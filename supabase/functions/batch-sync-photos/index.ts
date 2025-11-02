@@ -6,6 +6,116 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Background processing function
+async function processBatchSync(
+  jobId: string,
+  tourId: string,
+  tenantId: string,
+  photosToSync: any[],
+  supabase: any
+) {
+  const results = {
+    synced: 0,
+    failed: 0,
+    errors: [] as { photoId: string; error: string }[]
+  };
+
+  for (let i = 0; i < photosToSync.length; i++) {
+    const photo = photosToSync[i];
+    
+    // Check if job was cancelled
+    const { data: job } = await supabase
+      .from('sync_jobs')
+      .select('status')
+      .eq('id', jobId)
+      .single();
+    
+    if (job?.status === 'cancelled') {
+      console.log(`⚠️ Job ${jobId} was cancelled`);
+      break;
+    }
+
+    let attempts = 0;
+    let success = false;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts && !success) {
+      attempts++;
+      
+      try {
+        console.log(`🔄 Syncing photo ${photo.id} (${i + 1}/${photosToSync.length}) - attempt ${attempts}/${maxAttempts}`);
+
+        const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+          'photo-sync-to-drive',
+          {
+            body: {
+              action: 'sync_photo',
+              photoId: photo.id,
+              tenantId: tenantId
+            }
+          }
+        );
+
+        if (syncError) {
+          throw new Error(syncError.message);
+        }
+
+        if (syncResult?.success) {
+          results.synced++;
+          success = true;
+          console.log(`✅ Photo ${photo.id} synced successfully`);
+        } else {
+          throw new Error(syncResult?.error || 'Unknown sync error');
+        }
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`⚠️ Attempt ${attempts} failed for photo ${photo.id}:`, errorMsg);
+        
+        if (attempts >= maxAttempts) {
+          results.failed++;
+          results.errors.push({
+            photoId: photo.id,
+            error: errorMsg
+          });
+          console.error(`❌ Photo ${photo.id} failed after ${maxAttempts} attempts`);
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+        }
+      }
+    }
+
+    // Update progress
+    await supabase
+      .from('sync_jobs')
+      .update({
+        processed_items: results.synced + results.failed,
+        failed_items: results.failed,
+        error_messages: results.errors
+      })
+      .eq('id', jobId);
+  }
+
+  // Mark job as completed or failed
+  const finalStatus = results.failed === photosToSync.length ? 'failed' : 'completed';
+  await supabase
+    .from('sync_jobs')
+    .update({
+      status: finalStatus,
+      processed_items: results.synced + results.failed,
+      failed_items: results.failed,
+      error_messages: results.errors,
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', jobId);
+
+  console.log(`✅ Background job ${jobId} completed:`, {
+    synced: results.synced,
+    failed: results.failed,
+    total: photosToSync.length
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,8 +127,73 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { tourId, tenantId } = await req.json();
+    const body = await req.json();
+    const { action, tourId, tenantId, jobId } = body;
 
+    // Handle different actions
+    if (action === 'get_progress') {
+      // Get job progress
+      const { data: job, error: jobError } = await supabase
+        .from('sync_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (jobError || !job) {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Job not found'
+          }),
+          { 
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          job
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'cancel_job') {
+      // Cancel job
+      const { error: cancelError } = await supabase
+        .from('sync_jobs')
+        .update({ 
+          status: 'cancelled', 
+          completed_at: new Date().toISOString() 
+        })
+        .eq('id', jobId);
+
+      if (cancelError) {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: cancelError.message
+          }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Job cancelled'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Default action: start_job
     console.log('🔄 Starting batch photo sync:', { tourId, tenantId });
 
     // 1. Verificar que existe un destination activo
@@ -58,9 +233,8 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true,
           message: 'No photos found for this tour',
-          synced: 0,
-          failed: 0,
-          total: 0
+          jobId: null,
+          totalPhotos: 0
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -87,90 +261,57 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true,
           message: 'All photos already synced',
-          synced: 0,
-          failed: 0,
-          total: photos.length,
+          jobId: null,
+          totalPhotos: photos.length,
           alreadySynced: photos.length
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 4. Sincronizar cada foto con retry logic
-    const results = {
-      synced: 0,
-      failed: 0,
-      errors: [] as { photoId: string; error: string }[]
-    };
+    // 4. Crear job en la base de datos
+    const { data: newJob, error: jobError } = await supabase
+      .from('sync_jobs')
+      .insert({
+        tenant_id: tenantId,
+        tour_id: tourId,
+        job_type: 'photo_batch_sync',
+        status: 'processing',
+        total_items: photosToSync.length,
+        processed_items: 0,
+        failed_items: 0
+      })
+      .select()
+      .single();
 
-    for (const photo of photosToSync) {
-      let attempts = 0;
-      let success = false;
-      const maxAttempts = 3;
-
-      while (attempts < maxAttempts && !success) {
-        attempts++;
-        
-        try {
-          console.log(`🔄 Syncing photo ${photo.id} (attempt ${attempts}/${maxAttempts})`);
-
-          // Llamar al edge function de sync individual
-          const { data: syncResult, error: syncError } = await supabase.functions.invoke(
-            'photo-sync-to-drive',
-            {
-              body: {
-                action: 'sync_photo',
-                photoId: photo.id,
-                tenantId: tenantId
-              }
-            }
-          );
-
-          if (syncError) {
-            throw new Error(syncError.message);
-          }
-
-          if (syncResult?.success) {
-            results.synced++;
-            success = true;
-            console.log(`✅ Photo ${photo.id} synced successfully`);
-          } else {
-            throw new Error(syncResult?.error || 'Unknown sync error');
-          }
-
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          console.warn(`⚠️ Attempt ${attempts} failed for photo ${photo.id}:`, errorMsg);
-          
-          if (attempts >= maxAttempts) {
-            results.failed++;
-            results.errors.push({
-              photoId: photo.id,
-              error: errorMsg
-            });
-            console.error(`❌ Photo ${photo.id} failed after ${maxAttempts} attempts`);
-          } else {
-            // Wait before retry (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-          }
-        }
-      }
+    if (jobError || !newJob) {
+      throw new Error('Failed to create sync job');
     }
 
-    console.log('✅ Batch sync completed:', {
-      synced: results.synced,
-      failed: results.failed,
-      total: photosToSync.length
-    });
+    console.log(`✅ Created job ${newJob.id} for ${photosToSync.length} photos`);
 
+    // 5. Iniciar procesamiento en background
+    // @ts-ignore - EdgeRuntime is available in Deno Deploy
+    if (typeof EdgeRuntime !== 'undefined') {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        processBatchSync(newJob.id, tourId, tenantId, photosToSync, supabase)
+      );
+    } else {
+      // Fallback for local development
+      processBatchSync(newJob.id, tourId, tenantId, photosToSync, supabase).catch(err => {
+        console.error('Background processing error:', err);
+      });
+    }
+
+    // 6. Devolver respuesta inmediata con jobId
     return new Response(
       JSON.stringify({ 
         success: true,
-        synced: results.synced,
-        failed: results.failed,
-        total: photosToSync.length,
+        jobId: newJob.id,
+        totalPhotos: photosToSync.length,
         alreadySynced: syncedIds.size,
-        errors: results.errors
+        message: 'Sync job started in background'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

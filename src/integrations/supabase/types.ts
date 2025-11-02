@@ -1072,6 +1072,66 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_messages: Json | null
+          failed_items: number
+          id: string
+          job_type: string
+          processed_items: number
+          started_at: string
+          status: string
+          tenant_id: string
+          total_items: number
+          tour_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_messages?: Json | null
+          failed_items?: number
+          id?: string
+          job_type?: string
+          processed_items?: number
+          started_at?: string
+          status?: string
+          tenant_id: string
+          total_items?: number
+          tour_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_messages?: Json | null
+          failed_items?: number
+          id?: string
+          job_type?: string
+          processed_items?: number
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          total_items?: number
+          tour_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_jobs_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_features: {
         Row: {
           created_at: string | null
