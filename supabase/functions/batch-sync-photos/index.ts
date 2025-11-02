@@ -139,11 +139,9 @@ async function getVerifiedDestination(supabase: any, tenantId: string) {
 async function cleanupOrphanedMappings(supabase: any, tourId: string, accessToken: string) {
   console.log('🧹 Cleaning up orphaned cloud file mappings...');
   
-  // Obtener todos los mappings para este tour
+  // Obtener todos los mappings para este tour usando RPC (bypass RLS)
   const { data: mappings, error: mappingsError } = await supabase
-    .from('cloud_file_mappings')
-    .select('id, photo_id, floor_plan_id, cloud_file_id, cloud_file_name')
-    .eq('tour_id', tourId);
+    .rpc('get_cloud_file_mappings_for_tour', { p_tour_id: tourId });
 
   if (mappingsError) {
     console.error('Error fetching mappings:', mappingsError);
@@ -168,17 +166,24 @@ async function cleanupOrphanedMappings(supabase: any, tourId: string, accessToke
     }
   }
 
-  // Eliminar mappings huérfanos
+  // Eliminar mappings huérfanos usando RPC (bypass RLS)
   if (orphanedMappings.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('cloud_file_mappings')
-      .delete()
-      .in('id', orphanedMappings);
-
-    if (deleteError) {
-      console.error('Error deleting orphaned mappings:', deleteError);
+    console.log(`🗑️ Deleting ${orphanedMappings.length} orphaned mappings...`);
+    let deleteErrors = 0;
+    for (const mappingId of orphanedMappings) {
+      const { error: deleteError } = await supabase
+        .rpc('delete_cloud_file_mapping', { p_mapping_id: mappingId });
+      
+      if (deleteError) {
+        console.error(`Error deleting mapping ${mappingId}:`, deleteError);
+        deleteErrors++;
+      }
+    }
+    
+    if (deleteErrors === 0) {
+      console.log(`✅ Successfully deleted ${orphanedMappings.length} orphaned mappings`);
     } else {
-      console.log(`✅ Deleted ${orphanedMappings.length} orphaned mappings`);
+      console.log(`⚠️ Deleted ${orphanedMappings.length - deleteErrors}/${orphanedMappings.length} mappings (${deleteErrors} errors)`);
     }
   }
 
@@ -333,11 +338,9 @@ serve(async (req) => {
       const cleanupResult = await cleanupOrphanedMappings(supabase, tourId, destination.accessToken);
       console.log(`🧹 Cleanup result: ${cleanupResult.deleted} orphaned mappings deleted`);
 
-      // Get all cloud file mappings for this tour (photos AND floor plans) - DESPUÉS de cleanup
+      // Get all cloud file mappings for this tour (photos AND floor plans) - DESPUÉS de cleanup usando RPC (bypass RLS)
       const { data: mappings, error: mappingsError } = await supabase
-        .from('cloud_file_mappings')
-        .select('id, photo_id, floor_plan_id, cloud_file_id, cloud_file_name')
-        .eq('tour_id', tourId);
+        .rpc('get_cloud_file_mappings_for_tour', { p_tour_id: tourId });
 
       if (mappingsError) {
         throw new Error(`Failed to fetch mappings: ${mappingsError.message}`);
@@ -361,11 +364,9 @@ serve(async (req) => {
         if (!fileCheck.accessible) {
           console.log(`❌ File not accessible in Drive: ${mapping.cloud_file_name || mapping.cloud_file_id} (${fileCheck.error})`);
           
-          // Delete incorrect mapping
+          // Delete incorrect mapping usando RPC (bypass RLS)
           await supabase
-            .from('cloud_file_mappings')
-            .delete()
-            .eq('id', mapping.id);
+            .rpc('delete_cloud_file_mapping', { p_mapping_id: mapping.id });
           
           // Separate by type
           if (mapping.photo_id) {

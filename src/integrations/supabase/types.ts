@@ -1798,6 +1798,10 @@ export type Database = {
       }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
+      delete_cloud_file_mapping: {
+        Args: { p_mapping_id: string }
+        Returns: undefined
+      }
       enable_auto_backup_for_existing_tours: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -1836,6 +1840,22 @@ export type Database = {
           recent_activity: Json
           storage_info: Json
           system_metrics: Json
+        }[]
+      }
+      get_cloud_file_mappings_for_tour: {
+        Args: { p_tour_id: string }
+        Returns: {
+          cloud_file_id: string
+          cloud_file_name: string
+          cloud_file_path: string
+          destination_id: string
+          floor_plan_id: string
+          hotspot_id: string
+          id: string
+          local_file_type: string
+          local_file_url: string
+          photo_id: string
+          tour_id: string
         }[]
       }
       get_queue_stats: {
