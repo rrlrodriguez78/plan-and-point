@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon, Map, Upload } from "lucide-react";
 
 interface Tour {
   id: string;
@@ -20,18 +20,26 @@ interface Props {
 
 export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
   const [tours, setTours] = useState<Tour[]>([]);
-  const [selectedTourId, setSelectedTourId] = useState<string>('');
+  const [selectedTourId, setSelectedTourId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingFloorPlans, setSyncingFloorPlans] = useState(false);
   const [progress, setProgress] = useState<{
     synced: number;
     failed: number;
     total: number;
     alreadySynced: number;
   } | null>(null);
+  const [floorPlanProgress, setFloorPlanProgress] = useState<{
+    synced: number;
+    failed: number;
+    total: number;
+    alreadySynced: number;
+  } | null>(null);
   const [errors, setErrors] = useState<Array<{ photoId: string; error: string }>>([]);
+  const [floorPlanErrors, setFloorPlanErrors] = useState<string[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadTours();
   }, [tenantId]);
 
@@ -99,6 +107,51 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
   };
 
+  const handleSyncFloorPlans = async () => {
+    if (!selectedTourId) {
+      toast.error('Selecciona un tour');
+      return;
+    }
+
+    setSyncingFloorPlans(true);
+    setFloorPlanProgress(null);
+    setFloorPlanErrors([]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-all-floor-plans', {
+        body: {
+          tourId: selectedTourId,
+          tenantId: tenantId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setFloorPlanProgress({
+          synced: data.synced,
+          failed: data.failed,
+          total: data.total,
+          alreadySynced: data.alreadySynced || 0
+        });
+        setFloorPlanErrors(data.errors || []);
+
+        if (data.failed === 0) {
+          toast.success(`✅ ${data.synced} planos de piso sincronizados`);
+        } else {
+          toast.warning(`⚠️ ${data.synced} sincronizados, ${data.failed} fallidos`);
+        }
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Floor plan sync error:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al sincronizar planos');
+    } finally {
+      setSyncingFloorPlans(false);
+    }
+  };
+
   const progressPercent = progress 
     ? ((progress.synced + progress.failed) / progress.total) * 100 
     : 0;
@@ -120,7 +173,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           <Select
             value={selectedTourId}
             onValueChange={setSelectedTourId}
-            disabled={loading || syncing}
+            disabled={loading || syncing || syncingFloorPlans}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecciona un tour..." />
@@ -135,26 +188,27 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           </Select>
         </div>
 
-        <Button 
-          onClick={handleSync}
-          disabled={!selectedTourId || syncing}
-          className="w-full"
-        >
-          {syncing ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Sincronizando...
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4 mr-2" />
-              Iniciar Sincronización
-            </>
-          )}
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            onClick={handleSync}
+            disabled={!selectedTourId || syncing || syncingFloorPlans}
+          >
+            {syncing ? "Sincronizando..." : "Sincronizar Fotos"}
+          </Button>
+          
+          <Button 
+            onClick={handleSyncFloorPlans}
+            disabled={!selectedTourId || syncing || syncingFloorPlans}
+            variant="outline"
+          >
+            <Map className="h-4 w-4 mr-2" />
+            {syncingFloorPlans ? "Sincronizando..." : "Sincronizar Planos"}
+          </Button>
+        </div>
 
         {progress && (
           <div className="space-y-3 pt-4 border-t">
+            <div className="font-semibold text-sm">Fotos Panorámicas</div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="font-medium">Progreso</span>
@@ -162,42 +216,33 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
                   {progress.synced + progress.failed} / {progress.total} fotos
                 </span>
               </div>
-              <Progress value={progressPercent} className="h-2" />
+              <Progress value={((progress.synced + progress.failed) / progress.total) * 100} className="h-2" />
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-sm">
-              <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-700 dark:text-green-400">
-                  <div className="font-semibold">{progress.synced}</div>
-                  <div className="text-xs">Sincronizadas</div>
-                </AlertDescription>
-              </Alert>
+              <div className="bg-green-50 dark:bg-green-950 p-3 rounded border border-green-200 dark:border-green-800">
+                <div className="text-green-600 dark:text-green-400 font-medium">✓ Sincronizadas</div>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-300">{progress.synced}</div>
+              </div>
 
               {progress.alreadySynced > 0 && (
-                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-700 dark:text-blue-400">
-                    <div className="font-semibold">{progress.alreadySynced}</div>
-                    <div className="text-xs">Ya existían</div>
-                  </AlertDescription>
-                </Alert>
+                <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
+                  <div className="text-blue-600 dark:text-blue-400 font-medium">⏭ Ya existían</div>
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{progress.alreadySynced}</div>
+                </div>
               )}
 
               {progress.failed > 0 && (
-                <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <AlertDescription className="text-red-700 dark:text-red-400">
-                    <div className="font-semibold">{progress.failed}</div>
-                    <div className="text-xs">Fallidas</div>
-                  </AlertDescription>
-                </Alert>
+                <div className="bg-red-50 dark:bg-red-950 p-3 rounded border border-red-200 dark:border-red-800">
+                  <div className="text-red-600 dark:text-red-400 font-medium">✗ Fallidas</div>
+                  <div className="text-2xl font-bold text-red-700 dark:text-red-300">{progress.failed}</div>
+                </div>
               )}
             </div>
 
             {errors.length > 0 && (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
+                <InfoIcon className="h-4 w-4" />
                 <AlertDescription>
                   <div className="font-semibold mb-1">Errores encontrados:</div>
                   <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
@@ -205,6 +250,56 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
                       <li key={idx} className="font-mono">
                         Photo {err.photoId.slice(0, 8)}: {err.error}
                       </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
+        {floorPlanProgress && (
+          <div className="space-y-3 pt-4 border-t">
+            <div className="font-semibold text-sm">Planos de Piso</div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">Progreso</span>
+                <span className="text-muted-foreground">
+                  {floorPlanProgress.synced + floorPlanProgress.failed} / {floorPlanProgress.total} planos
+                </span>
+              </div>
+              <Progress value={((floorPlanProgress.synced + floorPlanProgress.failed) / floorPlanProgress.total) * 100} className="h-2" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="bg-green-50 dark:bg-green-950 p-3 rounded border border-green-200 dark:border-green-800">
+                <div className="text-green-600 dark:text-green-400 font-medium">✓ Sincronizados</div>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-300">{floorPlanProgress.synced}</div>
+              </div>
+
+              {floorPlanProgress.alreadySynced > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
+                  <div className="text-blue-600 dark:text-blue-400 font-medium">⏭ Ya existían</div>
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{floorPlanProgress.alreadySynced}</div>
+                </div>
+              )}
+
+              {floorPlanProgress.failed > 0 && (
+                <div className="bg-red-50 dark:bg-red-950 p-3 rounded border border-red-200 dark:border-red-800">
+                  <div className="text-red-600 dark:text-red-400 font-medium">✗ Fallidos</div>
+                  <div className="text-2xl font-bold text-red-700 dark:text-red-300">{floorPlanProgress.failed}</div>
+                </div>
+              )}
+            </div>
+
+            {floorPlanErrors.length > 0 && (
+              <Alert variant="destructive">
+                <InfoIcon className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="font-semibold mb-1">Errores encontrados:</div>
+                  <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                    {floorPlanErrors.map((error, idx) => (
+                      <li key={idx} className="font-mono">{error}</li>
                     ))}
                   </ul>
                 </AlertDescription>

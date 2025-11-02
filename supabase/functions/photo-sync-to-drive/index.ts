@@ -97,6 +97,35 @@ async function refreshGoogleToken(refreshToken: string, supabase: any, destinati
 
 // ============= GOOGLE DRIVE UTILITIES =============
 
+// Find existing file in Drive
+async function findExistingFile(
+  accessToken: string,
+  fileName: string,
+  parentId: string
+): Promise<string | null> {
+  const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(fileName)}' and '${parentId}' in parents and trashed=false&fields=files(id)`;
+  
+  const response = await fetch(searchUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    console.error('❌ Error buscando archivo existente:', await response.text());
+    return null;
+  }
+
+  const result = await response.json();
+  if (result.files && result.files.length > 0) {
+    console.log(`📁 Archivo existente encontrado: ${fileName} (${result.files[0].id})`);
+    return result.files[0].id;
+  }
+
+  return null;
+}
+
 async function findOrCreateFolder(accessToken: string, folderName: string, parentId: string): Promise<string> {
   // Buscar carpeta existente
   const searchParams = new URLSearchParams({
@@ -367,17 +396,28 @@ serve(async (req) => {
 
       console.log(`📦 Photo downloaded, size: ${photoBlob.size} bytes`);
 
-      // Subir a Google Drive con retry automático
+      // Check if file already exists in Drive
       const fileName = photo.original_filename || `photo_${photo.id}.webp`;
-      const driveFileId = await uploadWithTokenRefresh(
+      let driveFileId = await findExistingFile(
         accessToken,
-        refreshToken,
-        photoBlob,
         fileName,
-        dateFolderId,
-        supabase,
-        destination.id
+        dateFolderId
       );
+
+      // If file doesn't exist, upload it
+      if (!driveFileId) {
+        driveFileId = await uploadWithTokenRefresh(
+          accessToken,
+          refreshToken,
+          photoBlob,
+          fileName,
+          dateFolderId,
+          supabase,
+          destination.id
+        );
+      } else {
+        console.log('⏭️ Archivo ya existe en Drive, omitiendo subida');
+      }
 
       // Registrar en cloud_file_mappings
       await supabase
@@ -519,17 +559,28 @@ serve(async (req) => {
 
       console.log(`📦 Floor plan image downloaded: ${imageBlob.size} bytes`);
 
-      // Subir a Google Drive con retry automático
+      // Check if file already exists in Drive
       const originalFileName = fileName || `plano_${floorPlan.name}.webp`;
-      const driveFileId = await uploadWithTokenRefresh(
+      let driveFileId = await findExistingFile(
         accessToken,
-        refreshToken,
-        imageBlob,
         originalFileName,
-        planosFolderId,
-        supabase,
-        destination.id
+        planosFolderId
       );
+
+      // If file doesn't exist, upload it
+      if (!driveFileId) {
+        driveFileId = await uploadWithTokenRefresh(
+          accessToken,
+          refreshToken,
+          imageBlob,
+          originalFileName,
+          planosFolderId,
+          supabase,
+          destination.id
+        );
+      } else {
+        console.log('⏭️ Floor plan ya existe en Drive, omitiendo subida');
+      }
 
       // Registrar en cloud_file_mappings
       const cloudFilePath = `/${tour.title}/planos-de-piso/${originalFileName}`;
