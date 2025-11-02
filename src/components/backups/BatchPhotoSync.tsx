@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon, Map, Upload, RefreshCw } from "lucide-react";
+import { InfoIcon, Map, Upload, RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { SyncProgressDialog } from "./SyncProgressDialog";
 
 interface Tour {
@@ -41,6 +41,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
   const [currentJob, setCurrentJob] = useState<SyncJob | null>(null);
   const [alreadySyncedCount, setAlreadySyncedCount] = useState(0);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [quotaError, setQuotaError] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Old progress states (for floor plans)
@@ -164,6 +165,18 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
 
       if (data.success && data.job) {
         setCurrentJob(data.job);
+        
+        // Detectar errores de cuota
+        const isQuotaError = data.job.error_message?.includes('QUOTA_EXCEEDED') || 
+                            data.job.error_message?.toLowerCase().includes('quota exceeded');
+        
+        if (isQuotaError && !quotaError) {
+          setQuotaError(true);
+          toast.error('🚨 Google Drive storage full!', {
+            description: 'Please free up space or upgrade your storage plan',
+            duration: 10000
+          });
+        }
 
         // Stop polling if job is complete
         if (['completed', 'failed', 'cancelled'].includes(data.job.status)) {
@@ -183,7 +196,9 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           } else if (data.job.status === 'cancelled') {
             toast.info('Sync cancelled');
           } else if (data.job.status === 'failed') {
-            toast.error('Sync failed');
+            if (!isQuotaError) {
+              toast.error('Sync failed');
+            }
           }
         }
       }
@@ -242,6 +257,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     setSyncing(true);
     setCurrentJob(null);
     setAlreadySyncedCount(0);
+    setQuotaError(false);
 
     try {
       const { data, error } = await supabase.functions.invoke('batch-sync-photos', {
@@ -489,6 +505,29 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
         onClose={() => setShowProgressDialog(false)}
         onCancel={handleCancelJob}
       />
+      
+      {quotaError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="ml-2">
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold">Google Drive storage quota exceeded</p>
+              <p className="text-sm">
+                Your Google Drive is full. Please free up space or upgrade your storage plan to continue syncing.
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-fit mt-2"
+                onClick={() => window.open('https://drive.google.com/drive/quota', '_blank')}
+              >
+                <ExternalLink className="h-3 w-3 mr-2" />
+                Manage Google Drive Storage
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Card>
       <CardHeader>

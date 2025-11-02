@@ -110,6 +110,42 @@ serve(async (req) => {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
         console.error(`❌ Failed to sync photo ${item.photo_id}:`, errorMsg);
         
+        // Detectar errores de cuota de Google Drive
+        const isQuotaError = errorMsg.toLowerCase().includes('quota') || 
+                            errorMsg.toLowerCase().includes('storage') && errorMsg.toLowerCase().includes('exceeded');
+        
+        if (isQuotaError) {
+          console.error('🚨 QUOTA ERROR DETECTED: Google Drive storage is full!');
+          
+          // Marcar el job como failed con mensaje específico
+          const jobId = tourJobMap.get(item.tour_id);
+          if (jobId) {
+            await supabase
+              .from('sync_jobs')
+              .update({
+                status: 'failed',
+                error_message: 'QUOTA_EXCEEDED: Google Drive storage quota has been exceeded. Please free up space or upgrade your storage plan.',
+                completed_at: new Date().toISOString()
+              })
+              .eq('id', jobId);
+          }
+          
+          // Marcar todas las fotos pendientes del tour como failed
+          await supabase
+            .from('photo_sync_queue')
+            .update({
+              status: 'failed',
+              error_message: 'Google Drive quota exceeded',
+              updated_at: new Date().toISOString()
+            })
+            .eq('tour_id', item.tour_id)
+            .in('status', ['pending', 'processing']);
+          
+          // No continuar procesando más fotos de este batch
+          failCount++;
+          break;
+        }
+        
         // Determinar si debe reintentar o marcar como failed permanente
         const shouldRetry = item.attempts + 1 < 3; // max_attempts = 3
         
