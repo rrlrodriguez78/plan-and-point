@@ -299,11 +299,21 @@ serve(async (req) => {
       // Descargar foto del storage de Supabase
       console.log(`📥 Downloading photo from storage: ${photo.photo_url}`);
       
+      const storagePath = photo.photo_url.split('tour-images/')[1];
+      if (!storagePath) {
+        throw new Error(`Invalid photo URL format: ${photo.photo_url}`);
+      }
+      
+      console.log(`📂 Storage path: ${storagePath}`);
+      
       const { data: photoBlob, error: downloadError } = await supabase.storage
         .from('tour-images')
-        .download(photo.photo_url.replace('/storage/v1/object/public/tour-images/', ''));
+        .download(storagePath);
 
-      if (downloadError) throw downloadError;
+      if (downloadError) {
+        console.error('❌ Storage download error:', downloadError);
+        throw downloadError;
+      }
       if (!photoBlob) throw new Error('Photo file not found');
 
       console.log(`📦 Photo downloaded, size: ${photoBlob.size} bytes`);
