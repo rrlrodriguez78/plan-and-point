@@ -36,6 +36,7 @@ export function useCloudStorage(tenantId: string) {
   const [destinations, setDestinations] = useState<BackupDestination[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [oauthPopupRef, setOauthPopupRef] = useState<Window | null>(null);
 
   // Function to load destinations (exposed so it can be called externally)
   const loadDestinations = useCallback(async () => {
@@ -115,6 +116,17 @@ export function useCloudStorage(tenantId: string) {
             
             const providerName = newConnection.cloud_provider === 'google_drive' ? 'Google Drive' : 'Dropbox';
             toast.success(`${providerName} conectado exitosamente`);
+            
+            // Close OAuth popup from parent window if still open
+            if (oauthPopupRef && !oauthPopupRef.closed) {
+              try {
+                oauthPopupRef.close();
+                console.log('✅ Popup cerrado desde ventana padre');
+              } catch (e) {
+                console.warn('⚠️ No se pudo cerrar el popup automáticamente:', e);
+              }
+            }
+            setOauthPopupRef(null);
             
             // Reload data
             await loadDestinations();
@@ -231,6 +243,9 @@ export function useCloudStorage(tenantId: string) {
         } else {
           console.log('✅ OAuth popup opened successfully');
           console.log('📊 Polling system will detect completion automatically...');
+          
+          // Save popup reference so we can close it from parent window
+          setOauthPopupRef(oauthWindow);
           
           // Note: We use polling system to detect OAuth completion
           // This is more reliable than postMessage in cross-origin scenarios

@@ -443,12 +443,13 @@ serve(async (req) => {
     <div class="success-icon">✅</div>
     <h1>¡Conexión Exitosa!</h1>
     <p>Google Drive conectado correctamente</p>
-    <p id="status">Esta ventana se cerrará en <span id="countdown">3</span> segundos...</p>
+    <p id="status">La ventana principal se ha actualizado</p>
     <button class="close-btn" onclick="handleClose()">Cerrar esta ventana</button>
   </div>
   <script>
     (function() {
       console.log('🎉 OAuth successful, notifying parent window...');
+      const statusEl = document.getElementById('status');
       
       // Notify opener window if exists - use '*' for cross-origin compatibility
       if (window.opener && !window.opener.closed) {
@@ -466,42 +467,55 @@ serve(async (req) => {
         }
       }
       
-      // Countdown timer
-      let countdown = 3;
-      const countdownEl = document.getElementById('countdown');
-      const statusEl = document.getElementById('status');
-      
-      const timer = setInterval(function() {
-        countdown--;
-        if (countdown > 0) {
-          countdownEl.textContent = countdown;
-        } else {
-          clearInterval(timer);
-          attemptClose();
-        }
-      }, 1000);
-      
+      // Multiple attempts to auto-close
       function attemptClose() {
-        if (window.opener && !window.opener.closed) {
-          // Try to close popup
-          try {
-            window.close();
-            // If window.close() didn't work, show manual instruction
-            setTimeout(function() {
-              statusEl.innerHTML = 'Por favor cierra esta ventana manualmente';
-            }, 500);
-          } catch (e) {
-            statusEl.innerHTML = 'Por favor cierra esta ventana manualmente';
-          }
-        } else {
-          // Full page redirect
-          window.location.href = '${redirectUrl}';
+        const attempts = [0, 300, 800, 1500, 2500];
+        let closedSuccessfully = false;
+        
+        attempts.forEach(function(delay) {
+          setTimeout(function() {
+            if (closedSuccessfully) return;
+            
+            try {
+              window.close();
+              closedSuccessfully = true;
+              console.log('✅ Window closed successfully');
+            } catch (e) {
+              console.warn('⚠️ Close attempt failed:', e);
+            }
+            
+            // After last attempt, show manual close instruction
+            if (delay === 2500) {
+              setTimeout(function() {
+                if (!closedSuccessfully && !window.closed) {
+                  statusEl.innerHTML = '✨ <strong>Puedes cerrar esta ventana ahora</strong>';
+                }
+              }, 500);
+            }
+          }, delay);
+        });
+        
+        // If opened in full page (not popup), redirect after delay
+        if (!window.opener || window.opener.closed) {
+          setTimeout(function() {
+            window.location.href = '${redirectUrl}';
+          }, 3000);
         }
       }
       
+      // Start close attempts immediately
+      attemptClose();
+      
       // Manual close button
       window.handleClose = function() {
-        attemptClose();
+        try {
+          window.close();
+        } catch (e) {
+          // If in full page mode, redirect
+          if (!window.opener || window.opener.closed) {
+            window.location.href = '${redirectUrl}';
+          }
+        }
       };
     })();
   </script>
