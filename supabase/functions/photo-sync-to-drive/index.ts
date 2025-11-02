@@ -199,6 +199,41 @@ async function uploadPhotoToDrive(
   return result.id;
 }
 
+// ============= UPLOAD WITH TOKEN REFRESH =============
+
+async function uploadWithTokenRefresh(
+  accessToken: string,
+  refreshToken: string,
+  photoBlob: Blob,
+  fileName: string,
+  folderId: string,
+  supabase: any,
+  destinationId: string
+): Promise<string> {
+  try {
+    // Primer intento con el token actual
+    return await uploadPhotoToDrive(accessToken, photoBlob, fileName, folderId);
+  } catch (error: any) {
+    // Si falla por autenticación, refrescar token y reintentar
+    if (error.message.includes('invalid authentication') || 
+        error.message.includes('Invalid Credentials') ||
+        error.message.includes('Request had invalid')) {
+      
+      console.log('🔄 Token expired, refreshing...');
+      
+      const newAccessToken = await refreshGoogleToken(refreshToken, supabase, destinationId);
+      
+      console.log('✅ Token refreshed, retrying upload...');
+      
+      // Segundo intento con el nuevo token
+      return await uploadPhotoToDrive(newAccessToken, photoBlob, fileName, folderId);
+    }
+    
+    // Si el error no es de autenticación, propagarlo
+    throw error;
+  }
+}
+
 // ============= MAIN HANDLER =============
 
 serve(async (req) => {
@@ -332,9 +367,17 @@ serve(async (req) => {
 
       console.log(`📦 Photo downloaded, size: ${photoBlob.size} bytes`);
 
-      // Subir a Google Drive
+      // Subir a Google Drive con retry automático
       const fileName = photo.original_filename || `photo_${photo.id}.webp`;
-      const driveFileId = await uploadPhotoToDrive(accessToken, photoBlob, fileName, dateFolderId);
+      const driveFileId = await uploadWithTokenRefresh(
+        accessToken,
+        refreshToken,
+        photoBlob,
+        fileName,
+        dateFolderId,
+        supabase,
+        destination.id
+      );
 
       // Registrar en cloud_file_mappings
       await supabase
@@ -448,6 +491,7 @@ serve(async (req) => {
 
       // Desencriptar tokens
       const accessToken = await decryptToken(destination.cloud_access_token);
+      const refreshToken = await decryptToken(destination.cloud_refresh_token);
 
       // Crear estructura: VirtualTours_Backups/[Tour]/planos-de-piso/
       const rootFolderId = destination.cloud_folder_id;
@@ -475,13 +519,16 @@ serve(async (req) => {
 
       console.log(`📦 Floor plan image downloaded: ${imageBlob.size} bytes`);
 
-      // Subir a Google Drive con nombre descriptivo
+      // Subir a Google Drive con retry automático
       const originalFileName = fileName || `plano_${floorPlan.name}.webp`;
-      const driveFileId = await uploadPhotoToDrive(
+      const driveFileId = await uploadWithTokenRefresh(
         accessToken,
+        refreshToken,
         imageBlob,
         originalFileName,
-        planosFolderId
+        planosFolderId,
+        supabase,
+        destination.id
       );
 
       // Registrar en cloud_file_mappings
