@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -36,7 +36,7 @@ export function useCloudStorage(tenantId: string) {
   const [destinations, setDestinations] = useState<BackupDestination[]>([]);
   const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const [oauthPopupRef, setOauthPopupRef] = useState<Window | null>(null);
+  const oauthPopupRef = useRef<Window | null>(null);
 
   // Function to load destinations (exposed so it can be called externally)
   const loadDestinations = useCallback(async () => {
@@ -118,15 +118,25 @@ export function useCloudStorage(tenantId: string) {
             toast.success(`${providerName} conectado exitosamente`);
             
             // Close OAuth popup from parent window if still open
-            if (oauthPopupRef && !oauthPopupRef.closed) {
+            console.log('🔍 Checking popup reference:', {
+              hasRef: !!oauthPopupRef.current,
+              isClosed: oauthPopupRef.current?.closed
+            });
+            
+            if (oauthPopupRef.current && !oauthPopupRef.current.closed) {
               try {
-                oauthPopupRef.close();
+                oauthPopupRef.current.close();
                 console.log('✅ Popup cerrado desde ventana padre');
               } catch (e) {
                 console.warn('⚠️ No se pudo cerrar el popup automáticamente:', e);
               }
+            } else if (!oauthPopupRef.current) {
+              console.warn('⚠️ No hay referencia al popup');
+            } else if (oauthPopupRef.current.closed) {
+              console.log('ℹ️ Popup ya estaba cerrado');
             }
-            setOauthPopupRef(null);
+            
+            oauthPopupRef.current = null;
             
             // Reload data
             await loadDestinations();
@@ -245,7 +255,11 @@ export function useCloudStorage(tenantId: string) {
           console.log('📊 Polling system will detect completion automatically...');
           
           // Save popup reference so we can close it from parent window
-          setOauthPopupRef(oauthWindow);
+          oauthPopupRef.current = oauthWindow;
+          console.log('💾 Popup reference saved:', {
+            hasRef: !!oauthPopupRef.current,
+            isClosed: oauthPopupRef.current?.closed
+          });
           
           // Note: We use polling system to detect OAuth completion
           // This is more reliable than postMessage in cross-origin scenarios
