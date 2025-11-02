@@ -9,6 +9,7 @@ import { Navbar } from '@/components/Navbar';
 import BackupSettings from '@/components/backups/BackupSettings';
 import { BackupSyncHistory } from '@/components/backups/BackupSyncHistory';
 import { TourBackupConfig } from '@/components/backups/TourBackupConfig';
+import { BatchPhotoSync } from '@/components/backups/BatchPhotoSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -71,6 +72,7 @@ const BackupsPage: React.FC = () => {
         <Tabs defaultValue="settings" className="space-y-6">
           <TabsList>
             <TabsTrigger value="settings">⚙️ Google Drive Settings</TabsTrigger>
+            <TabsTrigger value="sync">🔄 Sync Existing Photos</TabsTrigger>
             <TabsTrigger value="history">📜 Sync History</TabsTrigger>
           </TabsList>
           
@@ -81,6 +83,10 @@ const BackupsPage: React.FC = () => {
                 <TourBackupConfig tenantId={tenantId} />
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="sync">
+            {tenantId && <BatchPhotoSync tenantId={tenantId} />}
           </TabsContent>
           
           <TabsContent value="history">

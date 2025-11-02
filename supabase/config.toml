@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.photo-sync-to-drive]
 verify_jwt = false
+
+[functions.batch-sync-photos]
+verify_jwt = false
