@@ -12,6 +12,7 @@ interface AddPhotosParams {
   tourId: string;
   floorPlanId: string;
   hotspotTitle: string;
+  tenantId?: string; // Optional: for Google Drive sync
 }
 
 export const useAddPhotosToHotspot = () => {
@@ -66,7 +67,7 @@ export const useAddPhotosToHotspot = () => {
         // Create panorama_photo record
         const finalCaptureDate = photoData.captureDate || new Date().toISOString().split('T')[0];
         
-        const { error: panoramaError } = await supabase
+        const { data: newPhoto, error: panoramaError } = await supabase
           .from('panorama_photos')
           .insert({
             hotspot_id: params.hotspotId,
@@ -77,11 +78,33 @@ export const useAddPhotosToHotspot = () => {
             original_filename: photoData.file.name,
             capture_date: finalCaptureDate,
             description: `${photoData.groupName} - ${params.hotspotTitle}`,
-          });
+          })
+          .select()
+          .single();
 
         if (panoramaError) {
           console.error('Error creating panorama record:', panoramaError);
           return null;
+        }
+
+        // Sync to Google Drive (non-blocking)
+        if (params.tenantId && newPhoto) {
+          supabase.functions
+            .invoke('photo-sync-to-drive', {
+              body: {
+                action: 'sync_photo',
+                photoId: newPhoto.id,
+                tenantId: params.tenantId
+              }
+            })
+            .then(({ data, error: syncError }) => {
+              if (syncError) {
+                console.warn('⚠️ Photo sync to Drive failed:', syncError);
+              } else {
+                console.log('✅ Photo synced to Drive:', data);
+              }
+            })
+            .catch(err => console.warn('⚠️ Photo sync error:', err));
         }
 
         return photoData.file.name;

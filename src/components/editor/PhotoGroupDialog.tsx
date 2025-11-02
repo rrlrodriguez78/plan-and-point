@@ -28,6 +28,7 @@ interface PhotoGroupDialogProps {
   existingHotspots: Hotspot[];
   floorPlanId: string;
   tourId: string;
+  tenantId?: string;
   onPhotosAdded: () => void;
 }
 
@@ -37,6 +38,7 @@ export const PhotoGroupDialog = ({
   existingHotspots,
   floorPlanId,
   tourId,
+  tenantId,
   onPhotosAdded 
 }: PhotoGroupDialogProps) => {
   const { t, i18n } = useTranslation();
@@ -263,7 +265,8 @@ export const PhotoGroupDialog = ({
           photos: photosWithOptimized,
           tourId,
           floorPlanId,
-          hotspotTitle: match.hotspot.title
+          hotspotTitle: match.hotspot.title,
+          tenantId
         });
         
         return match.photos.length;

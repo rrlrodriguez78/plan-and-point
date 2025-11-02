@@ -1005,6 +1005,7 @@ const PhotoEditor = () => {
         existingHotspots={hotspots}
         floorPlanId={selectedFloorPlan?.id || ''}
         tourId={tour?.id || ''}
+        tenantId={tour?.tenant_id}
         onPhotosAdded={() => {
           if (selectedFloorPlan) {
             loadHotspots(selectedFloorPlan.id);
