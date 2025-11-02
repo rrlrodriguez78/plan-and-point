@@ -53,12 +53,26 @@ export const useSphericalCoordinates = () => {
       const spherical = new THREE.Spherical();
       spherical.setFromVector3(intersectionPoint);
       
+      console.log('🔵 [screenToSpherical] Raw spherical:', {
+        thetaRad: spherical.theta,
+        phiRad: spherical.phi,
+        thetaDeg: THREE.MathUtils.radToDeg(spherical.theta),
+        phiDeg: THREE.MathUtils.radToDeg(spherical.phi),
+        intersectionPoint: { x: intersectionPoint.x, y: intersectionPoint.y, z: intersectionPoint.z }
+      });
+      
       // 6. Convertir a grados (formato BD)
       let theta = THREE.MathUtils.radToDeg(spherical.theta);
       const phi = THREE.MathUtils.radToDeg(spherical.phi);
       
       // CRÍTICO: Invertir theta porque la esfera está mirrored (scale -1, 1, 1)
       theta = -theta;
+      
+      console.log('🔵 [screenToSpherical] After inversion:', {
+        theta: theta,
+        phi: phi,
+        note: 'theta invertido para compensar scale(-1, 1, 1)'
+      });
       
       // 7. Ajustar theta al rango [-180, 180]
       if (theta > 180) theta -= 360;
@@ -67,6 +81,12 @@ export const useSphericalCoordinates = () => {
       // 8. Validar rangos
       const validTheta = Math.max(-180, Math.min(180, theta));
       const validPhi = Math.max(0, Math.min(180, phi));
+      
+      console.log('🟢 [screenToSpherical] FINAL:', {
+        theta: Math.round(validTheta),
+        phi: Math.round(validPhi),
+        raw: { theta: validTheta, phi: validPhi }
+      });
       
       return {
         theta: Math.round(validTheta),
@@ -95,6 +115,14 @@ export const useSphericalCoordinates = () => {
     const x = radius * Math.sin(phiRad) * Math.cos(thetaRad);
     const y = radius * Math.cos(phiRad) + heightOffset;
     const z = radius * Math.sin(phiRad) * Math.sin(thetaRad);
+    
+    console.log('🔄 [sphericalToCartesian]', {
+      input: { theta, phi, radius, heightOffset },
+      thetaRad: thetaRad,
+      phiRad: phiRad,
+      output: { x, y, z },
+      note: 'theta invertido en conversión'
+    });
     
     return { x, y, z };
   }, []);

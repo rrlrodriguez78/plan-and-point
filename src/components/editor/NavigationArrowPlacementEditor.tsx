@@ -278,6 +278,21 @@ export const NavigationArrowPlacementEditor = ({
       );
       
       if (coords) {
+        console.log('🎯 [Click Event]', {
+          screen: {
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            containerRect: mountRef.current.getBoundingClientRect()
+          },
+          camera: {
+            lon: lon.current,
+            lat: lat.current,
+            fov: cameraRef.current.fov
+          },
+          spherical: coords,
+          mode: mode
+        });
+        
         if (mode === 'place') {
           setGhostPosition(coords);
         } else if (mode === 'drag' && selectedPoint) {
@@ -335,6 +350,14 @@ export const NavigationArrowPlacementEditor = ({
   // Funciones de BD
   const placeArrow = async (position: { theta: number; phi: number }, targetId: string) => {
     try {
+      console.log('💾 [Saving to DB]', {
+        from_hotspot_id: hotspotId,
+        to_hotspot_id: targetId,
+        theta: position.theta,
+        phi: position.phi,
+        timestamp: new Date().toISOString()
+      });
+      
       const { data, error } = await supabase
         .from('hotspot_navigation_points')
         .insert({
@@ -434,9 +457,14 @@ export const NavigationArrowPlacementEditor = ({
               </div>
             )}
             
-            {mode === 'place' && ghostPosition && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-lg text-sm z-10">
-                θ: {ghostPosition.theta}°, φ: {ghostPosition.phi}°
+            {(mode === 'place' || mode === 'drag') && ghostPosition && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-lg text-sm z-10 font-mono space-y-1">
+                <div className="text-xs text-green-400">Debug Coordinates:</div>
+                <div>θ: {ghostPosition.theta}° (horizontal)</div>
+                <div>φ: {ghostPosition.phi}° (vertical)</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  Camera: lon={lon.current.toFixed(1)}° lat={lat.current.toFixed(1)}°
+                </div>
               </div>
             )}
           </div>
