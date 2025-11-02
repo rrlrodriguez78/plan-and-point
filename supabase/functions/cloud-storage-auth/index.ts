@@ -387,10 +387,11 @@ serve(async (req) => {
         
         const html = `
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Conexión Exitosa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conexi&oacute;n Exitosa</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -405,6 +406,7 @@ serve(async (req) => {
     .container {
       text-align: center;
       padding: 2rem;
+      max-width: 400px;
     }
     .success-icon {
       font-size: 4rem;
@@ -417,59 +419,84 @@ serve(async (req) => {
     p {
       margin: 0.5rem 0;
       opacity: 0.9;
+      font-size: 1rem;
     }
     .close-btn {
       margin-top: 1.5rem;
-      padding: 0.75rem 2rem;
-      background: rgba(255,255,255,0.2);
-      border: 2px solid white;
+      padding: 1rem 2.5rem;
+      background: white;
+      border: none;
       border-radius: 8px;
-      color: white;
-      font-size: 1rem;
+      color: #667eea;
+      font-size: 1.1rem;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .close-btn:hover {
-      background: rgba(255,255,255,0.3);
-      transform: scale(1.05);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+    .countdown {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
     }
     #countdown {
       font-weight: bold;
+      font-size: 1.1rem;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="success-icon">✅</div>
-    <h1>¡Conexión Exitosa!</h1>
+    <div class="success-icon">&#x2705;</div>
+    <h1>&iexcl;Conexi&oacute;n Exitosa!</h1>
     <p>Google Drive conectado correctamente</p>
-    <p id="status">La ventana principal se ha actualizado</p>
-    <button class="close-btn" onclick="handleClose()">Cerrar esta ventana</button>
+    <p id="status">&#x2728; La ventana principal se ha actualizado</p>
+    <button class="close-btn" onclick="handleClose()">Cerrar Ventana</button>
+    <div class="countdown">
+      <p>Esta ventana se cerrar&aacute; autom&aacute;ticamente en <span id="countdown">5</span> segundos</p>
+    </div>
   </div>
   <script>
     (function() {
-      console.log('🎉 OAuth successful, notifying parent window...');
+      console.log('&#x1F389; OAuth successful, notifying parent window...');
       const statusEl = document.getElementById('status');
+      const countdownEl = document.getElementById('countdown');
+      let countdown = 5;
       
-      // Notify opener window if exists - use '*' for cross-origin compatibility
+      // Notify opener window if exists
       if (window.opener && !window.opener.closed) {
         try {
-          // Send to any origin - the receiver validates the message content
           window.opener.postMessage({
             type: 'oauth-success',
             provider: '${provider}',
             action: '${action}',
             timestamp: Date.now()
           }, '*');
-          console.log('✅ postMessage sent to opener with origin *');
+          console.log('&#x2705; postMessage sent to opener');
         } catch (e) {
-          console.error('❌ Failed to send postMessage:', e);
+          console.error('&#x274C; Failed to send postMessage:', e);
         }
       }
       
-      // Multiple attempts to auto-close
+      // Countdown timer
+      const countdownInterval = setInterval(function() {
+        countdown--;
+        if (countdownEl) {
+          countdownEl.textContent = countdown;
+        }
+        
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
+      
+      // Try to auto-close multiple times
       function attemptClose() {
-        const attempts = [0, 300, 800, 1500, 2500];
+        const attempts = [0, 500, 1000, 2000, 3000];
         let closedSuccessfully = false;
         
         attempts.forEach(function(delay) {
@@ -479,41 +506,42 @@ serve(async (req) => {
             try {
               window.close();
               closedSuccessfully = true;
-              console.log('✅ Window closed successfully');
+              console.log('&#x2705; Window closed successfully');
             } catch (e) {
-              console.warn('⚠️ Close attempt failed:', e);
-            }
-            
-            // After last attempt, show manual close instruction
-            if (delay === 2500) {
-              setTimeout(function() {
-                if (!closedSuccessfully && !window.closed) {
-                  statusEl.innerHTML = '✨ <strong>Puedes cerrar esta ventana ahora</strong>';
-                }
-              }, 500);
+              console.warn('&#x26A0;&#xFE0F; Close attempt failed:', e);
             }
           }, delay);
         });
         
-        // If opened in full page (not popup), redirect after delay
+        // Final fallback: show manual close instruction
+        setTimeout(function() {
+          if (!closedSuccessfully && !window.closed) {
+            statusEl.innerHTML = '&#x2705; <strong>Conexi&oacute;n exitosa. Puedes cerrar esta ventana manualmente</strong>';
+          }
+        }, 3000);
+        
+        // If opened in full page (not popup), redirect after 5 seconds
         if (!window.opener || window.opener.closed) {
           setTimeout(function() {
             window.location.href = '${redirectUrl}';
-          }, 3000);
+          }, 5000);
         }
       }
       
-      // Start close attempts immediately
+      // Start close attempts
       attemptClose();
       
-      // Manual close button
+      // Manual close button handler
       window.handleClose = function() {
         try {
           window.close();
         } catch (e) {
-          // If in full page mode, redirect
+          // If can't close (not a popup), redirect to app
           if (!window.opener || window.opener.closed) {
             window.location.href = '${redirectUrl}';
+          } else {
+            // Update message if close failed
+            statusEl.innerHTML = '&#x2705; <strong>Por favor cierra esta ventana manualmente</strong>';
           }
         }
       };
