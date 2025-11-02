@@ -274,14 +274,6 @@ export const BackupManager: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">{t('backups.title', { defaultValue: 'Backup System' })}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t('backups.subtitle', { defaultValue: 'Create complete backups or media-only exports for your virtual tours' })}
-        </p>
-      </div>
-
       {/* Available Tours */}
       <Card>
         <CardHeader>
