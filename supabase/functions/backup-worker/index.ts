@@ -518,6 +518,42 @@ async function processBackupJob(backupJobId: string, backupJob: any, adminClient
 
     console.log(`🎉 Multipart backup completed: ${backupJobId} (${totalParts} parts)`);
 
+    // Auto-sync to cloud if enabled
+    try {
+      const { data: destination } = await adminClient
+        .from('backup_destinations')
+        .select('*')
+        .eq('id', backupJob.destination_id)
+        .single();
+
+      if (destination?.auto_backup_enabled && destination?.is_active) {
+        console.log(`☁️ Auto-syncing backup ${backupJobId} to Google Drive...`);
+        
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        
+        // Call cloud-sync-worker in background (fire and forget)
+        fetch(`${supabaseUrl}/functions/v1/cloud-sync-worker`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'sync_backup',
+            backupJobId: backupJobId
+          })
+        }).then(res => res.json()).then(result => {
+          console.log(`✅ Auto-sync initiated for backup ${backupJobId}:`, result);
+        }).catch(err => {
+          console.error(`❌ Auto-sync failed for backup ${backupJobId}:`, err);
+        });
+      }
+    } catch (error) {
+      console.error('⚠️ Error checking auto-sync eligibility:', error);
+      // Don't fail the backup if auto-sync check fails
+    }
+
     return {
       success: true,
       backupId: backupJobId,

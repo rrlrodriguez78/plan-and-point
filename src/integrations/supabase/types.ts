@@ -1240,6 +1240,73 @@ export type Database = {
           },
         ]
       }
+      tour_backup_config: {
+        Row: {
+          auto_backup_enabled: boolean | null
+          backup_frequency: string | null
+          backup_on_create: boolean | null
+          backup_on_update: boolean | null
+          backup_type: string | null
+          created_at: string | null
+          destination_id: string | null
+          id: string
+          last_auto_backup_at: string | null
+          tenant_id: string
+          tour_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_backup_enabled?: boolean | null
+          backup_frequency?: string | null
+          backup_on_create?: boolean | null
+          backup_on_update?: boolean | null
+          backup_type?: string | null
+          created_at?: string | null
+          destination_id?: string | null
+          id?: string
+          last_auto_backup_at?: string | null
+          tenant_id: string
+          tour_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_backup_enabled?: boolean | null
+          backup_frequency?: string | null
+          backup_on_create?: boolean | null
+          backup_on_update?: boolean | null
+          backup_type?: string | null
+          created_at?: string | null
+          destination_id?: string | null
+          id?: string
+          last_auto_backup_at?: string | null
+          tenant_id?: string
+          tour_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_backup_config_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "backup_destinations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_backup_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_backup_config_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_comments: {
         Row: {
           comment_text: string

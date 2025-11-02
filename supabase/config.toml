@@ -1,5 +1,8 @@
 project_id = "swnhlzcodsnpsqpxaxov"
 
+[functions.auto-backup-scheduler]
+verify_jwt = false
+
 [functions.set-tour-password]
 verify_jwt = true
 

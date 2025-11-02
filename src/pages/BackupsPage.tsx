@@ -8,6 +8,7 @@ import { BackupManager } from '@/components/backups/BackupManager';
 import { BackupTester } from '@/components/backups/BackupTester';
 import BackupSettings from '@/components/backups/BackupSettings';
 import { BackupSyncHistory } from '@/components/backups/BackupSyncHistory';
+import { TourBackupConfig } from '@/components/backups/TourBackupConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -69,7 +70,8 @@ const BackupsPage: React.FC = () => {
         
         <Tabs defaultValue="backups" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="backups">🗂️ Backups</TabsTrigger>
+            <TabsTrigger value="backups">🗂️ Backups Manuales</TabsTrigger>
+            <TabsTrigger value="auto-config">🔄 Backup Automático</TabsTrigger>
             <TabsTrigger value="settings">⚙️ Destination Settings</TabsTrigger>
             <TabsTrigger value="history">📜 Sync History</TabsTrigger>
           </TabsList>
@@ -77,6 +79,10 @@ const BackupsPage: React.FC = () => {
           <TabsContent value="backups" className="space-y-6">
             <BackupTester />
             <BackupManager />
+          </TabsContent>
+          
+          <TabsContent value="auto-config">
+            {tenantId && <TourBackupConfig tenantId={tenantId} />}
           </TabsContent>
           
           <TabsContent value="settings">
