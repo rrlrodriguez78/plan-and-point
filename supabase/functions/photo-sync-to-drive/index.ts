@@ -275,7 +275,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, photoId, tenantId } = await req.json();
+    const body = await req.json();
+    const { action, photoId, tenantId } = body;
 
     if (action === 'sync_photo') {
       console.log('📸 Photo sync started:', {
@@ -472,7 +473,7 @@ serve(async (req) => {
         timestamp: new Date().toISOString()
       });
 
-      const { imageUrl, tourId, floorPlanId, fileName } = await req.json();
+      const { imageUrl, tourId, floorPlanId, fileName } = body;
 
       if (!imageUrl || !tourId || !floorPlanId) {
         throw new Error('Missing required fields: imageUrl, tourId, floorPlanId');
