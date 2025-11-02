@@ -1738,6 +1738,13 @@ export type Database = {
       }
       cleanup_stalled_backup_jobs: { Args: never; Returns: undefined }
       cleanup_stuck_jobs_fallback: { Args: never; Returns: undefined }
+      enable_auto_backup_for_existing_tours: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          configs_created: number
+          tours_updated: number
+        }[]
+      }
       export_backup_system_config: {
         Args: never
         Returns: {

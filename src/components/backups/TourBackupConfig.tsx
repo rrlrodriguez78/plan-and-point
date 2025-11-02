@@ -47,6 +47,31 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
     loadDestination();
   }, [tenantId]);
 
+  useEffect(() => {
+    // Cuando hay destination y tours cargados, habilitar auto-backup para tours existentes sin config
+    if (destination && tours.length > 0 && !loadingConfigs) {
+      enableBackupForExistingTours();
+    }
+  }, [destination, tours, loadingConfigs]);
+
+  const enableBackupForExistingTours = async () => {
+    try {
+      const { data, error } = await supabase.rpc('enable_auto_backup_for_existing_tours', {
+        p_tenant_id: tenantId
+      });
+      
+      if (error) throw error;
+      
+      if (data && data[0]?.configs_created > 0) {
+        console.log(`Auto-backup habilitado para ${data[0].configs_created} tours existentes`);
+        // Recargar configs para mostrar los cambios
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error enabling auto-backup for existing tours:', error);
+    }
+  };
+
   const loadTours = async () => {
     try {
       const { data, error } = await supabase
@@ -85,7 +110,7 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
 
   const handleToggleAutoBackup = async (tourId: string, enabled: boolean) => {
     if (enabled && !destination) {
-      toast.error('Primero debes conectar Google Drive en la pestaña "Destination Settings"');
+      toast.error('Primero debes conectar Google Drive');
       return;
     }
 
@@ -96,9 +121,9 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
 
     if (enabled && destination) {
       await enableAutoBackup(tourId, destination.id);
+      toast.success('Auto-backup reactivado para este tour');
       
       // Trigger manual de backup inicial
-      toast.success('Auto-backup activado. Creando primer backup...');
       try {
         const { error } = await supabase
           .from('virtual_tours')
@@ -106,13 +131,12 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
           .eq('id', tourId);
         
         if (error) throw error;
-        toast.success('Backup inicial programado');
       } catch (error) {
         console.error('Error triggering manual backup:', error);
-        toast.error('Error al programar backup inicial');
       }
     } else {
       await disableAutoBackup(tourId);
+      toast.success('Auto-backup desactivado para este tour');
     }
   };
 
@@ -143,7 +167,8 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Ve a la pestaña <strong>"Destination Settings"</strong> y conecta tu cuenta de Google Drive.
+            Conecta tu cuenta de Google Drive arriba para habilitar backups automáticos.
+            Una vez conectado, todos los tours nuevos se respaldarán automáticamente.
           </p>
         </CardContent>
       </Card>
@@ -158,8 +183,8 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
           Configurar Backup Automático por Tour
         </CardTitle>
         <CardDescription>
-          Activa el backup automático para los tours que desees respaldar en Google Drive.
-          Los cambios se sincronizarán automáticamente según la frecuencia seleccionada.
+          Todos los tours nuevos se respaldan automáticamente en Google Drive. 
+          Puedes desactivar el backup para tours específicos usando el switch a la derecha.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -180,10 +205,14 @@ export const TourBackupConfig: React.FC<TourBackupConfigProps> = ({ tenantId }) 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium">{tour.title}</h3>
-                    {isEnabled && (
+                    {isEnabled ? (
                       <Badge variant="secondary" className="text-xs">
                         <Cloud className="h-3 w-3 mr-1" />
-                        Auto-backup activo
+                        Backup automático
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs opacity-60">
+                        Sin backup
                       </Badge>
                     )}
                   </div>
