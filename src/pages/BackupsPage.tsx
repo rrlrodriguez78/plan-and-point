@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { BackupManager } from '@/components/backups/BackupManager';
-import { BackupTester } from '@/components/backups/BackupTester';
+
 import BackupSettings from '@/components/backups/BackupSettings';
 import { BackupSyncHistory } from '@/components/backups/BackupSyncHistory';
 import { TourBackupConfig } from '@/components/backups/TourBackupConfig';
@@ -76,7 +76,6 @@ const BackupsPage: React.FC = () => {
           </TabsList>
           
           <TabsContent value="backups" className="space-y-6">
-            <BackupTester />
             <BackupManager />
           </TabsContent>
           
