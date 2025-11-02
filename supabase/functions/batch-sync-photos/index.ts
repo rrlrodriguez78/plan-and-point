@@ -35,11 +35,11 @@ async function decryptToken(encryptedToken: string): Promise<string> {
   return new TextDecoder().decode(decrypted);
 }
 
-// Helper to check if file exists in Google Drive
-async function fileExistsInDrive(accessToken: string, fileId: string): Promise<boolean> {
+// MEJORADA: Helper to check if file exists and is accessible in Google Drive
+async function fileExistsInDrive(accessToken: string, fileId: string): Promise<{exists: boolean, accessible: boolean, error?: string}> {
   try {
     const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,trashed`,
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,trashed,parents,mimeType,size`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -49,26 +49,140 @@ async function fileExistsInDrive(accessToken: string, fileId: string): Promise<b
     
     if (!response.ok) {
       if (response.status === 404) {
-        console.log(`❌ File ${fileId} not found (permanently deleted)`);
+        return { exists: false, accessible: false, error: 'not_found' };
+      } else if (response.status === 403) {
+        return { exists: true, accessible: false, error: 'no_access' };
+      } else if (response.status === 401) {
+        return { exists: true, accessible: false, error: 'auth_required' };
       } else {
-        console.log(`⚠️ File ${fileId} check failed (status: ${response.status})`);
+        return { exists: true, accessible: false, error: `http_${response.status}` };
       }
-      return false;
     }
     
     const data = await response.json();
     
-    // Si está en papelera, considerarlo como no existente
+    // Si está en papelera, considerarlo como no accesible
     if (data.trashed === true) {
-      console.log(`🗑️ File ${fileId} is in trash`);
-      return false;
+      return { exists: true, accessible: false, error: 'trashed' };
     }
     
-    return true;
+    return { exists: true, accessible: true };
   } catch (error) {
     console.error(`❌ Error checking file ${fileId}:`, error);
-    return false;
+    return { exists: false, accessible: false, error: 'network_error' };
   }
+}
+
+// NUEVA: Función para verificar si el folder padre existe
+async function verifyDriveFolder(accessToken: string, folderId: string): Promise<{exists: boolean, accessible: boolean}> {
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,mimeType,trashed`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      return { exists: false, accessible: false };
+    }
+    
+    const data = await response.json();
+    
+    // Verificar que sea un folder y no esté en la papelera
+    if (data.mimeType !== 'application/vnd.google-apps.folder' || data.trashed === true) {
+      return { exists: false, accessible: false };
+    }
+    
+    return { exists: true, accessible: true };
+  } catch (error) {
+    console.error(`❌ Error checking folder ${folderId}:`, error);
+    return { exists: false, accessible: false };
+  }
+}
+
+// NUEVA: Función para obtener y verificar el folder de destino
+async function getVerifiedDestination(supabase: any, tenantId: string) {
+  const { data: destination, error: destError } = await supabase
+    .from('backup_destinations')
+    .select('id, cloud_folder_id, cloud_access_token, cloud_provider')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .eq('cloud_provider', 'google_drive')
+    .single();
+
+  if (destError || !destination) {
+    throw new Error('No active Google Drive destination found');
+  }
+
+  // Decrypt access token
+  const accessToken = await decryptToken(destination.cloud_access_token);
+
+  // VERIFICAR QUE EL FOLDER EXISTA
+  const folderCheck = await verifyDriveFolder(accessToken, destination.cloud_folder_id);
+  if (!folderCheck.exists || !folderCheck.accessible) {
+    throw new Error('Google Drive folder not found or inaccessible. Please reconfigure the backup destination.');
+  }
+
+  return {
+    ...destination,
+    accessToken
+  };
+}
+
+// NUEVA: Función para limpieza completa de mappings huérfanos
+async function cleanupOrphanedMappings(supabase: any, tourId: string, accessToken: string) {
+  console.log('🧹 Cleaning up orphaned cloud file mappings...');
+  
+  // Obtener todos los mappings para este tour
+  const { data: mappings, error: mappingsError } = await supabase
+    .from('cloud_file_mappings')
+    .select('id, photo_id, floor_plan_id, cloud_file_id, cloud_file_name')
+    .eq('tour_id', tourId);
+
+  if (mappingsError) {
+    console.error('Error fetching mappings:', mappingsError);
+    return { deleted: 0, errors: [] };
+  }
+
+  const orphanedMappings = [];
+  const errors = [];
+
+  for (const mapping of mappings || []) {
+    try {
+      const fileCheck = await fileExistsInDrive(accessToken, mapping.cloud_file_id);
+      
+      if (!fileCheck.accessible) {
+        orphanedMappings.push(mapping.id);
+        console.log(`🗑️ Marking orphaned mapping: ${mapping.cloud_file_name || mapping.cloud_file_id} (${fileCheck.error})`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      errors.push({ mappingId: mapping.id, error: errorMsg });
+      console.error(`Error checking mapping ${mapping.id}:`, error);
+    }
+  }
+
+  // Eliminar mappings huérfanos
+  if (orphanedMappings.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('cloud_file_mappings')
+      .delete()
+      .in('id', orphanedMappings);
+
+    if (deleteError) {
+      console.error('Error deleting orphaned mappings:', deleteError);
+    } else {
+      console.log(`✅ Deleted ${orphanedMappings.length} orphaned mappings`);
+    }
+  }
+
+  return {
+    deleted: orphanedMappings.length,
+    errors: errors.length
+  };
 }
 
 // Background processing function
@@ -198,7 +312,7 @@ serve(async (req) => {
     const { action, tourId, tenantId, jobId } = body;
     console.log(`📥 Received request - Action: ${action}, JobID: ${jobId}, TourID: ${tourId}`);
 
-    // Handle verify_and_resync action
+    // Handle verify_and_resync action - MEJORADO
     if (action === 'verify_and_resync') {
       console.log('🔍 Verifying Google Drive files and re-syncing missing...');
       
@@ -209,23 +323,14 @@ serve(async (req) => {
         );
       }
 
-      // Get active destination
-      const { data: destination, error: destError } = await supabase
-        .from('backup_destinations')
-        .select('id, cloud_access_token')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .eq('cloud_provider', 'google_drive')
-        .single();
+      // Obtener y VERIFICAR destino con la nueva función
+      const destination = await getVerifiedDestination(supabase, tenantId);
 
-      if (destError || !destination) {
-        throw new Error('No active Google Drive destination found');
-      }
+      // LIMPIEZA: Eliminar mappings huérfanos antes de verificar
+      const cleanupResult = await cleanupOrphanedMappings(supabase, tourId, destination.accessToken);
+      console.log(`🧹 Cleanup result: ${cleanupResult.deleted} orphaned mappings deleted`);
 
-      // Decrypt access token
-      const accessToken = await decryptToken(destination.cloud_access_token);
-
-      // Get all cloud file mappings for this tour (photos AND floor plans)
+      // Get all cloud file mappings for this tour (photos AND floor plans) - DESPUÉS de cleanup
       const { data: mappings, error: mappingsError } = await supabase
         .from('cloud_file_mappings')
         .select('id, photo_id, floor_plan_id, cloud_file_id, cloud_file_name')
@@ -243,15 +348,15 @@ serve(async (req) => {
       const totalMappings = (mappings || []).length;
       let checkedCount = 0;
 
-      // Verify each mapping
+      // Verify each mapping CON LA NUEVA VERIFICACIÓN MEJORADA
       for (const mapping of mappings || []) {
         checkedCount++;
         console.log(`🔍 Checking file ${checkedCount}/${totalMappings}: ${mapping.cloud_file_name || mapping.cloud_file_id}`);
         
-        const exists = await fileExistsInDrive(accessToken, mapping.cloud_file_id);
+        const fileCheck = await fileExistsInDrive(destination.accessToken, mapping.cloud_file_id);
         
-        if (!exists) {
-          console.log(`❌ File missing in Drive: ${mapping.cloud_file_name || mapping.cloud_file_id}`);
+        if (!fileCheck.accessible) {
+          console.log(`❌ File not accessible in Drive: ${mapping.cloud_file_name || mapping.cloud_file_id} (${fileCheck.error})`);
           
           // Delete incorrect mapping
           await supabase
@@ -267,6 +372,7 @@ serve(async (req) => {
           }
         } else {
           validMappings.push(mapping.id);
+          console.log(`✅ File verified: ${mapping.cloud_file_name || mapping.cloud_file_id}`);
         }
       }
 
@@ -322,7 +428,8 @@ serve(async (req) => {
             message: 'All files verified successfully',
             verified: validMappings.length,
             missingPhotos: 0,
-            missingFloorPlans: 0
+            missingFloorPlans: 0,
+            cleanedUp: cleanupResult.deleted
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -396,6 +503,7 @@ serve(async (req) => {
           verified: validMappings.length,
           missingPhotos: missingPhotoIds.length,
           missingFloorPlans: missingFloorPlanIds.length,
+          cleanedUp: cleanupResult.deleted,
           message: `Re-syncing ${message.join(' and ')}`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
