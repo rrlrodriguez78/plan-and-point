@@ -24,6 +24,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingFloorPlans, setSyncingFloorPlans] = useState(false);
+  const [syncingAll, setSyncingAll] = useState(false);
   const [progress, setProgress] = useState<{
     synced: number;
     failed: number;
@@ -152,6 +153,92 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
   };
 
+  const handleSyncAll = async () => {
+    if (!selectedTourId) {
+      toast.error('Selecciona un tour');
+      return;
+    }
+
+    setSyncingAll(true);
+    setProgress(null);
+    setFloorPlanProgress(null);
+    setErrors([]);
+    setFloorPlanErrors([]);
+
+    try {
+      // PASO 1: Sincronizar Floor Plans
+      toast.info('🗺️ Paso 1/2: Sincronizando planos de piso...');
+      setSyncingFloorPlans(true);
+
+      const floorPlansResult = await supabase.functions.invoke('sync-all-floor-plans', {
+        body: {
+          tourId: selectedTourId,
+          tenantId: tenantId
+        }
+      });
+
+      if (floorPlansResult.error) throw floorPlansResult.error;
+
+      if (floorPlansResult.data.success) {
+        setFloorPlanProgress({
+          synced: floorPlansResult.data.synced,
+          failed: floorPlansResult.data.failed,
+          total: floorPlansResult.data.total,
+          alreadySynced: floorPlansResult.data.alreadySynced || 0
+        });
+        setFloorPlanErrors(floorPlansResult.data.errors || []);
+
+        if (floorPlansResult.data.failed === 0) {
+          toast.success(`✅ Paso 1/2: ${floorPlansResult.data.synced} planos sincronizados`);
+        } else {
+          toast.warning(`⚠️ Paso 1/2: ${floorPlansResult.data.synced} planos sincronizados, ${floorPlansResult.data.failed} fallidos`);
+        }
+      }
+
+      setSyncingFloorPlans(false);
+
+      // PASO 2: Sincronizar Fotos
+      toast.info('📸 Paso 2/2: Sincronizando fotos panorámicas...');
+      setSyncing(true);
+
+      const photosResult = await supabase.functions.invoke('batch-sync-photos', {
+        body: {
+          tourId: selectedTourId,
+          tenantId: tenantId
+        }
+      });
+
+      if (photosResult.error) throw photosResult.error;
+
+      if (photosResult.data.success) {
+        setProgress({
+          synced: photosResult.data.synced,
+          failed: photosResult.data.failed,
+          total: photosResult.data.total,
+          alreadySynced: photosResult.data.alreadySynced || 0
+        });
+        setErrors(photosResult.data.errors || []);
+
+        if (photosResult.data.failed === 0) {
+          toast.success(`✅ Paso 2/2: ${photosResult.data.synced} fotos sincronizadas`);
+          toast.success('🎉 Sincronización completa exitosa', {
+            description: `${floorPlansResult.data.synced} planos + ${photosResult.data.synced} fotos`
+          });
+        } else {
+          toast.warning(`⚠️ Paso 2/2: ${photosResult.data.synced} fotos sincronizadas, ${photosResult.data.failed} fallidas`);
+        }
+      }
+
+    } catch (error) {
+      console.error('Sync all error:', error);
+      toast.error(error instanceof Error ? error.message : 'Error durante la sincronización');
+    } finally {
+      setSyncing(false);
+      setSyncingFloorPlans(false);
+      setSyncingAll(false);
+    }
+  };
+
   const progressPercent = progress 
     ? ((progress.synced + progress.failed) / progress.total) * 100 
     : 0;
@@ -173,7 +260,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           <Select
             value={selectedTourId}
             onValueChange={setSelectedTourId}
-            disabled={loading || syncing || syncingFloorPlans}
+            disabled={loading || syncing || syncingFloorPlans || syncingAll}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecciona un tour..." />
@@ -188,23 +275,22 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button 
-            onClick={handleSync}
-            disabled={!selectedTourId || syncing || syncingFloorPlans}
-          >
-            {syncing ? "Sincronizando..." : "Sincronizar Fotos"}
-          </Button>
-          
-          <Button 
-            onClick={handleSyncFloorPlans}
-            disabled={!selectedTourId || syncing || syncingFloorPlans}
-            variant="outline"
-          >
-            <Map className="h-4 w-4 mr-2" />
-            {syncingFloorPlans ? "Sincronizando..." : "Sincronizar Planos"}
-          </Button>
-        </div>
+        <Button 
+          onClick={handleSyncAll}
+          disabled={!selectedTourId || syncingAll}
+          className="w-full"
+          size="lg"
+        >
+          <Upload className="h-5 w-5 mr-2" />
+          {syncingAll 
+            ? syncingFloorPlans 
+              ? "📍 Sincronizando planos..." 
+              : syncing 
+                ? "📸 Sincronizando fotos..." 
+                : "Sincronizando..."
+            : "Sincronizar Todo (Planos + Fotos)"
+          }
+        </Button>
 
         {progress && (
           <div className="space-y-3 pt-4 border-t">
