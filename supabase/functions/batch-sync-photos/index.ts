@@ -207,10 +207,10 @@ serve(async (req) => {
       // Decrypt access token
       const accessToken = await decryptToken(destination.cloud_access_token);
 
-      // Get all cloud file mappings for this tour
+      // Get all cloud file mappings for this tour (photos AND floor plans)
       const { data: mappings, error: mappingsError } = await supabase
         .from('cloud_file_mappings')
-        .select('id, photo_id, cloud_file_id')
+        .select('id, photo_id, floor_plan_id, cloud_file_id, cloud_file_name')
         .eq('tour_id', tourId);
 
       if (mappingsError) {
@@ -220,6 +220,7 @@ serve(async (req) => {
       console.log(`📋 Found ${mappings?.length || 0} existing mappings to verify`);
 
       const missingPhotoIds: string[] = [];
+      const missingFloorPlanIds: string[] = [];
       const validMappings: string[] = [];
 
       // Verify each mapping
@@ -227,7 +228,7 @@ serve(async (req) => {
         const exists = await fileExistsInDrive(accessToken, mapping.cloud_file_id);
         
         if (!exists) {
-          console.log(`❌ File missing in Drive: ${mapping.photo_id}`);
+          console.log(`❌ File missing in Drive: ${mapping.cloud_file_name || mapping.cloud_file_id}`);
           
           // Delete incorrect mapping
           await supabase
@@ -235,84 +236,144 @@ serve(async (req) => {
             .delete()
             .eq('id', mapping.id);
           
-          missingPhotoIds.push(mapping.photo_id);
+          // Separate by type
+          if (mapping.photo_id) {
+            missingPhotoIds.push(mapping.photo_id);
+          } else if (mapping.floor_plan_id) {
+            missingFloorPlanIds.push(mapping.floor_plan_id);
+          }
         } else {
-          validMappings.push(mapping.photo_id);
+          validMappings.push(mapping.id);
         }
       }
 
-      console.log(`✅ Verification complete: ${validMappings.length} valid, ${missingPhotoIds.length} missing`);
+      console.log(`✅ Verification complete: ${validMappings.length} valid, ${missingPhotoIds.length} photos missing, ${missingFloorPlanIds.length} floor plans missing`);
 
-      if (missingPhotoIds.length === 0) {
+      // Re-sync floor plans if any are missing
+      if (missingFloorPlanIds.length > 0) {
+        console.log(`🗺️ Re-syncing ${missingFloorPlanIds.length} floor plans...`);
+        
+        const { data: floorPlans } = await supabase
+          .from('floor_plans')
+          .select('*')
+          .in('id', missingFloorPlanIds);
+        
+        if (floorPlans && floorPlans.length > 0) {
+          // Get destination info for floor plan sync
+          const { data: dest } = await supabase
+            .from('backup_destinations')
+            .select('id, cloud_folder_id, cloud_access_token')
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .single();
+
+          if (dest) {
+            const accessToken = await decryptToken(dest.cloud_access_token);
+            
+            for (const floorPlan of floorPlans) {
+              try {
+                const { error: fpSyncError } = await supabase.functions.invoke('photo-sync-to-drive', {
+                  body: {
+                    action: 'sync_floor_plan',
+                    floorPlanId: floorPlan.id,
+                    tenantId: tenantId
+                  }
+                });
+                
+                if (fpSyncError) {
+                  console.error(`Error syncing floor plan ${floorPlan.id}:`, fpSyncError);
+                }
+              } catch (error) {
+                console.error(`Failed to sync floor plan ${floorPlan.id}:`, error);
+              }
+            }
+          }
+        }
+      }
+
+      // Check if there's nothing to sync
+      if (missingPhotoIds.length === 0 && missingFloorPlanIds.length === 0) {
         return new Response(
           JSON.stringify({ 
             success: true,
             message: 'All files verified successfully',
             verified: validMappings.length,
-            missing: 0
+            missingPhotos: 0,
+            missingFloorPlans: 0
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Fetch missing photos to re-sync
-      const { data: photosToSync, error: photosError } = await supabase
-        .from('panorama_photos')
-        .select(`
-          id,
-          hotspot_id,
-          hotspots!inner(
-            floor_plan_id,
-            floor_plans!inner(
-              tour_id
+      let newJob = null;
+
+      // Create sync job only if there are photos to sync
+      if (missingPhotoIds.length > 0) {
+        // Fetch missing photos to re-sync
+        const { data: photosToSync, error: photosError } = await supabase
+          .from('panorama_photos')
+          .select(`
+            id,
+            hotspot_id,
+            hotspots!inner(
+              floor_plan_id,
+              floor_plans!inner(
+                tour_id
+              )
             )
-          )
-        `)
-        .in('id', missingPhotoIds);
+          `)
+          .in('id', missingPhotoIds);
 
-      if (photosError) {
-        throw new Error(`Failed to fetch missing photos: ${photosError.message}`);
-      }
+        if (photosError) {
+          throw new Error(`Failed to fetch missing photos: ${photosError.message}`);
+        }
 
-      console.log(`📸 Found ${photosToSync?.length || 0} photos to re-sync`);
+        console.log(`📸 Found ${photosToSync?.length || 0} photos to re-sync`);
 
-      // Create sync job for missing photos
-      const { data: newJob, error: jobError } = await supabase
-        .from('sync_jobs')
-        .insert({
-          tenant_id: tenantId,
-          tour_id: tourId,
-          job_type: 'photo_batch_sync',
-          status: 'processing',
-          total_items: photosToSync?.length || 0,
-          processed_items: 0,
-          failed_items: 0
-        })
-        .select()
-        .single();
+        // Create sync job for missing photos
+        const { data: job, error: jobError } = await supabase
+          .from('sync_jobs')
+          .insert({
+            tenant_id: tenantId,
+            tour_id: tourId,
+            job_type: 'photo_batch_sync',
+            status: 'processing',
+            total_items: photosToSync?.length || 0,
+            processed_items: 0,
+            failed_items: 0
+          })
+          .select()
+          .single();
 
-      if (jobError || !newJob) {
-        throw new Error('Failed to create sync job');
-      }
+        if (jobError || !job) {
+          throw new Error('Failed to create sync job');
+        }
 
-      console.log(`✅ Created re-sync job ${newJob.id} for ${photosToSync?.length || 0} missing photos`);
+        newJob = job;
+        console.log(`✅ Created re-sync job ${newJob.id} for ${photosToSync?.length || 0} missing photos`);
 
-      // Start background processing
-      // @ts-ignore
-      if (typeof EdgeRuntime !== 'undefined') {
+        // Start background processing
         // @ts-ignore
-        EdgeRuntime.waitUntil(
-          processBatchSync(newJob.id, tourId, tenantId, photosToSync || [], supabase)
-        );
+        if (typeof EdgeRuntime !== 'undefined') {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(
+            processBatchSync(newJob.id, tourId, tenantId, photosToSync || [], supabase)
+          );
+        }
       }
+
+      const message = [];
+      if (missingPhotoIds.length > 0) message.push(`${missingPhotoIds.length} photos`);
+      if (missingFloorPlanIds.length > 0) message.push(`${missingFloorPlanIds.length} floor plans`);
 
       return new Response(
         JSON.stringify({ 
           success: true,
-          jobId: newJob.id,
+          jobId: newJob?.id,
           verified: validMappings.length,
-          missing: missingPhotoIds.length,
-          message: `Re-syncing ${missingPhotoIds.length} missing files`
+          missingPhotos: missingPhotoIds.length,
+          missingFloorPlans: missingFloorPlanIds.length,
+          message: `Re-syncing ${message.join(' and ')}`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

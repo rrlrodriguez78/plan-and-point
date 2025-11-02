@@ -352,23 +352,36 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       if (error) throw error;
 
       if (data.success) {
-        if (data.missing > 0) {
-          toast.success(`Found ${data.missing} missing files`, {
-            description: 'Starting re-sync process...'
+        const totalMissing = (data.missingPhotos || 0) + (data.missingFloorPlans || 0);
+        
+        if (totalMissing === 0) {
+          setShowProgressDialog(false);
+          setCurrentJob(null);
+          toast.success('✅ All files verified', {
+            description: `${data.verified || 0} files are properly synced`
+          });
+        } else {
+          const message = [];
+          if (data.missingPhotos > 0) message.push(`${data.missingPhotos} photos`);
+          if (data.missingFloorPlans > 0) message.push(`${data.missingFloorPlans} floor plans`);
+          
+          toast.success(`Found ${totalMissing} missing files`, {
+            description: `Re-syncing ${message.join(' and ')}...`
           });
           
-          // ✅ Update to real job
+          // If there's a job (photos to sync), start polling
           if (data.jobId) {
             startPolling(data.jobId);
+          } else {
+            // Only floor plans were synced (no job created)
+            setTimeout(() => {
+              setShowProgressDialog(false);
+              toast.success(`✅ ${data.missingFloorPlans} floor plans re-synced successfully`);
+            }, 2000);
           }
-        } else {
-          setShowProgressDialog(false);
-          toast.success('✅ All files verified', {
-            description: 'No missing files found'
-          });
         }
         
-        setAlreadySyncedCount(data.alreadySynced || 0);
+        setAlreadySyncedCount(data.verified || 0);
       } else {
         setShowProgressDialog(false);
         toast.error(data.error || 'Verification failed');
