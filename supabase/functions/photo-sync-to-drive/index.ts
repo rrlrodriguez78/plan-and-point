@@ -229,6 +229,8 @@ serve(async (req) => {
             id,
             title,
             floor_plans!inner(
+              id,
+              name,
               virtual_tours!inner(
                 id,
                 title,
@@ -244,7 +246,8 @@ serve(async (req) => {
       if (!photo) throw new Error('Photo not found');
 
       const hotspot = photo.hotspots;
-      const tour = hotspot.floor_plans.virtual_tours;
+      const floorPlan = hotspot.floor_plans;
+      const tour = floorPlan.virtual_tours;
 
       // Verificar que el tenant coincida
       if (tour.tenant_id !== tenantId) {
@@ -291,13 +294,13 @@ serve(async (req) => {
       const refreshToken = await decryptToken(destination.cloud_refresh_token);
 
       // Crear estructura de carpetas en Google Drive
-      // VirtualTours_Backups/[Tour Name]/puntos/[Hotspot Name]/fotos-originales/[Fecha]/
+      // VirtualTours_Backups/[Tour Name]/[Floor Plan Name]/[Hotspot Name]/fotos-originales/[Fecha]/
       
       const rootFolderId = destination.cloud_folder_id;
       
       const tourFolderId = await findOrCreateFolder(accessToken, tour.title, rootFolderId);
-      const puntosFolderId = await findOrCreateFolder(accessToken, 'puntos', tourFolderId);
-      const hotspotFolderId = await findOrCreateFolder(accessToken, hotspot.title, puntosFolderId);
+      const floorPlanFolderId = await findOrCreateFolder(accessToken, floorPlan.name, tourFolderId);
+      const hotspotFolderId = await findOrCreateFolder(accessToken, hotspot.title, floorPlanFolderId);
       const fotosOriginalesFolderId = await findOrCreateFolder(accessToken, 'fotos-originales', hotspotFolderId);
       
       // Formatear fecha: YYYY-MM-DD
@@ -338,13 +341,22 @@ serve(async (req) => {
         .from('cloud_file_mappings')
         .insert({
           destination_id: destination.id,
-          local_path: photo.photo_url,
+          tour_id: tour.id,
+          floor_plan_id: floorPlan.id,
+          hotspot_id: hotspot.id,
+          photo_id: photo.id,
+          local_file_url: photo.photo_url,
+          local_file_type: 'panorama_photo',
           cloud_file_id: driveFileId,
-          file_type: 'photo',
-          file_size: photoBlob.size,
+          cloud_file_path: `/${tour.title}/${floorPlan.name}/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`,
+          cloud_file_name: fileName,
+          file_size_bytes: photoBlob.size,
+          backed_up_at: new Date().toISOString(),
           metadata: {
             photo_id: photo.id,
             hotspot_id: hotspot.id,
+            floor_plan_id: floorPlan.id,
+            floor_plan_name: floorPlan.name,
             tour_id: tour.id,
             capture_date: captureDate,
             hotspot_name: hotspot.title,
@@ -352,7 +364,7 @@ serve(async (req) => {
           }
         });
 
-      const cloudFilePath = `/${tour.title}/puntos/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`;
+      const cloudFilePath = `/${tour.title}/${floorPlan.name}/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`;
       
       console.log('✅ Photo synced successfully:', {
         driveFileId,
@@ -366,6 +378,141 @@ serve(async (req) => {
           success: true, 
           driveFileId,
           path: cloudFilePath
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'sync_floor_plan') {
+      console.log('🗺️ Floor plan image sync started:', {
+        tenantId,
+        timestamp: new Date().toISOString()
+      });
+
+      const { imageUrl, tourId, floorPlanId, fileName } = await req.json();
+
+      if (!imageUrl || !tourId || !floorPlanId) {
+        throw new Error('Missing required fields: imageUrl, tourId, floorPlanId');
+      }
+
+      // Obtener información del floor plan y tour
+      const { data: floorPlan, error: floorPlanError } = await supabase
+        .from('floor_plans')
+        .select(`
+          id,
+          name,
+          image_url,
+          virtual_tours!inner(
+            id,
+            title,
+            tenant_id
+          )
+        `)
+        .eq('id', floorPlanId)
+        .single();
+
+      if (floorPlanError) throw floorPlanError;
+      if (!floorPlan) throw new Error('Floor plan not found');
+
+      const tour = floorPlan.virtual_tours;
+
+      // Verificar tenant
+      if (tour.tenant_id !== tenantId) {
+        throw new Error('Tenant mismatch');
+      }
+
+      // Obtener backup destination
+      const { data: destination, error: destError } = await supabase
+        .from('backup_destinations')
+        .select(`
+          id,
+          tenant_id,
+          cloud_provider,
+          cloud_folder_id,
+          cloud_access_token,
+          cloud_refresh_token,
+          is_active
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .eq('cloud_provider', 'google_drive')
+        .single();
+
+      if (destError || !destination) {
+        console.log('⚠️ No active Google Drive destination');
+        return new Response(
+          JSON.stringify({ success: false, message: 'No Google Drive configured' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Desencriptar tokens
+      const accessToken = await decryptToken(destination.cloud_access_token);
+
+      // Crear estructura: VirtualTours_Backups/[Tour]/planos-de-piso/
+      const rootFolderId = destination.cloud_folder_id;
+      const tourFolderId = await findOrCreateFolder(accessToken, tour.title, rootFolderId);
+      const planosFolderId = await findOrCreateFolder(accessToken, 'planos-de-piso', tourFolderId);
+
+      console.log('📁 Folder structure for floor plan:', {
+        root: rootFolderId,
+        tour: tourFolderId,
+        planos: planosFolderId
+      });
+
+      // Descargar imagen del storage
+      const storagePath = imageUrl.split('tour-images/')[1];
+      if (!storagePath) {
+        throw new Error(`Invalid image URL: ${imageUrl}`);
+      }
+
+      const { data: imageBlob, error: downloadError } = await supabase.storage
+        .from('tour-images')
+        .download(storagePath);
+
+      if (downloadError) throw downloadError;
+      if (!imageBlob) throw new Error('Floor plan image not found');
+
+      console.log(`📦 Floor plan image downloaded: ${imageBlob.size} bytes`);
+
+      // Subir a Google Drive con nombre descriptivo
+      const originalFileName = fileName || `plano_${floorPlan.name}.webp`;
+      const driveFileId = await uploadPhotoToDrive(
+        accessToken,
+        imageBlob,
+        originalFileName,
+        planosFolderId
+      );
+
+      // Registrar en cloud_file_mappings
+      const cloudFilePath = `/${tour.title}/planos-de-piso/${originalFileName}`;
+      
+      await supabase
+        .from('cloud_file_mappings')
+        .insert({
+          destination_id: destination.id,
+          tour_id: tour.id,
+          floor_plan_id: floorPlan.id,
+          local_file_url: imageUrl,
+          local_file_type: 'floor_plan_image',
+          cloud_file_id: driveFileId,
+          cloud_file_path: cloudFilePath,
+          cloud_file_name: originalFileName,
+          file_size_bytes: imageBlob.size,
+          backed_up_at: new Date().toISOString()
+        });
+
+      console.log('✅ Floor plan image synced:', {
+        driveFileId,
+        cloudFilePath,
+        floorPlanName: floorPlan.name
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          driveFileId,
+          cloudFilePath 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

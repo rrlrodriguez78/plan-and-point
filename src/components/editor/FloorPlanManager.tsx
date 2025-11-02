@@ -334,6 +334,36 @@ export default function FloorPlanManager({
         width: result.width,
         height: result.height
       }));
+
+      // Sync floor plan image to Google Drive (non-blocking)
+      if (tour?.id && tour?.tenant_id && editingFloorPlan?.id) {
+        console.log('🗺️ Syncing floor plan image to Google Drive...', {
+          floorPlanId: editingFloorPlan.id,
+          imageUrl: publicUrl,
+          tourId: tour.id,
+          tenantId: tour.tenant_id,
+          fileName: fileName
+        });
+
+        supabase.functions
+          .invoke('photo-sync-to-drive', {
+            body: { 
+              action: 'sync_floor_plan',
+              floorPlanId: editingFloorPlan.id,
+              imageUrl: publicUrl,
+              tourId: tour.id,
+              tenantId: tour.tenant_id,
+              fileName: fileName
+            }
+          })
+          .then(({ data, error }) => {
+            if (error) {
+              console.warn('⚠️ Floor plan sync failed:', error);
+            } else {
+              console.log('✅ Floor plan synced to Drive:', data);
+            }
+          });
+      }
     } catch (error: any) {
       console.error('Error uploading floor plan file:', error);
       alert(error.message || t('floorPlan.errorUploading'));
