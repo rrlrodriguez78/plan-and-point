@@ -71,8 +71,7 @@ const BackupsPage: React.FC = () => {
         <Tabs defaultValue="backups" className="space-y-6">
           <TabsList>
             <TabsTrigger value="backups">🗂️ Backups Manuales</TabsTrigger>
-            <TabsTrigger value="auto-config">🔄 Backup Automático</TabsTrigger>
-            <TabsTrigger value="settings">⚙️ Destination Settings</TabsTrigger>
+            <TabsTrigger value="settings">⚙️ Backup Settings</TabsTrigger>
             <TabsTrigger value="history">📜 Sync History</TabsTrigger>
           </TabsList>
           
@@ -81,12 +80,13 @@ const BackupsPage: React.FC = () => {
             <BackupManager />
           </TabsContent>
           
-          <TabsContent value="auto-config">
-            {tenantId && <TourBackupConfig tenantId={tenantId} />}
-          </TabsContent>
-          
-          <TabsContent value="settings">
-            {tenantId && <BackupSettings tenantId={tenantId} />}
+          <TabsContent value="settings" className="space-y-6">
+            {tenantId && (
+              <>
+                <BackupSettings tenantId={tenantId} />
+                <TourBackupConfig tenantId={tenantId} />
+              </>
+            )}
           </TabsContent>
           
           <TabsContent value="history">
