@@ -57,8 +57,12 @@ export const useSphericalCoordinates = () => {
       let theta = THREE.MathUtils.radToDeg(spherical.theta);
       const phi = THREE.MathUtils.radToDeg(spherical.phi);
       
+      // CRÍTICO: Invertir theta porque la esfera está mirrored (scale -1, 1, 1)
+      theta = -theta;
+      
       // 7. Ajustar theta al rango [-180, 180]
       if (theta > 180) theta -= 360;
+      if (theta < -180) theta += 360;
       
       // 8. Validar rangos
       const validTheta = Math.max(-180, Math.min(180, theta));
@@ -84,7 +88,8 @@ export const useSphericalCoordinates = () => {
     radius: number = 480,
     heightOffset: number = 0
   ): CartesianCoordinates => {
-    const thetaRad = THREE.MathUtils.degToRad(theta);
+    // Invertir theta para matchear con la esfera invertida
+    const thetaRad = THREE.MathUtils.degToRad(-theta);
     const phiRad = THREE.MathUtils.degToRad(phi);
     
     const x = radius * Math.sin(phiRad) * Math.cos(thetaRad);
