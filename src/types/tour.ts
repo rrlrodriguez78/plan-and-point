@@ -60,6 +60,8 @@ export interface NavigationPoint {
   to_hotspot_id: string;
   theta: number; // -180 a 180 grados
   phi: number;   // 0 a 180 grados
+  u?: number;    // 0 a 1 (horizontal UV coordinate)
+  v?: number;    // 0 a 1 (vertical UV coordinate)
   height_offset?: number;
   style?: {
     color?: string;

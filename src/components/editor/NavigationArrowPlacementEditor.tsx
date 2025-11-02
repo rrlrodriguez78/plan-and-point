@@ -34,12 +34,12 @@ export const NavigationArrowPlacementEditor = ({
   
   const [mode, setMode] = useState<'view' | 'place' | 'drag'>('view');
   const [targetHotspot, setTargetHotspot] = useState<string | null>(null);
-  const [ghostPosition, setGhostPosition] = useState<{ theta: number; phi: number } | null>(null);
+  const [ghostPosition, setGhostPosition] = useState<{ theta: number; phi: number; u?: number; v?: number } | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<NavigationPoint | null>(null);
   const [loading, setLoading] = useState(true);
   const [points, setPoints] = useState<NavigationPoint[]>(existingPoints);
   
-  const { screenToSpherical, sphericalToCartesian } = useSphericalCoordinates();
+  const { screenToUV, uvToSpherical, sphericalToCartesian } = useSphericalCoordinates();
   
   // Camera control refs
   const isUserInteracting = useRef(false);
@@ -268,22 +268,24 @@ export const NavigationArrowPlacementEditor = ({
   const handlePointerMove = useCallback((event: React.MouseEvent) => {
     if (!mountRef.current || !cameraRef.current) return;
     
-    // Actualizar posición de flecha fantasma o drag
+    // Actualizar posición de flecha fantasma o drag usando sistema UV
     if (mode === 'place' || mode === 'drag') {
-      const coords = screenToSpherical(
+      const uvCoords = screenToUV(
         event.clientX,
         event.clientY,
         cameraRef.current,
         mountRef.current
       );
       
-      if (coords) {
-        console.log('🎯 [Click Event]', {
+      if (uvCoords) {
+        const coords = uvToSpherical(uvCoords);
+        console.log('🎯 [Click Event] UV System', {
           screen: {
             mouseX: event.clientX,
             mouseY: event.clientY,
             containerRect: mountRef.current.getBoundingClientRect()
           },
+          uv: uvCoords,
           camera: {
             lon: lon.current,
             lat: lat.current,
@@ -294,10 +296,10 @@ export const NavigationArrowPlacementEditor = ({
         });
         
         if (mode === 'place') {
-          setGhostPosition(coords);
+          setGhostPosition({ ...coords, u: uvCoords.u, v: uvCoords.v });
         } else if (mode === 'drag' && selectedPoint) {
           // Actualizar visualmente la flecha mientras se arrastra
-          setGhostPosition(coords);
+          setGhostPosition({ ...coords, u: uvCoords.u, v: uvCoords.v });
         }
       }
       return;
@@ -309,7 +311,7 @@ export const NavigationArrowPlacementEditor = ({
       lat.current = (event.clientY - onPointerDownMouseY.current) * 0.1 + onPointerDownLat.current;
       lat.current = Math.max(-85, Math.min(85, lat.current));
     }
-  }, [mode, screenToSpherical, selectedPoint]);
+  }, [mode, screenToUV, uvToSpherical, selectedPoint]);
   
   const handlePointerUp = useCallback(() => {
     // Si estamos arrastrando una flecha, actualizar su posición
@@ -347,14 +349,14 @@ export const NavigationArrowPlacementEditor = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mode]);
   
-  // Funciones de BD
-  const placeArrow = async (position: { theta: number; phi: number }, targetId: string) => {
+  // Funciones de BD con sistema UV
+  const placeArrow = async (position: { theta: number; phi: number; u?: number; v?: number }, targetId: string) => {
     try {
-      console.log('💾 [Saving to DB]', {
+      console.log('💾 [Saving to DB] Sistema UV + Spherical', {
         from_hotspot_id: hotspotId,
         to_hotspot_id: targetId,
-        theta: position.theta,
-        phi: position.phi,
+        uv: position.u !== undefined ? { u: position.u, v: position.v } : 'legacy',
+        spherical: { theta: position.theta, phi: position.phi },
         timestamp: new Date().toISOString()
       });
       
@@ -365,6 +367,8 @@ export const NavigationArrowPlacementEditor = ({
           to_hotspot_id: targetId,
           theta: position.theta,
           phi: position.phi,
+          u: position.u,
+          v: position.v,
           is_active: true,
           style: { color: '#4F46E5', size: 1.0 }
         })
@@ -374,7 +378,7 @@ export const NavigationArrowPlacementEditor = ({
       if (error) throw error;
       
       setPoints([...points, data as NavigationPoint]);
-      toast.success('Flecha añadida');
+      toast.success('Flecha añadida con sistema UV');
       setMode('view');
       setGhostPosition(null);
       setTargetHotspot(null);
@@ -385,13 +389,15 @@ export const NavigationArrowPlacementEditor = ({
     }
   };
   
-  const updateArrowPosition = async (pointId: string, position: { theta: number; phi: number }) => {
+  const updateArrowPosition = async (pointId: string, position: { theta: number; phi: number; u?: number; v?: number }) => {
     try {
       const { error } = await supabase
         .from('hotspot_navigation_points')
         .update({
           theta: position.theta,
-          phi: position.phi
+          phi: position.phi,
+          u: position.u,
+          v: position.v
         })
         .eq('id', pointId);
       
@@ -401,7 +407,7 @@ export const NavigationArrowPlacementEditor = ({
         p.id === pointId ? { ...p, theta: position.theta, phi: position.phi } : p
       );
       setPoints(updatedPoints);
-      toast.success('Flecha reposicionada');
+      toast.success('Flecha reposicionada con UV');
       setMode('view');
       setSelectedPoint(null);
       setGhostPosition(null);
@@ -434,7 +440,12 @@ export const NavigationArrowPlacementEditor = ({
   const startEditingPoint = (point: NavigationPoint) => {
     setSelectedPoint(point);
     setMode('drag');
-    setGhostPosition({ theta: point.theta, phi: point.phi });
+    setGhostPosition({ 
+      theta: point.theta, 
+      phi: point.phi,
+      u: point.u,
+      v: point.v
+    });
   };
   
   return (

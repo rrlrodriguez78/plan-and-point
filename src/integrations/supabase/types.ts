@@ -791,6 +791,8 @@ export type Database = {
           style: Json | null
           theta: number
           to_hotspot_id: string
+          u: number | null
+          v: number | null
         }
         Insert: {
           created_at?: string | null
@@ -804,6 +806,8 @@ export type Database = {
           style?: Json | null
           theta: number
           to_hotspot_id: string
+          u?: number | null
+          v?: number | null
         }
         Update: {
           created_at?: string | null
@@ -817,6 +821,8 @@ export type Database = {
           style?: Json | null
           theta?: number
           to_hotspot_id?: string
+          u?: number | null
+          v?: number | null
         }
         Relationships: [
           {

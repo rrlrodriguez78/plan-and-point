@@ -12,6 +12,11 @@ export interface CartesianCoordinates {
   z: number;
 }
 
+export interface UVCoordinates {
+  u: number; // 0 to 1 (horizontal, left to right)
+  v: number; // 0 to 1 (vertical, top to bottom)
+}
+
 /**
  * Hook para conversión entre coordenadas de pantalla y esféricas (theta/phi)
  * Utilizado por el editor visual WYSIWYG de flechas de navegación 3D
@@ -128,6 +133,71 @@ export const useSphericalCoordinates = () => {
   }, []);
   
   /**
+   * Convierte coordenadas de pantalla a coordenadas UV normalizadas (0-1)
+   * Sistema independiente de rotación de cámara
+   */
+  const screenToUV = useCallback((
+    mouseX: number,
+    mouseY: number,
+    camera: THREE.Camera,
+    container: HTMLElement
+  ): UVCoordinates | null => {
+    try {
+      const rect = container.getBoundingClientRect();
+      
+      // Normalizar a rango [0, 1]
+      const u = (mouseX - rect.left) / rect.width;
+      const v = (mouseY - rect.top) / rect.height;
+      
+      // Validar rangos
+      if (u < 0 || u > 1 || v < 0 || v > 1) {
+        console.warn('🔴 [screenToUV] Click fuera de rango:', { u, v });
+        return null;
+      }
+      
+      console.log('🟢 [screenToUV] Coordenadas UV:', {
+        u: u.toFixed(3),
+        v: v.toFixed(3),
+        note: 'Sistema independiente de rotación'
+      });
+      
+      return { u, v };
+    } catch (error) {
+      console.error('Error converting screen to UV:', error);
+      return null;
+    }
+  }, []);
+  
+  /**
+   * Convierte coordenadas UV a esféricas usando mapeo equirectangular estándar
+   * u: 0 (izquierda) → 1 (derecha) = theta: -180° → +180°
+   * v: 0 (arriba) → 1 (abajo) = phi: 0° → 180°
+   */
+  const uvToSpherical = useCallback((uv: UVCoordinates): SphericalCoordinates => {
+    // Mapeo equirectangular estándar
+    const theta = (uv.u - 0.5) * 360; // -180 to 180
+    const phi = uv.v * 180; // 0 to 180
+    
+    console.log('🔄 [uvToSpherical]', {
+      input: { u: uv.u.toFixed(3), v: uv.v.toFixed(3) },
+      output: { theta: theta.toFixed(1), phi: phi.toFixed(1) },
+      note: 'Mapeo equirectangular directo'
+    });
+    
+    return { theta, phi };
+  }, []);
+  
+  /**
+   * Convierte coordenadas esféricas a UV
+   */
+  const sphericalToUV = useCallback((coords: SphericalCoordinates): UVCoordinates => {
+    const u = (coords.theta / 360) + 0.5; // -180..180 → 0..1
+    const v = coords.phi / 180; // 0..180 → 0..1
+    
+    return { u, v };
+  }, []);
+  
+  /**
    * Valida que las coordenadas esféricas estén en el rango correcto
    */
   const validateCoordinates = useCallback((coords: SphericalCoordinates): boolean => {
@@ -140,6 +210,9 @@ export const useSphericalCoordinates = () => {
   return {
     screenToSpherical,
     sphericalToCartesian,
+    screenToUV,
+    uvToSpherical,
+    sphericalToUV,
     validateCoordinates
   };
 };
