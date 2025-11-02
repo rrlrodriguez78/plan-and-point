@@ -437,11 +437,16 @@ export default function FloorPlanManager({
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      <MoreVertical className="w-4 h-4" />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-10 w-10 flex-shrink-0 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:ring-2 hover:ring-slate-200 transition-all" 
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <MoreVertical className="w-5 h-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white z-50" onClick={e => e.stopPropagation()}>
+                  <DropdownMenuContent align="end" className="bg-white z-[100] shadow-lg border border-slate-200" onClick={e => e.stopPropagation()}>
                     <DropdownMenuItem onClick={() => { 
                       setIsNewFloorPlan(false);
                       const FLOOR_OPTIONS = getFloorOptions(t);
@@ -453,7 +458,10 @@ export default function FloorPlanManager({
                       <Edit className="w-4 h-4 mr-2" /> {t('common.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(fp.id, fp.name)}>
+                    <DropdownMenuItem 
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700" 
+                      onClick={() => handleDelete(fp.id, fp.name)}
+                    >
                       <Trash2 className="w-4 h-4 mr-2" /> {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
