@@ -5,8 +5,9 @@ import { Slider } from '@/components/ui/slider';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, X, Sparkles } from 'lucide-react';
+import { MapPin, X, Sparkles, Eye, List } from 'lucide-react';
 import { Hotspot, NavigationPoint } from '@/types/tour';
+import { NavigationArrowPlacementEditor } from './NavigationArrowPlacementEditor';
 
 interface NavigationPointsEditorProps {
   hotspot: Hotspot;
@@ -23,9 +24,27 @@ export const NavigationPointsEditor = ({
   const [loading, setLoading] = useState(false);
   const [localValues, setLocalValues] = useState<Record<string, { theta: number; phi: number }>>({});
   const debounceTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const [editMode, setEditMode] = useState<'list' | 'visual'>('list');
+  const [firstPanorama, setFirstPanorama] = useState<string | null>(null);
   
   useEffect(() => {
     loadNavigationPoints();
+  }, [hotspot.id]);
+  
+  // Cargar primera foto panorámica del hotspot
+  useEffect(() => {
+    const loadPanorama = async () => {
+      const { data } = await supabase
+        .from('panorama_photos')
+        .select('photo_url')
+        .eq('hotspot_id', hotspot.id)
+        .order('display_order')
+        .limit(1)
+        .single();
+      
+      if (data) setFirstPanorama(data.photo_url);
+    };
+    loadPanorama();
   }, [hotspot.id]);
   
   const loadNavigationPoints = async () => {
@@ -182,15 +201,42 @@ export const NavigationPointsEditor = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Puntos de Navegación 3D
-        </CardTitle>
-        <CardDescription>
-          Define hacia dónde pueden navegar los usuarios desde "{hotspot.title}"
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Puntos de Navegación 3D
+            </CardTitle>
+            <CardDescription>
+              Define hacia dónde pueden navegar los usuarios desde "{hotspot.title}"
+            </CardDescription>
+          </div>
+          
+          {/* Botón toggle modo */}
+          {firstPanorama && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditMode(prev => prev === 'list' ? 'visual' : 'list')}
+            >
+              {editMode === 'list' ? (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Editor Visual
+                </>
+              ) : (
+                <>
+                  <List className="w-4 h-4 mr-2" />
+                  Vista Lista
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {editMode === 'list' ? (
+          <>
         {/* Lista de puntos existentes */}
         {points.length > 0 && (
           <div className="space-y-3">
@@ -299,6 +345,25 @@ export const NavigationPointsEditor = ({
           <p className="text-sm text-muted-foreground text-center">
             Todos los hotspots disponibles ya están conectados
           </p>
+        )}
+          </>
+        ) : (
+          // Nuevo editor visual 3D
+          <NavigationArrowPlacementEditor
+            hotspotId={hotspot.id}
+            panoramaUrl={firstPanorama!}
+            existingPoints={points}
+            availableTargets={allHotspots
+              .filter(h => h.id !== hotspot.id)
+              .map(h => ({
+                id: h.id,
+                title: h.title
+              }))}
+            onSave={async () => {
+              await loadNavigationPoints();
+              onSave?.();
+            }}
+          />
         )}
       </CardContent>
     </Card>
