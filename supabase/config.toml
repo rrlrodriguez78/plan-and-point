@@ -42,5 +42,8 @@ verify_jwt = false
 [functions.batch-sync-photos]
 verify_jwt = false
 
+[functions.photo-queue-worker]
+verify_jwt = false
+
 [functions.resume-stalled-jobs]
 verify_jwt = false

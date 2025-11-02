@@ -1018,6 +1018,59 @@ export type Database = {
           },
         ]
       }
+      photo_sync_queue: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          max_attempts: number | null
+          photo_id: string
+          priority: number | null
+          processed_at: string | null
+          status: string | null
+          tenant_id: string
+          tour_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          photo_id: string
+          priority?: number | null
+          processed_at?: string | null
+          status?: string | null
+          tenant_id: string
+          tour_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          photo_id?: string
+          priority?: number | null
+          processed_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          tour_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_sync_queue_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "panorama_photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_status: string | null
@@ -1789,6 +1842,7 @@ export type Database = {
         }[]
       }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
+      cleanup_old_queue_items: { Args: never; Returns: number }
       cleanup_orphaned_backups: {
         Args: never
         Returns: {
@@ -1808,6 +1862,10 @@ export type Database = {
           configs_created: number
           tours_updated: number
         }[]
+      }
+      enqueue_photos_for_sync: {
+        Args: { p_photo_ids: string[]; p_tenant_id: string; p_tour_id: string }
+        Returns: number
       }
       export_backup_system_config: {
         Args: never
@@ -1858,6 +1916,16 @@ export type Database = {
           tour_id: string
         }[]
       }
+      get_next_photos_to_process: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          attempts: number
+          id: string
+          photo_id: string
+          tenant_id: string
+          tour_id: string
+        }[]
+      }
       get_queue_stats: {
         Args: never
         Returns: {
@@ -1866,6 +1934,16 @@ export type Database = {
           pending_count: number
           processing_count: number
           retry_count: number
+        }[]
+      }
+      get_queue_stats_by_tour: {
+        Args: { p_tour_id: string }
+        Returns: {
+          completed_count: number
+          failed_count: number
+          pending_count: number
+          processing_count: number
+          total_count: number
         }[]
       }
       get_user_tenants: {
@@ -1941,6 +2019,10 @@ export type Database = {
           successful_backups: number
           test_type: string
         }[]
+      }
+      update_queue_item_status: {
+        Args: { p_error_message?: string; p_queue_id: string; p_status: string }
+        Returns: undefined
       }
       verify_production_readiness: {
         Args: never

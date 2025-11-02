@@ -657,7 +657,7 @@ serve(async (req) => {
       );
     }
 
-    // Default action: start_job
+    // Default action: start_job - Create job and enqueue photos for background processing
     console.log('🔄 Starting batch photo sync:', { tourId, tenantId });
 
     // 1. Verificar que existe un destination activo
@@ -757,28 +757,42 @@ serve(async (req) => {
 
     console.log(`✅ Created job ${newJob.id} for ${photosToSync.length} photos`);
 
-    // 5. Iniciar procesamiento en background
-    // @ts-ignore - EdgeRuntime is available in Deno Deploy
-    if (typeof EdgeRuntime !== 'undefined') {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(
-        processBatchSync(newJob.id, tourId, tenantId, photosToSync, supabase)
-      );
-    } else {
-      // Fallback for local development
-      processBatchSync(newJob.id, tourId, tenantId, photosToSync, supabase).catch(err => {
-        console.error('Background processing error:', err);
+    // 5. NUEVO: Añadir fotos a la cola para procesamiento en background
+    const photoIdsToEnqueue = photosToSync.map(p => p.id);
+    const { data: queuedCount, error: queueError } = await supabase
+      .rpc('enqueue_photos_for_sync', {
+        p_tenant_id: tenantId,
+        p_tour_id: tourId,
+        p_photo_ids: photoIdsToEnqueue
       });
+
+    if (queueError) {
+      console.error('Error enqueueing photos:', queueError);
+      // Revertir el job a failed
+      await supabase
+        .from('sync_jobs')
+        .update({ 
+          status: 'failed', 
+          error_messages: [queueError.message],
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', newJob.id);
+      
+      throw new Error(`Failed to enqueue photos: ${queueError.message}`);
     }
 
+    console.log(`✅ Enqueued ${queuedCount} photos for background processing`);
+
     // 6. Devolver respuesta inmediata con jobId
+    // El worker procesará las fotos en background
     return new Response(
       JSON.stringify({ 
         success: true,
         jobId: newJob.id,
         totalPhotos: photosToSync.length,
+        queuedPhotos: queuedCount,
         alreadySynced: syncedIds.size,
-        message: 'Sync job started in background'
+        message: `Enqueued ${queuedCount} photos for background processing`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
