@@ -114,7 +114,13 @@ export function usePWAUpdate(options?: Partial<PWAUpdateOptions>) {
 
           // Start auto-update countdown if enabled
           if (defaultOptions.autoUpdate) {
-            startAutoUpdateCountdown(defaultOptions.autoUpdateDelay);
+            if (defaultOptions.autoUpdateDelay === 0) {
+              // Immediate silent update without countdown or banner
+              console.log('[PWA] Auto-update enabled with 0 delay, updating immediately');
+              setTimeout(() => updateNow(), 100); // Small delay to ensure SW is ready
+            } else {
+              startAutoUpdateCountdown(defaultOptions.autoUpdateDelay);
+            }
           }
         } else {
           console.log('✅ Service worker installed for the first time');

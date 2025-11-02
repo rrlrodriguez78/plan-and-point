@@ -114,10 +114,10 @@ const defaultSettings: UserSettings = {
   report_frequency: 'weekly',
   contact_preferences: { email: true, phone: false, sms: false },
   subscription_tier: 'free',
-  pwa_auto_update: false,
-  pwa_auto_update_delay: 30000,
+  pwa_auto_update: true,
+  pwa_auto_update_delay: 0,
   pwa_browser_notifications: false,
-  pwa_check_interval: 3600000
+  pwa_check_interval: 900000
 };
 
 export const useUserSettings = () => {
