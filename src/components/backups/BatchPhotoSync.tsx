@@ -547,7 +547,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
             size="lg"
           >
             <RefreshCw className={`h-5 w-5 mr-2 ${verifying ? 'animate-spin' : ''}`} />
-            {verifying ? "Verifying..." : "Verify & Re-sync Missing"}
+            {verifying ? "Verifying..." : "Verify Missing"}
           </Button>
         </div>
 
