@@ -126,7 +126,11 @@ export default function HotspotModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`max-h-[90vh] overflow-y-auto ${
+        activeTab === 'navigation' 
+          ? 'max-w-[95vw] lg:max-w-[1400px]' 
+          : 'max-w-2xl'
+      }`}>
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? t('hotspot.new') : t('hotspot.edit')}

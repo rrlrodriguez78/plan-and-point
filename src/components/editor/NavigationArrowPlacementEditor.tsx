@@ -438,13 +438,13 @@ export const NavigationArrowPlacementEditor = ({
   };
   
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
       {/* Visor 3D */}
-      <Card className="lg:sticky lg:top-4">
+      <Card>
         <CardContent className="p-0">
           <div
             ref={mountRef}
-            className="relative w-full h-[500px] lg:h-[calc(100vh-200px)] bg-black rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"
+            className="relative w-full h-[500px] md:h-[600px] bg-black rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"
             onMouseDown={handlePointerDown}
             onMouseMove={handlePointerMove}
             onMouseUp={handlePointerUp}
@@ -458,12 +458,14 @@ export const NavigationArrowPlacementEditor = ({
             )}
             
             {(mode === 'place' || mode === 'drag') && ghostPosition && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-lg text-sm z-10 font-mono space-y-1">
-                <div className="text-xs text-green-400">Debug Coordinates:</div>
-                <div>θ: {ghostPosition.theta}° (horizontal)</div>
-                <div>φ: {ghostPosition.phi}° (vertical)</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Camera: lon={lon.current.toFixed(1)}° lat={lat.current.toFixed(1)}°
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/90 text-white px-2 py-1 rounded text-xs z-10 font-mono max-w-[90%]">
+                <div className="text-[10px] text-green-400">Debug:</div>
+                <div className="flex gap-4">
+                  <span>θ:{ghostPosition.theta.toFixed(0)}°</span>
+                  <span>φ:{ghostPosition.phi.toFixed(0)}°</span>
+                </div>
+                <div className="text-[10px] text-gray-400">
+                  cam: {lon.current.toFixed(0)}°/{lat.current.toFixed(0)}°
                 </div>
               </div>
             )}
@@ -472,7 +474,7 @@ export const NavigationArrowPlacementEditor = ({
       </Card>
       
       {/* Controles */}
-      <div className="lg:h-[calc(100vh-200px)] lg:overflow-y-auto">
+      <div className="md:h-[600px] md:overflow-y-auto">
         <ArrowPlacementControls
           mode={mode}
           onModeChange={setMode}
