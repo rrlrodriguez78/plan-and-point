@@ -70,37 +70,60 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     };
   }, [tenantId]);
 
-  // Check for active jobs on mount
+  // Check for active jobs on mount with automatic recovery
   useEffect(() => {
     const checkActiveJobs = async () => {
       if (!tenantId) return;
       
-      const { data: activeJobs, error } = await supabase
-        .from('sync_jobs')
-        .select('id, status, processed_items, total_items, job_type')
-        .eq('tenant_id', tenantId)
-        .in('status', ['processing', 'pending'])
-        .order('started_at', { ascending: false })
-        .limit(1);
-      
-      if (error) {
+      try {
+        const { data: activeJobs, error } = await supabase
+          .from('sync_jobs')
+          .select('id, status, processed_items, total_items, job_type, started_at, created_at')
+          .eq('tenant_id', tenantId)
+          .in('status', ['processing', 'pending'])
+          .order('started_at', { ascending: false })
+          .limit(1);
+        
+        if (error) throw error;
+        
+        if (activeJobs && activeJobs.length > 0) {
+          const job = activeJobs[0];
+          const timeSinceStart = Date.now() - new Date(job.started_at || job.created_at).getTime();
+          const fifteenMinutes = 15 * 60 * 1000;
+          
+          if (timeSinceStart > fifteenMinutes) {
+            // Job is stalled, mark as failed
+            console.warn('⏱️ Job timed out:', job.id);
+            await supabase
+              .from('sync_jobs')
+              .update({ 
+                status: 'failed',
+                error_message: 'Process timeout - exceeded 15 minutes'
+              })
+              .eq('id', job.id);
+            
+            toast.error('Previous sync timed out', {
+              description: 'Please try again'
+            });
+          } else {
+            // Resume active job
+            console.log('📸 Resuming active sync job:', job.id);
+            setShowProgressDialog(true);
+            
+            // Start polling manually without calling startPolling yet (to avoid dependency issues)
+            pollJobProgress(job.id);
+            const intervalId = setInterval(() => {
+              pollJobProgress(job.id);
+            }, 2000);
+            pollingIntervalRef.current = intervalId;
+            
+            toast.info('Resuming sync in progress...', {
+              description: `${job.processed_items}/${job.total_items} photos processed`
+            });
+          }
+        }
+      } catch (error) {
         console.error('Error checking active jobs:', error);
-        return;
-      }
-      
-      if (activeJobs && activeJobs.length > 0) {
-        const job = activeJobs[0];
-        console.log('📋 Found active job on page load:', job.id);
-        setShowProgressDialog(true);
-        
-        // Start polling manually without calling startPolling yet (to avoid dependency issues)
-        pollJobProgress(job.id);
-        const intervalId = setInterval(() => {
-          pollJobProgress(job.id);
-        }, 2000);
-        pollingIntervalRef.current = intervalId;
-        
-        toast.info('Resuming synchronization in progress...');
       }
     };
     
@@ -302,12 +325,22 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
 
     setVerifying(true);
-    setCurrentJob(null);
+    
+    // ✅ Create temporary job to show progress immediately
+    setCurrentJob({
+      id: 'verifying',
+      status: 'processing',
+      total_items: 0,
+      processed_items: 0,
+      failed_items: 0,
+      error_messages: []
+    });
     setAlreadySyncedCount(0);
+    setShowProgressDialog(true); // ✅ Open dialog immediately
+    
+    toast.info('🔍 Verifying files in Google Drive...');
 
     try {
-      toast.info('🔍 Verifying files in Google Drive...');
-
       const { data, error } = await supabase.functions.invoke('batch-sync-photos', {
         body: {
           action: 'verify_and_resync',
@@ -319,17 +352,33 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
       if (error) throw error;
 
       if (data.success) {
-        if (data.missing === 0) {
-          toast.success(`✅ All ${data.verified} files verified successfully`);
+        if (data.missing > 0) {
+          toast.success(`Found ${data.missing} missing files`, {
+            description: 'Starting re-sync process...'
+          });
+          
+          // ✅ Update to real job
+          if (data.jobId) {
+            startPolling(data.jobId);
+          }
         } else {
-          toast.info(`🔄 Found ${data.missing} missing files. Starting re-sync...`);
-          setShowProgressDialog(true);
-          startPolling(data.jobId);
+          setShowProgressDialog(false);
+          toast.success('✅ All files verified', {
+            description: 'No missing files found'
+          });
         }
+        
+        setAlreadySyncedCount(data.alreadySynced || 0);
+      } else {
+        setShowProgressDialog(false);
+        toast.error(data.error || 'Verification failed');
       }
-    } catch (error) {
-      console.error('Verify and resync error:', error);
-      toast.error(error instanceof Error ? error.message : 'Error verifying files');
+    } catch (error: any) {
+      console.error('Verify error:', error);
+      setShowProgressDialog(false);
+      toast.error('Verification failed', {
+        description: error.message
+      });
     } finally {
       setVerifying(false);
     }

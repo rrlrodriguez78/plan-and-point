@@ -68,49 +68,64 @@ export const SyncProgressDialog: React.FC<Props> = ({
             )}
           </DialogTitle>
           <DialogDescription>
-            {job.status === 'processing' 
-              ? 'El proceso está en curso. Puedes cerrar este diálogo, el proceso continuará en segundo plano.'
-              : 'El proceso ha finalizado.'
+            {job.id === 'verifying' 
+              ? '🔍 Verificando archivos en Google Drive. Esto puede tomar unos minutos...'
+              : job.status === 'processing' 
+                ? 'El proceso continuará ejecutándose por hasta 10 minutos. Puedes cerrar esta ventana, pero es recomendable mantenerla abierta para monitorear el progreso.'
+                : 'El proceso ha finalizado.'
             }
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">Progreso</span>
-              <span className="text-muted-foreground">
-                {job.processed_items} / {job.total_items} fotos
-              </span>
+          {job.id !== 'verifying' && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">Progreso</span>
+                <span className="text-muted-foreground">
+                  {job.processed_items} / {job.total_items} fotos
+                </span>
+              </div>
+              <Progress value={progress} className="h-2" />
+              <div className="text-xs text-muted-foreground text-center">
+                {progress.toFixed(0)}% completado
+              </div>
             </div>
-            <Progress value={progress} className="h-2" />
-            <div className="text-xs text-muted-foreground text-center">
-              {progress.toFixed(0)}% completado
+          )}
+          
+          {job.id === 'verifying' && (
+            <div className="space-y-2">
+              <Progress value={0} className="h-2 animate-pulse" />
+              <div className="text-xs text-muted-foreground text-center">
+                Verificando archivos...
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="bg-green-50 dark:bg-green-950 p-3 rounded border border-green-200 dark:border-green-800">
-              <div className="text-green-600 dark:text-green-400 font-medium text-xs">✓ Sincronizadas</div>
-              <div className="text-2xl font-bold text-green-700 dark:text-green-300">{successCount}</div>
+          {job.id !== 'verifying' && (
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="bg-green-50 dark:bg-green-950 p-3 rounded border border-green-200 dark:border-green-800">
+                <div className="text-green-600 dark:text-green-400 font-medium text-xs">✓ Sincronizadas</div>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-300">{successCount}</div>
+              </div>
+
+              {job.failed_items > 0 && (
+                <div className="bg-red-50 dark:bg-red-950 p-3 rounded border border-red-200 dark:border-red-800">
+                  <div className="text-red-600 dark:text-red-400 font-medium text-xs">✗ Fallidas</div>
+                  <div className="text-2xl font-bold text-red-700 dark:text-red-300">{job.failed_items}</div>
+                </div>
+              )}
+
+              {alreadySynced > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
+                  <div className="text-blue-600 dark:text-blue-400 font-medium text-xs">⏭ Ya existían</div>
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{alreadySynced}</div>
+                </div>
+              )}
             </div>
-
-            {job.failed_items > 0 && (
-              <div className="bg-red-50 dark:bg-red-950 p-3 rounded border border-red-200 dark:border-red-800">
-                <div className="text-red-600 dark:text-red-400 font-medium text-xs">✗ Fallidas</div>
-                <div className="text-2xl font-bold text-red-700 dark:text-red-300">{job.failed_items}</div>
-              </div>
-            )}
-
-            {alreadySynced > 0 && (
-              <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
-                <div className="text-blue-600 dark:text-blue-400 font-medium text-xs">⏭ Ya existían</div>
-                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{alreadySynced}</div>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Error Messages */}
           {job.error_messages && job.error_messages.length > 0 && (
