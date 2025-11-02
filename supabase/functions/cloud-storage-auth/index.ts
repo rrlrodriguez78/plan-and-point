@@ -1059,11 +1059,13 @@ serve(async (req) => {
 
         let destinationId: string;
         let dbError = null;
+        let isReconnection = false;
 
         if (existingDest) {
           // UPDATE existing entry
           console.log(`🔄 Updating existing destination: ${existingDest.id}`);
           destinationId = existingDest.id;
+          isReconnection = true;
           
           const { error } = await supabase
             .from('backup_destinations')
@@ -1111,10 +1113,345 @@ serve(async (req) => {
 
         console.log('✅ Cloud destination configured successfully');
 
-        return new Response(
-          JSON.stringify({ success: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // Return premium HTML page
+        const action = isReconnection ? 'reconnected' : 'connected';
+        const appUrl = Deno.env.get('APP_URL');
+        const redirectUrl = `${appUrl}/app/backups?success=${action}`;
+        
+        const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup Set Successfully</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at center, #FFD700 0%, #FFA500 40%, #1a1a1a 100%);
+      overflow: hidden;
+      position: relative;
+    }
+    
+    /* Confetti Particles */
+    .confetti-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #FFD700;
+      animation: confettiFall linear infinite;
+    }
+    
+    @keyframes confettiFall {
+      0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes glowPulse {
+      0%, 100% {
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
+                     0 0 40px rgba(255, 215, 0, 0.4);
+      }
+      50% {
+        text-shadow: 0 0 30px rgba(255, 215, 0, 1),
+                     0 0 60px rgba(255, 215, 0, 0.6);
+      }
+    }
+    
+    .container {
+      text-align: center;
+      padding: 3rem;
+      max-width: 500px;
+      position: relative;
+      z-index: 2;
+      animation: fadeInUp 0.8s ease-out;
+    }
+    
+    .sparkle {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      animation: glowPulse 2s ease-in-out infinite;
+      display: inline-block;
+    }
+    
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin: 0 0 1rem;
+      background: linear-gradient(135deg, #FFD700 0%, #FFF 50%, #FFD700 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: glowPulse 2s ease-in-out infinite;
+      line-height: 1.2;
+    }
+    
+    .subtitle {
+      font-size: 1.5rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+      margin-bottom: 2rem;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+    
+    .success-message {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 2.5rem;
+      padding: 1rem 1.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+    
+    .checkmark {
+      font-size: 1.5rem;
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+    
+    .close-btn {
+      margin-top: 1rem;
+      padding: 1.2rem 3rem;
+      background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+      border: none;
+      border-radius: 50px;
+      color: #1a1a1a;
+      font-size: 1.1rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4),
+                  0 2px 8px rgba(0, 0, 0, 0.2);
+      animation: fadeInUp 0.8s ease-out 0.6s both;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .close-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    
+    .close-btn:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    
+    .close-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(255, 215, 0, 0.6),
+                  0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .close-btn:active {
+      transform: translateY(-2px);
+    }
+    
+    .countdown {
+      margin-top: 1.5rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.7);
+      animation: fadeInUp 0.8s ease-out 0.8s both;
+    }
+    
+    #countdown {
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2.5rem;
+      }
+      .subtitle {
+        font-size: 1.2rem;
+      }
+      .close-btn {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Confetti Container -->
+  <div class="confetti-container" id="confettiContainer"></div>
+  
+  <div class="container">
+    <div class="sparkle">✨</div>
+    <h1>Congratulations!</h1>
+    <p class="subtitle">Backup Set Successfully</p>
+    <div class="success-message">
+      <span class="checkmark">✅</span>
+      <span>Google Drive connected & configured</span>
+    </div>
+    <button class="close-btn" onclick="handleClose()">
+      <span style="position: relative; z-index: 1;">Cerrar Ventana</span>
+    </button>
+    <div class="countdown">
+      <p>Auto-cierre en <span id="countdown">5</span> segundos</p>
+    </div>
+  </div>
+  
+  <script>
+    (function() {
+      // Create confetti particles
+      const confettiContainer = document.getElementById('confettiContainer');
+      const colors = ['#FFD700', '#FFA500', '#FFFFFF', '#FFE55C', '#FFC700'];
+      
+      for (let i = 0; i < 30; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        confetti.style.width = (Math.random() * 8 + 6) + 'px';
+        confetti.style.height = (Math.random() * 8 + 6) + 'px';
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        confettiContainer.appendChild(confetti);
+      }
+      
+      console.log('🎉 OAuth successful, notifying parent window...');
+      const countdownEl = document.getElementById('countdown');
+      let countdown = 5;
+      
+      // Notify opener window if exists
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage({
+            type: 'oauth-success',
+            provider: '${provider}',
+            action: '${action}',
+            timestamp: Date.now()
+          }, '*');
+          console.log('✅ postMessage sent to opener');
+        } catch (e) {
+          console.error('❌ Failed to send postMessage:', e);
+        }
+      }
+      
+      // Countdown timer
+      const countdownInterval = setInterval(function() {
+        countdown--;
+        if (countdownEl) {
+          countdownEl.textContent = countdown;
+        }
+        
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
+      
+      // Try to auto-close multiple times
+      function attemptClose() {
+        const attempts = [0, 500, 1000, 2000, 3000];
+        let closedSuccessfully = false;
+        
+        attempts.forEach(function(delay) {
+          setTimeout(function() {
+            if (closedSuccessfully) return;
+            
+            try {
+              window.close();
+              closedSuccessfully = true;
+              console.log('✅ Window closed successfully');
+            } catch (e) {
+              console.warn('⚠️ Close attempt failed:', e);
+            }
+          }, delay);
+        });
+        
+        // If opened in full page (not popup), redirect after 5 seconds
+        if (!window.opener || window.opener.closed) {
+          setTimeout(function() {
+            window.location.href = '${redirectUrl}';
+          }, 5000);
+        }
+      }
+      
+      // Start close attempts
+      attemptClose();
+      
+      // Manual close button handler
+      window.handleClose = function() {
+        try {
+          window.close();
+        } catch (e) {
+          // If can't close (not a popup), redirect to app
+          if (!window.opener || window.opener.closed) {
+            window.location.href = '${redirectUrl}';
+          }
+        }
+      };
+    })();
+  </script>
+</body>
+</html>`;
+        
+        return new Response(html, {
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            ...corsHeaders
+          }
+        });
       }
 
       default:
