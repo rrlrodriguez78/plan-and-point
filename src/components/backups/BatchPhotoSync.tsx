@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon, Map, Upload } from "lucide-react";
+import { InfoIcon, Map, Upload, RefreshCw } from "lucide-react";
 import { SyncProgressDialog } from "./SyncProgressDialog";
 
 interface Tour {
@@ -35,6 +35,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
   const [syncing, setSyncing] = useState(false);
   const [syncingFloorPlans, setSyncingFloorPlans] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   
   // New job-based states
   const [currentJob, setCurrentJob] = useState<SyncJob | null>(null);
@@ -294,6 +295,46 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     }
   };
 
+  const handleVerifyAndResync = async () => {
+    if (!selectedTourId) {
+      toast.error('Select a tour');
+      return;
+    }
+
+    setVerifying(true);
+    setCurrentJob(null);
+    setAlreadySyncedCount(0);
+
+    try {
+      toast.info('🔍 Verifying files in Google Drive...');
+
+      const { data, error } = await supabase.functions.invoke('batch-sync-photos', {
+        body: {
+          action: 'verify_and_resync',
+          tourId: selectedTourId,
+          tenantId: tenantId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        if (data.missing === 0) {
+          toast.success(`✅ All ${data.verified} files verified successfully`);
+        } else {
+          toast.info(`🔄 Found ${data.missing} missing files. Starting re-sync...`);
+          setShowProgressDialog(true);
+          startPolling(data.jobId);
+        }
+      }
+    } catch (error) {
+      console.error('Verify and resync error:', error);
+      toast.error(error instanceof Error ? error.message : 'Error verifying files');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleSyncAll = async () => {
     if (!selectedTourId) {
       toast.error('Select a tour');
@@ -403,7 +444,7 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           <Select
             value={selectedTourId}
             onValueChange={setSelectedTourId}
-            disabled={loading || syncing || syncingFloorPlans || syncingAll}
+            disabled={loading || syncing || syncingFloorPlans || syncingAll || verifying}
           >
             <SelectTrigger className="h-11 md:h-10">
               <SelectValue placeholder="Select a tour..." />
@@ -418,22 +459,35 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
           </Select>
         </div>
 
-        <Button 
-          onClick={handleSyncAll}
-          disabled={!selectedTourId || syncingAll}
-          className="w-full h-11 md:h-10"
-          size="lg"
-        >
-          <Upload className="h-5 w-5 mr-2" />
-          {syncingAll 
-            ? syncingFloorPlans 
-              ? "📍 Syncing floor plans..." 
-              : syncing 
-                ? "📸 Syncing photos..." 
-                : "Syncing..."
-            : "Sync All (Floor Plans + Photos)"
-          }
-        </Button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Button 
+            onClick={handleSyncAll}
+            disabled={!selectedTourId || syncingAll || verifying}
+            className="w-full h-11 md:h-10"
+            size="lg"
+          >
+            <Upload className="h-5 w-5 mr-2" />
+            {syncingAll 
+              ? syncingFloorPlans 
+                ? "📍 Syncing floor plans..." 
+                : syncing 
+                  ? "📸 Syncing photos..." 
+                  : "Syncing..."
+              : "Sync All"
+            }
+          </Button>
+
+          <Button 
+            onClick={handleVerifyAndResync}
+            disabled={!selectedTourId || syncingAll || verifying}
+            variant="outline"
+            className="w-full h-11 md:h-10"
+            size="lg"
+          >
+            <RefreshCw className={`h-5 w-5 mr-2 ${verifying ? 'animate-spin' : ''}`} />
+            {verifying ? "Verifying..." : "Verify & Re-sync Missing"}
+          </Button>
+        </div>
 
         {progress && (
           <div className="space-y-3 pt-4 border-t">

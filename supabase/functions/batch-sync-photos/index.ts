@@ -6,6 +6,53 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Encryption helper functions
+async function getEncryptionKey(): Promise<CryptoKey> {
+  const keyString = Deno.env.get('CLOUD_ENCRYPTION_KEY');
+  if (!keyString) {
+    throw new Error('CLOUD_ENCRYPTION_KEY not configured');
+  }
+  const keyData = new TextEncoder().encode(keyString.padEnd(32).substring(0, 32));
+  return await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function decryptToken(encryptedToken: string): Promise<string> {
+  const key = await getEncryptionKey();
+  const encryptedData = Uint8Array.from(atob(encryptedToken), c => c.charCodeAt(0));
+  const iv = encryptedData.slice(0, 12);
+  const ciphertext = encryptedData.slice(12);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    ciphertext
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+// Helper to check if file exists in Google Drive
+async function fileExistsInDrive(accessToken: string, fileId: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+    return response.ok;
+  } catch (error) {
+    console.error(`Error checking file ${fileId}:`, error);
+    return false;
+  }
+}
+
 // Background processing function
 async function processBatchSync(
   jobId: string,
@@ -132,6 +179,144 @@ serve(async (req) => {
     const body = await req.json();
     const { action, tourId, tenantId, jobId } = body;
     console.log(`📥 Received request - Action: ${action}, JobID: ${jobId}, TourID: ${tourId}`);
+
+    // Handle verify_and_resync action
+    if (action === 'verify_and_resync') {
+      console.log('🔍 Verifying Google Drive files and re-syncing missing...');
+      
+      if (!tourId || !tenantId) {
+        return new Response(
+          JSON.stringify({ error: 'tourId and tenantId are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get active destination
+      const { data: destination, error: destError } = await supabase
+        .from('backup_destinations')
+        .select('id, cloud_access_token')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .eq('cloud_provider', 'google_drive')
+        .single();
+
+      if (destError || !destination) {
+        throw new Error('No active Google Drive destination found');
+      }
+
+      // Decrypt access token
+      const accessToken = await decryptToken(destination.cloud_access_token);
+
+      // Get all cloud file mappings for this tour
+      const { data: mappings, error: mappingsError } = await supabase
+        .from('cloud_file_mappings')
+        .select('id, photo_id, cloud_file_id')
+        .eq('tour_id', tourId);
+
+      if (mappingsError) {
+        throw new Error(`Failed to fetch mappings: ${mappingsError.message}`);
+      }
+
+      console.log(`📋 Found ${mappings?.length || 0} existing mappings to verify`);
+
+      const missingPhotoIds: string[] = [];
+      const validMappings: string[] = [];
+
+      // Verify each mapping
+      for (const mapping of mappings || []) {
+        const exists = await fileExistsInDrive(accessToken, mapping.cloud_file_id);
+        
+        if (!exists) {
+          console.log(`❌ File missing in Drive: ${mapping.photo_id}`);
+          
+          // Delete incorrect mapping
+          await supabase
+            .from('cloud_file_mappings')
+            .delete()
+            .eq('id', mapping.id);
+          
+          missingPhotoIds.push(mapping.photo_id);
+        } else {
+          validMappings.push(mapping.photo_id);
+        }
+      }
+
+      console.log(`✅ Verification complete: ${validMappings.length} valid, ${missingPhotoIds.length} missing`);
+
+      if (missingPhotoIds.length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: 'All files verified successfully',
+            verified: validMappings.length,
+            missing: 0
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch missing photos to re-sync
+      const { data: photosToSync, error: photosError } = await supabase
+        .from('panorama_photos')
+        .select(`
+          id,
+          hotspot_id,
+          hotspots!inner(
+            floor_plan_id,
+            floor_plans!inner(
+              tour_id
+            )
+          )
+        `)
+        .in('id', missingPhotoIds);
+
+      if (photosError) {
+        throw new Error(`Failed to fetch missing photos: ${photosError.message}`);
+      }
+
+      console.log(`📸 Found ${photosToSync?.length || 0} photos to re-sync`);
+
+      // Create sync job for missing photos
+      const { data: newJob, error: jobError } = await supabase
+        .from('sync_jobs')
+        .insert({
+          tenant_id: tenantId,
+          tour_id: tourId,
+          job_type: 'photo_batch_sync',
+          status: 'processing',
+          total_items: photosToSync?.length || 0,
+          processed_items: 0,
+          failed_items: 0
+        })
+        .select()
+        .single();
+
+      if (jobError || !newJob) {
+        throw new Error('Failed to create sync job');
+      }
+
+      console.log(`✅ Created re-sync job ${newJob.id} for ${photosToSync?.length || 0} missing photos`);
+
+      // Start background processing
+      // @ts-ignore
+      if (typeof EdgeRuntime !== 'undefined') {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(
+          processBatchSync(newJob.id, tourId, tenantId, photosToSync || [], supabase)
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          jobId: newJob.id,
+          verified: validMappings.length,
+          missing: missingPhotoIds.length,
+          message: `Re-syncing ${missingPhotoIds.length} missing files`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Handle resume_job action
     if (action === 'resume_job') {
