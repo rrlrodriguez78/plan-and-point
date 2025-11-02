@@ -39,16 +39,34 @@ async function decryptToken(encryptedToken: string): Promise<string> {
 async function fileExistsInDrive(accessToken: string, fileId: string): Promise<boolean> {
   try {
     const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id`,
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,trashed`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       }
     );
-    return response.ok;
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log(`❌ File ${fileId} not found (permanently deleted)`);
+      } else {
+        console.log(`⚠️ File ${fileId} check failed (status: ${response.status})`);
+      }
+      return false;
+    }
+    
+    const data = await response.json();
+    
+    // Si está en papelera, considerarlo como no existente
+    if (data.trashed === true) {
+      console.log(`🗑️ File ${fileId} is in trash`);
+      return false;
+    }
+    
+    return true;
   } catch (error) {
-    console.error(`Error checking file ${fileId}:`, error);
+    console.error(`❌ Error checking file ${fileId}:`, error);
     return false;
   }
 }
@@ -222,9 +240,14 @@ serve(async (req) => {
       const missingPhotoIds: string[] = [];
       const missingFloorPlanIds: string[] = [];
       const validMappings: string[] = [];
+      const totalMappings = (mappings || []).length;
+      let checkedCount = 0;
 
       // Verify each mapping
       for (const mapping of mappings || []) {
+        checkedCount++;
+        console.log(`🔍 Checking file ${checkedCount}/${totalMappings}: ${mapping.cloud_file_name || mapping.cloud_file_id}`);
+        
         const exists = await fileExistsInDrive(accessToken, mapping.cloud_file_id);
         
         if (!exists) {
