@@ -69,6 +69,44 @@ export const BatchPhotoSync: React.FC<Props> = ({ tenantId }) => {
     };
   }, [tenantId]);
 
+  // Check for active jobs on mount
+  useEffect(() => {
+    const checkActiveJobs = async () => {
+      if (!tenantId) return;
+      
+      const { data: activeJobs, error } = await supabase
+        .from('sync_jobs')
+        .select('id, status, processed_items, total_items, job_type')
+        .eq('tenant_id', tenantId)
+        .in('status', ['processing', 'pending'])
+        .order('started_at', { ascending: false })
+        .limit(1);
+      
+      if (error) {
+        console.error('Error checking active jobs:', error);
+        return;
+      }
+      
+      if (activeJobs && activeJobs.length > 0) {
+        const job = activeJobs[0];
+        console.log('📋 Found active job on page load:', job.id);
+        setShowProgressDialog(true);
+        
+        // Start polling manually without calling startPolling yet (to avoid dependency issues)
+        pollJobProgress(job.id);
+        const intervalId = setInterval(() => {
+          pollJobProgress(job.id);
+        }, 2000);
+        pollingIntervalRef.current = intervalId;
+        
+        toast.info('Reanudando sincronización en progreso...');
+      }
+    };
+    
+    checkActiveJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
+
   const loadTours = async () => {
     setLoading(true);
     try {
