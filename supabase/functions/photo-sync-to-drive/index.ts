@@ -277,6 +277,8 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action, photoId, tenantId } = body;
+    
+    console.log(`🚀 Starting photo-sync-to-drive - Action: ${action}, PhotoID: ${photoId}, TenantID: ${tenantId}`);
 
     if (action === 'sync_photo') {
       console.log('📸 Photo sync started:', {
@@ -395,7 +397,7 @@ serve(async (req) => {
       }
       if (!photoBlob) throw new Error('Photo file not found');
 
-      console.log(`📦 Photo downloaded, size: ${photoBlob.size} bytes`);
+      console.log(`✅ Photo downloaded - Size: ${photoBlob.size} bytes (${(photoBlob.size / 1024 / 1024).toFixed(2)} MB)`);
 
       // Check if file already exists in Drive
       const fileName = photo.original_filename || `photo_${photo.id}.webp`;
@@ -407,6 +409,7 @@ serve(async (req) => {
 
       // If file doesn't exist, upload it
       if (!driveFileId) {
+        console.log(`📂 Uploading to Drive as: ${fileName}`);
         driveFileId = await uploadWithTokenRefresh(
           accessToken,
           refreshToken,
@@ -416,6 +419,7 @@ serve(async (req) => {
           supabase,
           destination.id
         );
+        console.log(`✅ Photo uploaded to Drive successfully - Drive ID: ${driveFileId}`);
       } else {
         console.log('⏭️ Archivo ya existe en Drive, omitiendo subida');
       }
@@ -450,6 +454,7 @@ serve(async (req) => {
 
       const cloudFilePath = `/${tour.title}/${floorPlan.name}/${hotspot.title}/fotos-originales/${captureDate}/${fileName}`;
       
+      console.log(`🎉 Sync completed for photo ${photoId}`);
       console.log('✅ Photo synced successfully:', {
         driveFileId,
         cloudFilePath,
@@ -461,7 +466,8 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           driveFileId,
-          path: cloudFilePath
+          path: cloudFilePath,
+          message: 'Photo synced successfully'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

@@ -31,9 +31,11 @@ async function processBatchSync(
       .single();
     
     if (job?.status === 'cancelled') {
-      console.log(`⚠️ Job ${jobId} was cancelled`);
+      console.log(`⛔ Job ${jobId} was cancelled, stopping sync`);
       break;
     }
+
+    console.log(`📤 Processing photo ${i + 1}/${photosToSync.length}: ${photo.id}`);
 
     let attempts = 0;
     let success = false;
@@ -129,8 +131,89 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action, tourId, tenantId, jobId } = body;
+    console.log(`📥 Received request - Action: ${action}, JobID: ${jobId}, TourID: ${tourId}`);
 
-    // Handle different actions
+    // Handle resume_job action
+    if (action === 'resume_job') {
+      console.log(`🔄 Resuming stalled job: ${jobId}`);
+      
+      if (!jobId) {
+        return new Response(
+          JSON.stringify({ error: 'jobId is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: existingJob, error: jobError } = await supabase
+        .from('sync_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (jobError || !existingJob) {
+        console.error('Job not found:', jobError);
+        return new Response(
+          JSON.stringify({ error: 'Job not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get photos that still need syncing
+      const { data: photos } = await supabase
+        .from('panorama_photos')
+        .select(`
+          id,
+          hotspot_id,
+          hotspots!inner(
+            floor_plan_id,
+            floor_plans!inner(
+              tour_id
+            )
+          )
+        `)
+        .eq('hotspots.floor_plans.tour_id', existingJob.tour_id);
+
+      const { data: alreadySynced } = await supabase
+        .from('cloud_file_mappings')
+        .select('photo_id')
+        .in('photo_id', (photos || []).map(p => p.id));
+
+      const syncedIds = new Set((alreadySynced || []).map(m => m.photo_id));
+      const photosToSync = (photos || []).filter(p => !syncedIds.has(p.id));
+
+      console.log(`📊 Resume status: ${photosToSync.length} photos remaining`);
+
+      // Reset job status to processing
+      await supabase
+        .from('sync_jobs')
+        .update({ 
+          status: 'processing',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      // Start background processing from remaining photos
+      // @ts-ignore
+      if (typeof EdgeRuntime !== 'undefined') {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(
+          processBatchSync(jobId, existingJob.tour_id, existingJob.tenant_id, photosToSync, supabase)
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Job resumed',
+          jobId: jobId,
+          remainingPhotos: photosToSync.length,
+          totalItems: existingJob.total_items
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle get_progress action
     if (action === 'get_progress') {
       // Get job progress
       const { data: job, error: jobError } = await supabase
@@ -210,6 +293,7 @@ serve(async (req) => {
     }
 
     // 2. Obtener todas las fotos del tour que NO están sincronizadas
+    console.log(`📸 Fetching photos for tour: ${tourId}`);
     const { data: photos, error: photosError } = await supabase
       .from('panorama_photos')
       .select(`
@@ -227,6 +311,8 @@ serve(async (req) => {
     if (photosError) {
       throw new Error(`Failed to fetch photos: ${photosError.message}`);
     }
+
+    console.log(`Found ${photos?.length || 0} total photos`);
 
     if (!photos || photos.length === 0) {
       return new Response(
