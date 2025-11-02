@@ -45,7 +45,21 @@ export function useCloudStorage(tenantId: string) {
     try {
       const { data, error } = await supabase
         .from('backup_destinations')
-        .select('*')
+        .select(`
+          id,
+          tenant_id,
+          destination_type,
+          cloud_provider,
+          cloud_folder_id,
+          cloud_folder_path,
+          backup_frequency,
+          is_active,
+          auto_backup_enabled,
+          backup_on_photo_upload,
+          last_backup_at,
+          created_at,
+          updated_at
+        `)
         .eq('tenant_id', tenantId);
 
       if (error) throw error;
@@ -100,7 +114,21 @@ export function useCloudStorage(tenantId: string) {
       try {
         const { data, error } = await supabase
           .from('backup_destinations')
-          .select('*')
+          .select(`
+            id,
+            tenant_id,
+            destination_type,
+            cloud_provider,
+            cloud_folder_id,
+            cloud_folder_path,
+            backup_frequency,
+            is_active,
+            auto_backup_enabled,
+            backup_on_photo_upload,
+            last_backup_at,
+            created_at,
+            updated_at
+          `)
           .eq('tenant_id', tenantId)
           .eq('is_active', true)
           .order('created_at', { ascending: false })
