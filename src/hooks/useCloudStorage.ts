@@ -86,7 +86,7 @@ export function useCloudStorage(tenantId: string) {
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout | null = null;
     let pollingAttempts = 0;
-    const MAX_POLLING_ATTEMPTS = 60; // 2 minutes (60 attempts x 2 seconds)
+    const MAX_POLLING_ATTEMPTS = 150; // 2 minutes (150 attempts x 800ms)
 
     const checkOAuthCompletion = async () => {
       if (!loadingProvider || loadingProvider === 'disconnecting' || 
@@ -171,7 +171,7 @@ export function useCloudStorage(tenantId: string) {
     if (loadingProvider && loadingProvider !== 'disconnecting' && 
         loadingProvider !== 'testing' && loadingProvider !== 'updating') {
       console.log('🚀 Starting OAuth polling system...');
-      pollingInterval = setInterval(checkOAuthCompletion, 2000); // Check every 2 seconds
+      pollingInterval = setInterval(checkOAuthCompletion, 800); // Check every 800ms (2.5x faster)
     }
 
     return () => {
