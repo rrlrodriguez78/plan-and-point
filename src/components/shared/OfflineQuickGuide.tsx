@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Download, Wifi, Camera, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, Download, Wifi, Camera, RefreshCw, CheckCircle2, HelpCircle } from 'lucide-react';
 
 interface OfflineQuickGuideProps {
   variant?: 'alert' | 'card';
   onDismiss?: () => void;
+  onOpenTutorial?: () => void;
 }
 
-export function OfflineQuickGuide({ variant = 'card', onDismiss }: OfflineQuickGuideProps) {
+export function OfflineQuickGuide({ variant = 'card', onDismiss, onOpenTutorial }: OfflineQuickGuideProps) {
   const [dismissed, setDismissed] = useState(false);
 
   const handleDismiss = () => {
@@ -115,7 +116,13 @@ export function OfflineQuickGuide({ variant = 'card', onDismiss }: OfflineQuickG
           })}
         </div>
 
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-4 pt-4 border-t space-y-3">
+          {onOpenTutorial && (
+            <Button onClick={onOpenTutorial} variant="outline" className="w-full">
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Ver Tutorial Paso a Paso
+            </Button>
+          )}
           <p className="text-xs text-muted-foreground text-center">
             💡 Tip: Gestiona tus tours en caché desde el menú "Caché Offline"
           </p>

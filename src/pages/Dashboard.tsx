@@ -16,6 +16,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CacheStatusWidget } from '@/components/shared/CacheStatusWidget';
 import { TourPasswordDialog } from '@/components/editor/TourPasswordDialog';
+import { OfflineQuickStart } from '@/components/shared/OfflineQuickStart';
+import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
 
 interface Organization {
   id: string;
@@ -50,6 +52,7 @@ const Dashboard = () => {
   const [selectedTourForPassword, setSelectedTourForPassword] = useState<Tour | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedTourForShare, setSelectedTourForShare] = useState<{ id: string; title: string } | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -285,8 +288,9 @@ const Dashboard = () => {
 
         {/* Info Widgets */}
         {tours.length > 0 && (
-          <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <CacheStatusWidget />
+            <OfflineQuickStart onOpenTutorial={() => setTutorialOpen(true)} />
           </div>
         )}
 
@@ -539,6 +543,8 @@ const Dashboard = () => {
           tourTitle={selectedTourForShare.title}
         />
       )}
+
+      <OfflineTutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
 };

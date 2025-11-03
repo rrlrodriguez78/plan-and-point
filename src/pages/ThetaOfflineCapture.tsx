@@ -9,6 +9,7 @@ import { useThetaCamera } from '@/hooks/useThetaCamera';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { OfflineQuickGuide } from '@/components/shared/OfflineQuickGuide';
+import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
 import { useIntelligentSync } from '@/hooks/useIntelligentSync';
 import { useThetaWiFiDetector } from '@/hooks/useThetaWiFiDetector';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
@@ -48,6 +49,7 @@ export default function ThetaOfflineCapture() {
   const [selectedFloorPlan, setSelectedFloorPlan] = useState<FloorPlan | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [availableHotspots, setAvailableHotspots] = useState<Hotspot[]>([]);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   // Load cached tours on mount
   useEffect(() => {
@@ -220,7 +222,7 @@ export default function ThetaOfflineCapture() {
         </Card>
 
         {/* Quick Guide */}
-        <OfflineQuickGuide variant="card" />
+        <OfflineQuickGuide variant="card" onOpenTutorial={() => setTutorialOpen(true)} />
 
         {/* Tour Selection */}
         {cachedTours.length === 0 ? (
@@ -505,6 +507,9 @@ export default function ThetaOfflineCapture() {
           </Card>
         )}
       </div>
+
+      {/* Tutorial Dialog */}
+      <OfflineTutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
 }

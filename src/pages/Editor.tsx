@@ -7,14 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { 
-  ArrowLeft, 
-  Save, 
-  Eye, 
-  Plus, 
-  Globe, 
-  Lock, 
-  Copy, 
+import {
+  ArrowLeft,
+  Save,
+  Eye,
+  Plus,
+  Globe,
+  Lock,
+  Copy,
   Trash2,
   ChevronDown,
   ChevronUp,
@@ -29,6 +29,7 @@ import {
   Download,
   Wifi,
   WifiOff,
+  HelpCircle,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -54,6 +55,8 @@ import { cn } from '@/lib/utils';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
 import { useIntelligentSync } from '@/hooks/useIntelligentSync';
+import { OfflineQuickGuide } from '@/components/shared/OfflineQuickGuide';
+import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
 
 const Editor = () => {
   const { id } = useParams();
@@ -113,6 +116,9 @@ const Editor = () => {
   
   // Grupo de Fotos por Plano
   const [photoGroupDialogOpen, setPhotoGroupDialogOpen] = useState(false);
+  
+  // Tutorial dialog
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   
   // Hook for bulk creation
   const { createHotspot, isCreating } = useBulkHotspotCreation(
@@ -782,6 +788,16 @@ const Editor = () => {
               </Button>
             )}
 
+            {/* Help / Tutorial button */}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setTutorialOpen(true)}
+              title="Ver tutorial de trabajo offline"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </Button>
+
             <Button variant="outline" onClick={togglePublish} disabled={offlineMode}>
               {tour?.is_published ? (
                 <>
@@ -1222,6 +1238,9 @@ const Editor = () => {
           placementProgress={placementProgress}
         />
       )}
+
+      {/* Tutorial Dialog */}
+      <OfflineTutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
 };
