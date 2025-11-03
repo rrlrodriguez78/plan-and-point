@@ -50,6 +50,7 @@ export function NavigationArrowPlacementEditor2D({
   const [draggedPoint, setDraggedPoint] = useState<Point | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isLoadingImage, setIsLoadingImage] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [zoom, setZoom] = useState(100);
   
@@ -57,11 +58,20 @@ export function NavigationArrowPlacementEditor2D({
 
   // Cargar imagen y puntos
   useEffect(() => {
+    console.log('[2D Editor] Cargando panorama:', panoramaUrl);
+    setIsLoadingImage(true);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      console.log('[2D Editor] ✅ Imagen cargada:', img.width, 'x', img.height);
       imageRef.current = img;
+      setIsLoadingImage(false);
       drawCanvas();
+    };
+    img.onerror = (e) => {
+      console.error('[2D Editor] ❌ Error cargando imagen:', e);
+      setIsLoadingImage(false);
+      toast.error('Error al cargar la imagen panorámica');
     };
     img.src = panoramaUrl;
   }, [panoramaUrl]);
@@ -97,7 +107,16 @@ export function NavigationArrowPlacementEditor2D({
   const drawCanvas = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx || !imageRef.current) return;
+    const image = imageRef.current;
+
+    console.log('[2D Editor] drawCanvas llamado', { 
+      hasCanvas: !!canvas, 
+      hasCtx: !!ctx, 
+      hasImage: !!image,
+      imageSize: image ? `${image.width}x${image.height}` : 'N/A'
+    });
+
+    if (!canvas || !ctx || !image) return;
 
     // Ajustar tamaño del canvas
     const container = containerRef.current;
@@ -107,7 +126,7 @@ export function NavigationArrowPlacementEditor2D({
     }
 
     // Dibujar imagen
-    ctx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
     // Dibujar grid
     if (showGrid) {
@@ -371,15 +390,26 @@ export function NavigationArrowPlacementEditor2D({
             className="relative border rounded-lg overflow-auto bg-black"
             style={{ maxHeight: '600px' }}
           >
+            {isLoadingImage && (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/80 rounded z-10">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-sm text-muted-foreground">Cargando imagen panorámica...</p>
+                </div>
+              </div>
+            )}
             <canvas
               ref={canvasRef}
               onClick={handleCanvasClick}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              className="cursor-crosshair"
+              width={800}
+              height={400}
+              className="border-2 border-primary/30 rounded"
               style={{ 
-                cursor: mode === 'place' ? 'crosshair' : mode === 'drag' ? 'move' : 'default'
+                cursor: mode === 'place' ? 'crosshair' : mode === 'drag' ? 'move' : 'default',
+                backgroundColor: 'hsl(var(--muted))'
               }}
             />
           </div>
