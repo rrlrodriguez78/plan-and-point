@@ -30,7 +30,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { NavigationArrow3D } from './NavigationArrow3D';
 import { supabase } from '@/integrations/supabase/client';
-import { animateValue, delay } from '@/utils/cameraAnimation';
+import { animateValue, delay, easeInOutCubic } from '@/utils/cameraAnimation';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -587,26 +587,41 @@ export default function PanoramaViewer({
         })
       ]);
       
-      // Fase 2: Zoom IN hacia el destino MANTENIENDO orientación activamente (400ms)
+      // Fase 2: Zoom IN hacia el destino con control frame-by-frame (400ms)
       await new Promise<void>((resolve) => {
+        const startFov = cameraRef.current!.fov;
+        const targetFov = 30;
         const targetTheta = navigationPoint.theta;
         const targetPhi = navigationPoint.phi;
-        
-        animateValue(startFov, 30, 400, 
-          (value) => { 
-            if (cameraRef.current) {
-              // ✅ MANTENER ACTIVAMENTE la orientación hacia la flecha
-              lon.current = targetTheta;
-              lat.current = targetPhi;
-              
-              // Animar el FOV
-              cameraRef.current.fov = value;
-              cameraRef.current.updateProjectionMatrix();
-              setCurrentZoom(value);
-            }
-          },
-          resolve
-        );
+        const startTime = Date.now();
+        const duration = 400;
+
+        const animateZoomIn = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const easedProgress = easeInOutCubic(progress);
+          
+          // ✅ FORZAR orientación ANTES de cualquier cálculo
+          lon.current = targetTheta;
+          lat.current = targetPhi;
+          
+          // Interpolar FOV
+          const currentFov = startFov + (targetFov - startFov) * easedProgress;
+          
+          if (cameraRef.current) {
+            cameraRef.current.fov = currentFov;
+            cameraRef.current.updateProjectionMatrix();
+            setCurrentZoom(currentFov);
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animateZoomIn);
+          } else {
+            resolve();
+          }
+        };
+
+        animateZoomIn();
       });
       
       // Fase 3: Fade out, cambio de foto, fade in (400ms total)
