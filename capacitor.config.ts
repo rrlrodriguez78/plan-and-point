@@ -9,6 +9,11 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'always'
+  },
+  plugins: {
+    Filesystem: {
+      androidDisplayName: 'VirtualTour360'
+    }
   }
 };
 

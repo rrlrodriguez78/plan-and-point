@@ -1,0 +1,469 @@
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
+import { getStorageDirectory, getBasePath, isNativeApp } from './storagePermissions';
+
+export interface StoredTour {
+  id: string;
+  name: string;
+  data: any;
+  floorPlans: any[];
+  hotspots: any[];
+  photos: StoredPhoto[];
+  metadata: {
+    cachedAt: string;
+    size: number;
+    photosCount: number;
+  };
+}
+
+export interface StoredPhoto {
+  id: string;
+  url: string;
+  blob?: Blob;
+  localPath?: string;
+}
+
+export interface StorageStats {
+  totalTours: number;
+  totalSize: number;
+  availableSpace: number;
+  tours: Array<{
+    id: string;
+    name: string;
+    size: number;
+    cachedAt: string;
+  }>;
+}
+
+/**
+ * Crea la estructura de carpetas para un tour
+ */
+async function createTourFolder(tourId: string): Promise<string> {
+  const basePath = `${getBasePath()}/tours/${tourId}`;
+  
+  try {
+    // Crear carpeta principal del tour
+    await Filesystem.mkdir({
+      path: basePath,
+      directory: getStorageDirectory(),
+      recursive: true
+    });
+
+    // Crear subcarpetas
+    await Filesystem.mkdir({
+      path: `${basePath}/floor_plans`,
+      directory: getStorageDirectory(),
+      recursive: true
+    });
+
+    await Filesystem.mkdir({
+      path: `${basePath}/photos`,
+      directory: getStorageDirectory(),
+      recursive: true
+    });
+
+    return basePath;
+  } catch (error) {
+    console.error('Error creating tour folder:', error);
+    throw error;
+  }
+}
+
+/**
+ * Convierte un Blob a base64
+ */
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      // Remover el prefijo "data:image/jpeg;base64,"
+      resolve(base64.split(',')[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Guarda una imagen en el filesystem
+ */
+async function saveImage(blob: Blob, path: string): Promise<void> {
+  try {
+    const base64Data = await blobToBase64(blob);
+    await Filesystem.writeFile({
+      path,
+      data: base64Data,
+      directory: getStorageDirectory(),
+      recursive: true
+    });
+  } catch (error) {
+    console.error('Error saving image:', error);
+    throw error;
+  }
+}
+
+/**
+ * Carga una imagen del filesystem
+ */
+async function loadImage(path: string): Promise<Blob> {
+  try {
+    const result = await Filesystem.readFile({
+      path,
+      directory: getStorageDirectory()
+    });
+
+    // Convertir base64 a Blob
+    const base64 = typeof result.data === 'string' ? result.data : '';
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: 'image/jpeg' });
+  } catch (error) {
+    console.error('Error loading image:', error);
+    throw error;
+  }
+}
+
+/**
+ * Guarda un tour completo en el filesystem nativo
+ */
+export async function saveTourToFilesystem(
+  tourId: string,
+  tourName: string,
+  tourData: any,
+  floorPlans: any[],
+  hotspots: any[],
+  photos: StoredPhoto[]
+): Promise<void> {
+  if (!isNativeApp()) {
+    throw new Error('Native storage only available on mobile devices');
+  }
+
+  try {
+    const basePath = await createTourFolder(tourId);
+    
+    // Guardar metadatos del tour
+    const metadata = {
+      id: tourId,
+      name: tourName,
+      data: tourData,
+      floorPlans: floorPlans.map(fp => ({
+        ...fp,
+        image_url: fp.image_url ? `floor_plans/${fp.id}.jpg` : null
+      })),
+      hotspots,
+      cachedAt: new Date().toISOString(),
+      photosCount: photos.length
+    };
+
+    await Filesystem.writeFile({
+      path: `${basePath}/metadata.json`,
+      data: JSON.stringify(metadata),
+      directory: getStorageDirectory(),
+      encoding: Encoding.UTF8
+    });
+
+    // Guardar imágenes de floor plans
+    for (const floorPlan of floorPlans) {
+      if (floorPlan.imageBlob) {
+        await saveImage(
+          floorPlan.imageBlob,
+          `${basePath}/floor_plans/${floorPlan.id}.jpg`
+        );
+      }
+    }
+
+    // Guardar fotos
+    for (const photo of photos) {
+      if (photo.blob) {
+        await saveImage(
+          photo.blob,
+          `${basePath}/photos/${photo.id}.jpg`
+        );
+      }
+    }
+
+    console.log(`✅ Tour ${tourName} guardado exitosamente en filesystem nativo`);
+  } catch (error) {
+    console.error('Error saving tour to filesystem:', error);
+    throw error;
+  }
+}
+
+/**
+ * Carga un tour del filesystem nativo
+ */
+export async function loadTourFromFilesystem(tourId: string): Promise<StoredTour | null> {
+  if (!isNativeApp()) {
+    return null;
+  }
+
+  try {
+    const basePath = `${getBasePath()}/tours/${tourId}`;
+    
+    // Leer metadatos
+    const metadataFile = await Filesystem.readFile({
+      path: `${basePath}/metadata.json`,
+      directory: getStorageDirectory(),
+      encoding: Encoding.UTF8
+    });
+
+    const metadata = JSON.parse(metadataFile.data as string);
+
+    // Cargar imágenes de floor plans
+    const floorPlansWithImages = await Promise.all(
+      metadata.floorPlans.map(async (fp: any) => {
+        if (fp.image_url) {
+          try {
+            const blob = await loadImage(`${basePath}/${fp.image_url}`);
+            return { ...fp, imageBlob: blob };
+          } catch (error) {
+            console.warn(`Could not load floor plan image: ${fp.id}`);
+            return fp;
+          }
+        }
+        return fp;
+      })
+    );
+
+    // Cargar fotos
+    const photos: StoredPhoto[] = [];
+    for (let i = 0; i < metadata.photosCount; i++) {
+      try {
+        const photoFiles = await Filesystem.readdir({
+          path: `${basePath}/photos`,
+          directory: getStorageDirectory()
+        });
+
+        for (const file of photoFiles.files) {
+          const photoId = file.name.replace('.jpg', '');
+          const blob = await loadImage(`${basePath}/photos/${file.name}`);
+          photos.push({
+            id: photoId,
+            url: '',
+            blob,
+            localPath: `${basePath}/photos/${file.name}`
+          });
+        }
+      } catch (error) {
+        console.warn('Error loading photos:', error);
+      }
+    }
+
+    return {
+      id: metadata.id,
+      name: metadata.name,
+      data: metadata.data,
+      floorPlans: floorPlansWithImages,
+      hotspots: metadata.hotspots,
+      photos,
+      metadata: {
+        cachedAt: metadata.cachedAt,
+        size: await getTourSize(tourId),
+        photosCount: photos.length
+      }
+    };
+  } catch (error) {
+    console.error('Error loading tour from filesystem:', error);
+    return null;
+  }
+}
+
+/**
+ * Lista todos los tours guardados
+ */
+export async function getToursList(): Promise<Array<{ id: string; name: string; size: number; cachedAt: string }>> {
+  if (!isNativeApp()) {
+    return [];
+  }
+
+  try {
+    const toursPath = `${getBasePath()}/tours`;
+    
+    const tourDirs = await Filesystem.readdir({
+      path: toursPath,
+      directory: getStorageDirectory()
+    });
+
+    const tours = await Promise.all(
+      tourDirs.files
+        .filter(file => file.type === 'directory')
+        .map(async (dir) => {
+          try {
+            const metadata = await Filesystem.readFile({
+              path: `${toursPath}/${dir.name}/metadata.json`,
+              directory: getStorageDirectory(),
+              encoding: Encoding.UTF8
+            });
+
+            const meta = JSON.parse(metadata.data as string);
+            const size = await getTourSize(dir.name);
+
+            return {
+              id: dir.name,
+              name: meta.name,
+              size,
+              cachedAt: meta.cachedAt
+            };
+          } catch (error) {
+            console.warn(`Could not read tour metadata: ${dir.name}`);
+            return null;
+          }
+        })
+    );
+
+    return tours.filter(t => t !== null) as Array<{ id: string; name: string; size: number; cachedAt: string }>;
+  } catch (error) {
+    console.error('Error listing tours:', error);
+    return [];
+  }
+}
+
+/**
+ * Elimina un tour del filesystem
+ */
+export async function deleteTour(tourId: string): Promise<void> {
+  if (!isNativeApp()) {
+    return;
+  }
+
+  try {
+    const basePath = `${getBasePath()}/tours/${tourId}`;
+    
+    await Filesystem.rmdir({
+      path: basePath,
+      directory: getStorageDirectory(),
+      recursive: true
+    });
+
+    console.log(`🗑️ Tour ${tourId} eliminado del filesystem`);
+  } catch (error) {
+    console.error('Error deleting tour:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calcula el tamaño de un tour en bytes
+ */
+async function getTourSize(tourId: string): Promise<number> {
+  if (!isNativeApp()) {
+    return 0;
+  }
+
+  try {
+    const basePath = `${getBasePath()}/tours/${tourId}`;
+    let totalSize = 0;
+
+    // Obtener tamaño de metadata
+    const metadata = await Filesystem.stat({
+      path: `${basePath}/metadata.json`,
+      directory: getStorageDirectory()
+    });
+    totalSize += metadata.size;
+
+    // Obtener tamaño de floor plans
+    try {
+      const floorPlans = await Filesystem.readdir({
+        path: `${basePath}/floor_plans`,
+        directory: getStorageDirectory()
+      });
+
+      for (const file of floorPlans.files) {
+        const stat = await Filesystem.stat({
+          path: `${basePath}/floor_plans/${file.name}`,
+          directory: getStorageDirectory()
+        });
+        totalSize += stat.size;
+      }
+    } catch (error) {
+      // Carpeta vacía
+    }
+
+    // Obtener tamaño de fotos
+    try {
+      const photos = await Filesystem.readdir({
+        path: `${basePath}/photos`,
+        directory: getStorageDirectory()
+      });
+
+      for (const file of photos.files) {
+        const stat = await Filesystem.stat({
+          path: `${basePath}/photos/${file.name}`,
+          directory: getStorageDirectory()
+        });
+        totalSize += stat.size;
+      }
+    } catch (error) {
+      // Carpeta vacía
+    }
+
+    return totalSize;
+  } catch (error) {
+    console.error('Error calculating tour size:', error);
+    return 0;
+  }
+}
+
+/**
+ * Obtiene estadísticas de almacenamiento
+ */
+export async function getStorageStats(): Promise<StorageStats> {
+  if (!isNativeApp()) {
+    return {
+      totalTours: 0,
+      totalSize: 0,
+      availableSpace: 0,
+      tours: []
+    };
+  }
+
+  try {
+    const tours = await getToursList();
+    const totalSize = tours.reduce((sum, tour) => sum + tour.size, 0);
+
+    // En Capacitor no hay una forma directa de obtener espacio disponible
+    // Podríamos usar un plugin nativo o estimarlo
+    const availableSpace = 0; // TODO: Implementar con plugin nativo
+
+    return {
+      totalTours: tours.length,
+      totalSize,
+      availableSpace,
+      tours
+    };
+  } catch (error) {
+    console.error('Error getting storage stats:', error);
+    return {
+      totalTours: 0,
+      totalSize: 0,
+      availableSpace: 0,
+      tours: []
+    };
+  }
+}
+
+/**
+ * Exporta un tour como archivo ZIP para compartir
+ */
+export async function exportTourToShare(tourId: string): Promise<string | null> {
+  if (!isNativeApp()) {
+    return null;
+  }
+
+  try {
+    // TODO: Implementar compresión ZIP
+    // Requiere plugin adicional o implementación nativa
+    console.warn('Export to ZIP not yet implemented');
+    return null;
+  } catch (error) {
+    console.error('Error exporting tour:', error);
+    return null;
+  }
+}
