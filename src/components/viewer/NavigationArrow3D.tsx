@@ -100,7 +100,7 @@ export const NavigationArrow3D = ({
       if (!arrowGroupRef.current) return;
       
       const time = Date.now() * 0.001;
-      const pulseScale = 1 + Math.sin(time * 2) * 0.08; // Pulsación sutil ±8%
+      const pulseScale = 1 + Math.sin(time * 2.5) * 0.15; // Pulsación constante más notable ±15%
       
       arrowGroupRef.current.children.forEach((child) => {
         if (child.userData.isNavigation) {
@@ -246,7 +246,7 @@ export const NavigationArrow3D = ({
                     className="w-32 h-32 rounded-full object-cover"
                   />
                   {hoveredPoint.label && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-1 px-2 text-center rounded-b-full">
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/20 backdrop-blur-sm text-white text-xs py-1 px-2 text-center rounded-b-full">
                       {hoveredPoint.label}
                     </div>
                   )}
@@ -279,7 +279,7 @@ function createArrowMesh(style?: NavigationPoint['style']) {
   const outerCircleMaterial = new THREE.MeshBasicMaterial({
     color: '#FFFFFF',
     transparent: true,
-    opacity: 0.25,
+    opacity: 0.15,
     side: THREE.DoubleSide
   });
   const outerCircle = new THREE.Mesh(outerCircleGeometry, outerCircleMaterial);
@@ -289,7 +289,7 @@ function createArrowMesh(style?: NavigationPoint['style']) {
   const middleCircleMaterial = new THREE.MeshBasicMaterial({
     color: '#FFFFFF',
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.5,
     side: THREE.DoubleSide
   });
   const middleCircle = new THREE.Mesh(middleCircleGeometry, middleCircleMaterial);
