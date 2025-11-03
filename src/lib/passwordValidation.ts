@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const passwordSchema = z
   .string()
-  .min(8, 'La contraseña debe tener al menos 8 caracteres')
+  .min(12, 'La contraseña debe tener al menos 12 caracteres')
+  .max(128, 'La contraseña no puede exceder 128 caracteres')
   .regex(/[A-Z]/, 'Debe incluir al menos una letra mayúscula')
   .regex(/[a-z]/, 'Debe incluir al menos una letra minúscula')
   .regex(/[0-9]/, 'Debe incluir al menos un número')
@@ -24,7 +25,7 @@ export const validatePassword = (password: string): { valid: boolean; errors: st
 };
 
 export const getPasswordRequirements = () => [
-  { label: 'Mínimo 8 caracteres', regex: /.{8,}/ },
+  { label: 'Mínimo 12 caracteres', regex: /.{12,}/ },
   { label: 'Al menos una mayúscula (A-Z)', regex: /[A-Z]/ },
   { label: 'Al menos una minúscula (a-z)', regex: /[a-z]/ },
   { label: 'Al menos un número (0-9)', regex: /[0-9]/ },

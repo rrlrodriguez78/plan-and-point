@@ -140,8 +140,8 @@ const Auth = () => {
       return;
     }
 
-    if (newPassword.length < 8) {
-      toast.error('La contraseña debe tener al menos 8 caracteres');
+    if (newPassword.length < 12) {
+      toast.error('La contraseña debe tener al menos 12 caracteres');
       return;
     }
 

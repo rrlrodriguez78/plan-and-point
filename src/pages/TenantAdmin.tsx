@@ -55,15 +55,6 @@ export default function TenantAdmin() {
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [userForm, setUserForm] = useState({ email: '', role: 'user' });
 
-  // Debug logs
-  console.log('TenantAdmin Debug:', {
-    currentTenant,
-    isTenantAdmin,
-    tenantLoading,
-    loading,
-    user: user?.id,
-  });
-
   useEffect(() => {
     if (!tenantLoading && !isTenantAdmin && user) {
       toast.error('No tienes permisos de administrador');

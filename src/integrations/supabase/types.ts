@@ -1904,6 +1904,7 @@ export type Database = {
           message: string
         }[]
       }
+      cleanup_expired_oauth_states: { Args: never; Returns: undefined }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_old_queue_items: { Args: never; Returns: number }
       cleanup_orphaned_backups: {
