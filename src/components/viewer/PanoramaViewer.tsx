@@ -443,10 +443,15 @@ export default function PanoramaViewer({
     sphereGeometry.scale(-1, 1, 1);
     
     const textureLoader = new THREE.TextureLoader();
+    // ✅ Configurar crossOrigin para evitar problemas de CORS
+    textureLoader.crossOrigin = 'anonymous';
+    
+    console.log('🔄 Cargando panorama:', photoUrl);
     
     textureLoader.load(
       photoUrl,
       (texture) => {
+        console.log('✅ Panorama cargado exitosamente:', photoUrl);
         if (!sceneRef.current) {
             texture.dispose();
             sphereGeometry.dispose();
@@ -490,13 +495,22 @@ export default function PanoramaViewer({
       },
       undefined,
       (error) => {
-        console.error("Failed to load panorama texture:", error);
+        console.error("❌ Failed to load panorama texture:", error);
+        console.error("❌ URL que falló:", photoUrl);
+        console.error("❌ Tipo de error:", typeof error);
         sphereGeometry.dispose();
         
+        // ✅ Intentar proporcionar un mensaje de error más específico
         let errorMessage = t('viewer.networkError');
-        if (error instanceof Error && error.message) {
-            errorMessage = t('viewer.errorLoadingImageDescription', { error: error.message });
+        
+        // Verificar si es un problema de CORS
+        if (error instanceof ErrorEvent) {
+          console.error("❌ ErrorEvent detectado - posible problema de CORS o imagen corrupta");
+          errorMessage = `Error loading image. URL: ${photoUrl.substring(0, 100)}...`;
+        } else if (error instanceof Error && error.message) {
+          errorMessage = t('viewer.errorLoadingImageDescription', { error: error.message });
         }
+        
         setLoadingError(errorMessage);
         setIsLoadingScene(false);
       }
