@@ -3,10 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Wifi, WifiOff, Camera, CheckCircle2, Loader2, Battery, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, Camera, CheckCircle2, Loader2, Battery, RefreshCw, MapPin, Map } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useThetaCamera } from '@/hooks/useThetaCamera';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { tourOfflineCache } from '@/utils/tourOfflineCache';
+import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import { toast } from 'sonner';
 
 export default function ThetaOfflineCapture() {
@@ -32,6 +35,53 @@ export default function ThetaOfflineCapture() {
   
   const [captureCount, setCaptureCount] = useState(0);
   const [lastPhotoPreview, setLastPhotoPreview] = useState<string | null>(null);
+  
+  // Tour offline selection
+  const [cachedTours, setCachedTours] = useState<Array<{ tour: Tour; floorPlans: FloorPlan[]; hotspots: Hotspot[] }>>([]);
+  const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
+  const [selectedFloorPlan, setSelectedFloorPlan] = useState<FloorPlan | null>(null);
+  const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
+  const [availableHotspots, setAvailableHotspots] = useState<Hotspot[]>([]);
+
+  // Load cached tours on mount
+  useEffect(() => {
+    const loadCachedTours = async () => {
+      try {
+        const tours = await tourOfflineCache.getAllCachedTours();
+        setCachedTours(tours);
+        
+        if (tours.length > 0) {
+          setSelectedTour(tours[0].tour);
+          if (tours[0].floorPlans.length > 0) {
+            setSelectedFloorPlan(tours[0].floorPlans[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached tours:', error);
+        toast.error('Error al cargar tours en caché');
+      }
+    };
+    
+    loadCachedTours();
+  }, []);
+  
+  // Update available hotspots when floor plan changes
+  useEffect(() => {
+    if (selectedFloorPlan) {
+      const selectedTourData = cachedTours.find(t => t.tour.id === selectedTour?.id);
+      if (selectedTourData) {
+        const hotspots = selectedTourData.hotspots.filter(
+          h => h.floor_plan_id === selectedFloorPlan.id
+        );
+        setAvailableHotspots(hotspots);
+        if (hotspots.length > 0) {
+          setSelectedHotspot(hotspots[0]);
+        } else {
+          setSelectedHotspot(null);
+        }
+      }
+    }
+  }, [selectedFloorPlan, cachedTours, selectedTour]);
 
   // Actualizar contador de fotos capturadas
   useEffect(() => {
@@ -62,17 +112,22 @@ export default function ThetaOfflineCapture() {
   };
 
   const handleCapture = async () => {
+    if (!selectedTour || !selectedHotspot) {
+      toast.error('Selecciona un tour y hotspot primero');
+      return;
+    }
+
     try {
       const photoBlob = await capturePhoto();
       
-      // Guardar en IndexedDB (sin hotspotId ni tourId por ahora)
+      // Guardar en IndexedDB con tour y hotspot asignado
       const photoId = await offlineStorage.savePendingPhoto({
-        hotspotId: 'offline_temp', // Temporal, usuario asignará después
-        tourId: 'offline_temp',
-        tenantId: 'offline_temp',
+        hotspotId: selectedHotspot.id,
+        tourId: selectedTour.id,
+        tenantId: selectedTour.tenant_id,
         blob: photoBlob,
         captureDate: new Date(),
-        filename: `theta_${Date.now()}.jpg`,
+        filename: `theta_${selectedHotspot.title}_${Date.now()}.jpg`,
       });
 
       // Crear preview
@@ -82,7 +137,9 @@ export default function ThetaOfflineCapture() {
 
       await refreshCount();
       
-      toast.success('Foto capturada y guardada localmente');
+      toast.success(`Foto capturada para "${selectedHotspot.title}"`, {
+        description: `Tour: ${selectedTour.title}`
+      });
     } catch (error) {
       toast.error('Error al capturar foto');
     }
@@ -122,10 +179,138 @@ export default function ThetaOfflineCapture() {
           </CardHeader>
         </Card>
 
+        {/* Tour Selection */}
+        {cachedTours.length === 0 ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              No hay tours disponibles offline. Prepara un tour primero desde el Editor cuando tengas internet.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Map className="w-5 h-5" />
+                Seleccionar Tour y Punto
+              </CardTitle>
+              <CardDescription>
+                Selecciona dónde se guardarán las fotos capturadas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Tour selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tour</label>
+                <Select
+                  value={selectedTour?.id}
+                  onValueChange={(tourId) => {
+                    const tourData = cachedTours.find(t => t.tour.id === tourId);
+                    if (tourData) {
+                      setSelectedTour(tourData.tour);
+                      if (tourData.floorPlans.length > 0) {
+                        setSelectedFloorPlan(tourData.floorPlans[0]);
+                      } else {
+                        setSelectedFloorPlan(null);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cachedTours.map(({ tour }) => (
+                      <SelectItem key={tour.id} value={tour.id}>
+                        {tour.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Floor plan selector */}
+              {selectedTour && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Plano</label>
+                  <Select
+                    value={selectedFloorPlan?.id}
+                    onValueChange={(fpId) => {
+                      const tourData = cachedTours.find(t => t.tour.id === selectedTour.id);
+                      if (tourData) {
+                        const fp = tourData.floorPlans.find(f => f.id === fpId);
+                        if (fp) setSelectedFloorPlan(fp);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cachedTours
+                        .find(t => t.tour.id === selectedTour.id)
+                        ?.floorPlans.map((fp) => (
+                          <SelectItem key={fp.id} value={fp.id}>
+                            {fp.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Hotspot selector */}
+              {selectedFloorPlan && availableHotspots.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Punto de Interés</label>
+                  <Select
+                    value={selectedHotspot?.id}
+                    onValueChange={(hotspotId) => {
+                      const hotspot = availableHotspots.find(h => h.id === hotspotId);
+                      if (hotspot) setSelectedHotspot(hotspot);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableHotspots.map((hotspot) => (
+                        <SelectItem key={hotspot.id} value={hotspot.id}>
+                          <span className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4" />
+                            {hotspot.title}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedFloorPlan && availableHotspots.length === 0 && (
+                <Alert>
+                  <AlertDescription>
+                    Este plano no tiene puntos de interés. Crea puntos en el Editor primero.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {selectedTour && selectedFloorPlan && selectedHotspot && (
+                <div className="p-3 bg-secondary rounded-lg">
+                  <div className="text-sm font-medium mb-1">Capturando para:</div>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedTour.title} → {selectedFloorPlan.name} → {selectedHotspot.title}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Instrucciones */}
         <Alert>
           <AlertDescription>
             <ol className="list-decimal list-inside space-y-2">
+              <li>Selecciona el tour y punto donde guardar las fotos</li>
               <li>Conecta tu dispositivo al WiFi de la Theta Z1</li>
               <li>Presiona "Conectar Theta Z1"</li>
               <li>Captura todas las fotos que necesites</li>
@@ -177,7 +362,7 @@ export default function ThetaOfflineCapture() {
 
                 <Button 
                   onClick={handleCapture} 
-                  disabled={isCapturing}
+                  disabled={isCapturing || !selectedHotspot}
                   className="w-full"
                   size="lg"
                 >
@@ -189,7 +374,7 @@ export default function ThetaOfflineCapture() {
                   ) : (
                     <>
                       <Camera className="w-4 h-4 mr-2" />
-                      Capturar Foto 360°
+                      {selectedHotspot ? `Capturar para "${selectedHotspot.title}"` : 'Selecciona un punto primero'}
                     </>
                   )}
                 </Button>
