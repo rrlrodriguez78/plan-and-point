@@ -560,27 +560,33 @@ export default function PanoramaViewer({
     if (isTransitioning || !cameraRef.current) return;
     
     setIsTransitioning(true);
-    setTransitionDirection({ theta: navigationPoint.theta, phi: navigationPoint.phi });
+    
+    // ✅ CALCULAR la dirección CORRECTA hacia el destino
+    // La flecha está en (theta, phi) pero apunta en dirección opuesta
+    const targetTheta = (navigationPoint.theta + 180) % 360;
+    const targetPhi = navigationPoint.phi;
+    
+    setTransitionDirection({ theta: targetTheta, phi: targetPhi });
     
     const startTheta = lon.current;
     const startPhi = lat.current;
     const startFov = cameraRef.current.fov;
     
-    // Calcular dirección de entrada inversa (desde donde venimos)
-    const entryTheta = (navigationPoint.theta + 180) % 360;
-    const entryPhi = navigationPoint.phi;
+    // Calcular dirección de entrada inversa para el nuevo panorama
+    const entryTheta = (targetTheta + 180) % 360;
+    const entryPhi = targetPhi;
     
     try {
-      // Fase 1: Rotar hacia la dirección de la flecha (300ms)
+      // Fase 1: Rotar hacia la dirección CORRECTA del destino (300ms)
       await Promise.all([
         new Promise<void>((resolve) => {
-          animateValue(startTheta, navigationPoint.theta, 300, 
+          animateValue(startTheta, targetTheta, 300, 
             (value) => { lon.current = value; },
             resolve
           );
         }),
         new Promise<void>((resolve) => {
-          animateValue(startPhi, navigationPoint.phi, 300, 
+          animateValue(startPhi, targetPhi, 300, 
             (value) => { lat.current = value; },
             resolve
           );
@@ -590,9 +596,7 @@ export default function PanoramaViewer({
       // Fase 2: Zoom IN hacia el destino con control frame-by-frame (400ms)
       await new Promise<void>((resolve) => {
         const startFov = cameraRef.current!.fov;
-        const targetFov = 30;
-        const targetTheta = navigationPoint.theta;
-        const targetPhi = navigationPoint.phi;
+        const zoomTargetFov = 30;
         const startTime = Date.now();
         const duration = 400;
 
@@ -601,12 +605,12 @@ export default function PanoramaViewer({
           const progress = Math.min(elapsed / duration, 1);
           const easedProgress = easeInOutCubic(progress);
           
-          // ✅ FORZAR orientación ANTES de cualquier cálculo
+          // ✅ MANTENER orientación hacia el destino correcto
           lon.current = targetTheta;
           lat.current = targetPhi;
           
           // Interpolar FOV
-          const currentFov = startFov + (targetFov - startFov) * easedProgress;
+          const currentFov = startFov + (zoomTargetFov - startFov) * easedProgress;
           
           if (cameraRef.current) {
             cameraRef.current.fov = currentFov;
