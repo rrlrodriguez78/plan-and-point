@@ -29,6 +29,7 @@ import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { NavigationArrow3D } from './NavigationArrow3D';
+import { ImageNotFoundFallback } from './ImageNotFoundFallback';
 import { supabase } from '@/integrations/supabase/client';
 import { animateValue, delay, easeInOutCubic } from '@/utils/cameraAnimation';
 
@@ -789,30 +790,15 @@ export default function PanoramaViewer({
           )}
 
           {loadingError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
-              <div className="bg-red-600/90 backdrop-blur-sm rounded-lg p-6 mx-4 max-w-md text-center">
-                <div className="text-white text-xl mb-2">❌</div>
-                <h3 className="text-white font-semibold mb-2">{t('viewer.errorLoadingImage')}</h3>
-                <p className="text-white/90 text-sm mb-4">{loadingError}</p>
-                <div className="flex gap-2 justify-center">
-                  <button
-                    onClick={() => {
-                      setLoadingError(null);
-                      if (activePhoto) setActivePhoto({...activePhoto});
-                    }}
-                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm"
-                  >
-                    {t('viewer.retry')}
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm"
-                  >
-                    {t('viewer.close')}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ImageNotFoundFallback
+              imageUrl={activePhoto?.photo_url || ''}
+              hotspotTitle={hotspotName}
+              onRetry={() => {
+                setLoadingError(null);
+                if (activePhoto) setActivePhoto({...activePhoto});
+              }}
+              onClose={onClose}
+            />
           )}
 
           {/* Botones de navegación entre puntos - SIEMPRE VISIBLES */}
