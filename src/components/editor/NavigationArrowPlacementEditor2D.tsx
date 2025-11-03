@@ -125,11 +125,8 @@ export function NavigationArrowPlacementEditor2D({
       canvas.height = (container.clientWidth * (zoom / 100)) / 2; // Ratio 2:1 para equirectangular
     }
 
-    // ✅ OPCIÓN 1: Invertir canvas horizontalmente para alinear vista 2D con 3D
-    ctx.save(); // Guardar estado
-    ctx.scale(-1, 1); // Invertir eje X
-    ctx.drawImage(image, -canvas.width, 0, canvas.width, canvas.height); // Dibujar invertido
-    ctx.restore(); // Restaurar estado para dibujar flechas normalmente
+    // ✅ Dibujar imagen sin inversión (vista natural)
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
     // Dibujar grid
     if (showGrid) {
