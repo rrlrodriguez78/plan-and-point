@@ -22,6 +22,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Detectar si estamos en modo offline (ruta especial)
+    const isOfflineMode = window.location.pathname.startsWith('/offline-theta');
+    
+    if (isOfflineMode) {
+      // En modo offline, no intentamos conectarnos a Supabase
+      setLoading(false);
+      return;
+    }
+
+    // Verificar si hay conexión a internet
+    if (!navigator.onLine) {
+      // Sin internet, marcamos como no cargando para no bloquear la UI
+      setLoading(false);
+      return;
+    }
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -31,12 +47,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // THEN check for existing session with timeout
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 3000)
+          )
+        ]);
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.warn('Session check failed (offline?):', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
 
     return () => subscription.unsubscribe();
   }, []);
