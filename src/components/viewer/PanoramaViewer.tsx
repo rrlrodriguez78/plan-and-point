@@ -473,8 +473,7 @@ export default function PanoramaViewer({
             cameraRef.current.fov = 120;
             cameraRef.current.updateProjectionMatrix();
             setCurrentZoom(120);
-            lon.current = 0;
-            lat.current = 0;
+            // ✅ Mantener orientación de cámara durante navegación
         }
 
         setLoadingError(null);
