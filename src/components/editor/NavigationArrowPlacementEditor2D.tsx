@@ -228,7 +228,8 @@ export function NavigationArrowPlacementEditor2D({
 
     // Modo colocar
     if (mode === 'place' && targetHotspot) {
-      const u = canvasX / canvas.width;
+      // OPCIÓN 2: Invertir 'u' para compensar diferencia entre vista 2D y 3D
+      const u = 1 - (canvasX / canvas.width);
       const v = canvasY / canvas.height;
       
       if (u < 0 || u > 1 || v < 0 || v > 1) {
@@ -264,7 +265,8 @@ export function NavigationArrowPlacementEditor2D({
 
     // Arrastrar punto
     if (draggedPoint && mode === 'drag') {
-      const u = canvasX / canvas.width;
+      // OPCIÓN 2: Invertir 'u' para compensar diferencia entre vista 2D y 3D
+      const u = 1 - (canvasX / canvas.width);
       const v = canvasY / canvas.height;
       
       if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {

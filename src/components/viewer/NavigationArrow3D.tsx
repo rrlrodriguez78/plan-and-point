@@ -29,8 +29,7 @@ export const NavigationArrow3D = ({
       
       // Convertir coordenadas esféricas a cartesianas
       const radius = 480; // un poco dentro de la esfera panorámica (500)
-      // Sumar 180° para compensar que la esfera está mirrored (scale.x = -1)
-      const theta = THREE.MathUtils.degToRad(point.theta + 180);
+      const theta = THREE.MathUtils.degToRad(point.theta);
       const phi = THREE.MathUtils.degToRad(point.phi);
       
       const x = radius * Math.sin(phi) * Math.cos(theta);
