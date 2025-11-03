@@ -6,6 +6,7 @@ interface NavigationArrow3DProps {
   navigationPoints: NavigationPoint[];
   scene: THREE.Scene;
   camera: THREE.Camera;
+  currentZoom: number;
   onPointClick: (targetHotspotId: string) => void;
 }
 
@@ -13,10 +14,15 @@ export const NavigationArrow3D = ({
   navigationPoints,
   scene,
   camera,
+  currentZoom,
   onPointClick
 }: NavigationArrow3DProps) => {
   const arrowGroupRef = useRef<THREE.Group | null>(null);
   const raycaster = useRef(new THREE.Raycaster());
+  const animationFrameRef = useRef<number>();
+  
+  // Calcular escala base según zoom (FOV 120 = grande, FOV 30 = pequeño)
+  const baseScale = 1.0 - ((currentZoom - 30) / (120 - 30)) * 0.65;
   
   useEffect(() => {
     if (!scene) return;
@@ -37,7 +43,7 @@ export const NavigationArrow3D = ({
       const y = radius * Math.cos(phi) + (point.height_offset || 0);
       const z = radius * Math.sin(phi) * Math.sin(theta);
       
-      // Crear geometría de flecha
+      // Crear geometría de flecha con nuevo diseño circular
       const arrowMesh = createArrowMesh(point.style);
       arrowMesh.position.set(x, y, z);
       
@@ -56,7 +62,7 @@ export const NavigationArrow3D = ({
       // Añadir sprite de texto (label)
       if (point.label) {
         const labelSprite = createTextSprite(point.label);
-        labelSprite.position.set(x, y + 30, z);
+        labelSprite.position.set(x, y + 40, z);
         labelSprite.userData = {
           targetHotspotId: point.to_hotspot_id,
           isLabel: true
@@ -75,6 +81,36 @@ export const NavigationArrow3D = ({
       }
     };
   }, [navigationPoints, scene]);
+  
+  // Animación de pulsación y escala según zoom
+  useEffect(() => {
+    if (!arrowGroupRef.current) return;
+    
+    const animate = () => {
+      if (!arrowGroupRef.current) return;
+      
+      const time = Date.now() * 0.001;
+      const pulseScale = 1 + Math.sin(time * 2) * 0.08; // Pulsación sutil ±8%
+      
+      arrowGroupRef.current.children.forEach((child) => {
+        if (child.userData.isNavigation) {
+          // Combinar escala base (zoom) con pulsación
+          const finalScale = baseScale * pulseScale;
+          child.scale.set(finalScale, finalScale, finalScale);
+        }
+      });
+      
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+    
+    animate();
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [baseScale]);
   
   // Animación de hover y pulsación
   useEffect(() => {
@@ -163,43 +199,83 @@ export const NavigationArrow3D = ({
   return null;
 };
 
-// Helper: crear mesh de flecha
+// Helper: crear mesh de flecha con diseño circular moderno
 function createArrowMesh(style?: NavigationPoint['style']) {
-  const color = style?.color || '#4F46E5';
+  const color = style?.color || '#FFFFFF';
   const size = style?.size || 1.0;
   
   const group = new THREE.Group();
   group.userData.isNavigation = true;
   
-  // Cono (punta)
-  const coneGeometry = new THREE.ConeGeometry(5 * size, 15 * size, 8);
-  const coneMaterial = new THREE.MeshBasicMaterial({ 
-    color,
+  // Círculo exterior (fondo con borde)
+  const outerCircleGeometry = new THREE.CircleGeometry(18 * size, 64);
+  const outerCircleMaterial = new THREE.MeshBasicMaterial({
+    color: '#FFFFFF',
     transparent: true,
-    opacity: 0.9
-  });
-  const cone = new THREE.Mesh(coneGeometry, coneMaterial);
-  cone.position.y = 10 * size;
-  cone.rotation.x = Math.PI;
-  
-  // Cilindro (cuerpo)
-  const cylinderGeometry = new THREE.CylinderGeometry(2 * size, 2 * size, 10 * size);
-  const cylinder = new THREE.Mesh(cylinderGeometry, coneMaterial);
-  cylinder.position.y = 0;
-  
-  // Círculo base (para mejor visibilidad)
-  const circleGeometry = new THREE.CircleGeometry(8 * size, 32);
-  const circleMaterial = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.5,
+    opacity: 0.25,
     side: THREE.DoubleSide
   });
-  const circle = new THREE.Mesh(circleGeometry, circleMaterial);
-  circle.position.y = -5 * size;
-  circle.rotation.x = Math.PI / 2;
+  const outerCircle = new THREE.Mesh(outerCircleGeometry, outerCircleMaterial);
+  outerCircle.rotation.x = Math.PI / 2;
   
-  group.add(cone, cylinder, circle);
+  // Círculo medio (fondo sólido)
+  const middleCircleGeometry = new THREE.CircleGeometry(16 * size, 64);
+  const middleCircleMaterial = new THREE.MeshBasicMaterial({
+    color: '#FFFFFF',
+    transparent: true,
+    opacity: 0.85,
+    side: THREE.DoubleSide
+  });
+  const middleCircle = new THREE.Mesh(middleCircleGeometry, middleCircleMaterial);
+  middleCircle.position.y = 0.5;
+  middleCircle.rotation.x = Math.PI / 2;
+  
+  // Anillo interior (borde decorativo)
+  const ringGeometry = new THREE.RingGeometry(12 * size, 14 * size, 64);
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    color: '#E5E5E5',
+    transparent: true,
+    opacity: 0.4,
+    side: THREE.DoubleSide
+  });
+  const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+  ring.position.y = 1;
+  ring.rotation.x = Math.PI / 2;
+  
+  // Flecha hacia arriba (chevron doble estilizado)
+  const arrowShape = new THREE.Shape();
+  const arrowSize = 6 * size;
+  
+  // Primera chevron
+  arrowShape.moveTo(-arrowSize, -2);
+  arrowShape.lineTo(0, -arrowSize - 2);
+  arrowShape.lineTo(arrowSize, -2);
+  arrowShape.lineTo(arrowSize - 1.5, -2);
+  arrowShape.lineTo(0, -arrowSize + 1);
+  arrowShape.lineTo(-arrowSize + 1.5, -2);
+  arrowShape.closePath();
+  
+  // Segunda chevron (más arriba)
+  arrowShape.moveTo(-arrowSize, 3);
+  arrowShape.lineTo(0, -arrowSize + 3);
+  arrowShape.lineTo(arrowSize, 3);
+  arrowShape.lineTo(arrowSize - 1.5, 3);
+  arrowShape.lineTo(0, -arrowSize + 6);
+  arrowShape.lineTo(-arrowSize + 1.5, 3);
+  arrowShape.closePath();
+  
+  const arrowGeometry = new THREE.ShapeGeometry(arrowShape);
+  const arrowMaterial = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.95,
+    side: THREE.DoubleSide
+  });
+  const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+  arrow.position.y = 2;
+  arrow.rotation.x = Math.PI / 2;
+  
+  group.add(outerCircle, middleCircle, ring, arrow);
   return group;
 }
 

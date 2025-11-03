@@ -580,6 +580,7 @@ export default function PanoramaViewer({
                 navigationPoints={navigationPoints}
                 scene={sceneRef.current}
                 camera={cameraRef.current}
+                currentZoom={currentZoom}
                 onPointClick={(targetHotspotId) => {
                   const targetHotspot = allHotspotsOnFloor.find(h => h.id === targetHotspotId);
                   if (targetHotspot) {
