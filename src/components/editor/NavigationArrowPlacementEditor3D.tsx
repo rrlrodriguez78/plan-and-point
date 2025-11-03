@@ -212,17 +212,17 @@ export function NavigationArrowPlacementEditor3D({
     }
     
     points.forEach(point => {
-      const u = point.u ?? 0.5;
-      const v = point.v ?? 0.5;
-      const spherical = uvToSpherical({ u, v });
+      // Usar directamente theta y phi de la base de datos (igual que NavigationArrow3D.tsx)
+      const theta = point.theta;
+      const phi = point.phi;
       
-      const arrowMesh = createArrowMesh(spherical.theta, spherical.phi, point.id === selectedPoint?.id);
+      const arrowMesh = createArrowMesh(theta, phi, point.id === selectedPoint?.id);
       arrowsGroupRef.current?.add(arrowMesh);
       
       if (point.label || point.target_hotspot?.title) {
         const textSprite = createTextSprite(point.label || point.target_hotspot?.title || '');
-        const thetaRad = THREE.MathUtils.degToRad(spherical.theta);
-        const phiRad = THREE.MathUtils.degToRad(spherical.phi);
+        const thetaRad = THREE.MathUtils.degToRad(theta);
+        const phiRad = THREE.MathUtils.degToRad(phi);
         const x = 480 * Math.sin(phiRad) * Math.cos(thetaRad);
         const y = 480 * Math.cos(phiRad);
         const z = 480 * Math.sin(phiRad) * Math.sin(thetaRad);
