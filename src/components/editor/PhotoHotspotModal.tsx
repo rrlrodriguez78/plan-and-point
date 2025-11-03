@@ -6,14 +6,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Info, Palette, MapPin, Home, Star, Heart, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Info, Palette, MapPin, Home, Star, Heart, Eye, Camera, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import PhotoManager from './PhotoManager';
+import { ThetaCameraConnector } from './ThetaCameraConnector';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useTranslation } from 'react-i18next';
 import { Hotspot } from '@/types/tour';
+import { useTenant } from '@/contexts/TenantContext';
 
-export type HotspotData = Omit<Hotspot, 'floor_plan_id' | 'created_at' | 'id'> & { id?: string };
+export type HotspotData = Omit<Hotspot, 'floor_plan_id' | 'created_at' | 'id'> & { 
+  id?: string;
+  tour_id?: string;
+};
 
 interface PhotoHotspotModalProps {
   isOpen: boolean;
@@ -31,8 +38,12 @@ export default function PhotoHotspotModal({
   mode,
 }: PhotoHotspotModalProps) {
   const { t } = useTranslation();
+  const { currentTenant } = useTenant();
   const [activeTab, setActiveTab] = useState('info');
+  const [photoSubTab, setPhotoSubTab] = useState<'upload' | 'theta'>('upload');
   const [saving, setSaving] = useState(false);
+  
+  const { pendingCount, refreshCount } = useOfflineSync(initialData?.id);
   
   const [formData, setFormData] = useState<HotspotData>(() => {
     if (initialData) {
@@ -278,15 +289,48 @@ export default function PhotoHotspotModal({
 
           <TabsContent value="panorama" className="space-y-4 mt-4">
             {initialData?.id ? (
-              <>
-                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg mb-4">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <p className="text-sm text-blue-600">
-                    Sube fotos normales o panorámicas planas (cualquier tamaño)
-                  </p>
-                </div>
-                <PhotoManager hotspotId={initialData.id} />
-              </>
+              <Tabs value={photoSubTab} onValueChange={(v) => setPhotoSubTab(v as 'upload' | 'theta')}>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="upload" className="gap-2">
+                    <Upload className="w-4 h-4" />
+                    Subir Fotos
+                    {pendingCount > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {pendingCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="theta" className="gap-2">
+                    <Camera className="w-4 h-4" />
+                    Theta Z1
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="upload">
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg mb-4">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <p className="text-sm text-blue-600">
+                      Sube fotos normales o panorámicas planas (cualquier tamaño)
+                    </p>
+                  </div>
+                  <PhotoManager hotspotId={initialData.id} />
+                </TabsContent>
+                
+                <TabsContent value="theta">
+                  {currentTenant?.tenant_id ? (
+                    <ThetaCameraConnector 
+                      hotspotId={initialData.id}
+                      tourId={initialData.tour_id || ''}
+                      tenantId={currentTenant.tenant_id}
+                      onPhotoSaved={refreshCount}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No se pudo cargar la información del tenant</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p className="text-sm">{t('hotspot.saveFirst')}</p>

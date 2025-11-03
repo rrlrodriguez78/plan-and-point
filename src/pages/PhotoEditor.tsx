@@ -964,7 +964,7 @@ const PhotoEditor = () => {
           setWasSaved(false);
         }}
         onSave={handleSaveHotspot}
-        initialData={editingHotspot || undefined}
+        initialData={editingHotspot ? { ...editingHotspot, tour_id: tour?.id } : undefined}
         mode={editingHotspot?.id ? 'edit' : 'create'}
       />
 
