@@ -34,6 +34,7 @@ export const NavigationArrowPlacementEditor = ({
   const [currentCaptureDate, setCurrentCaptureDate] = useState<string | null>(null);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [filteredPoints, setFilteredPoints] = useState<NavigationPoint[]>([]);
+  const [currentPanoramaUrl, setCurrentPanoramaUrl] = useState<string>(panoramaUrl);
 
   // Cargar fechas disponibles del hotspot
   useEffect(() => {
@@ -65,6 +66,28 @@ export const NavigationArrowPlacementEditor = ({
       setFilteredPoints(existingPoints);
     }
   }, [existingPoints, currentCaptureDate]);
+
+  // Cargar panorama correspondiente a la fecha seleccionada
+  useEffect(() => {
+    if (!currentCaptureDate || !hotspotId) return;
+
+    const loadPanoramaForDate = async () => {
+      const { data } = await supabase
+        .from('panorama_photos')
+        .select('photo_url')
+        .eq('hotspot_id', hotspotId)
+        .eq('capture_date', currentCaptureDate)
+        .order('display_order', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (data?.photo_url) {
+        setCurrentPanoramaUrl(data.photo_url);
+      }
+    };
+
+    loadPanoramaForDate();
+  }, [currentCaptureDate, hotspotId]);
 
   const handleSave = async () => {
     await onSave(existingPoints);
@@ -123,7 +146,7 @@ export const NavigationArrowPlacementEditor = ({
       {viewMode === '2d' ? (
         <NavigationArrowPlacementEditor2D
           hotspotId={hotspotId}
-          panoramaUrl={panoramaUrl}
+          panoramaUrl={currentPanoramaUrl}
           existingPoints={filteredPoints}
           availableTargets={availableTargets}
           currentCaptureDate={currentCaptureDate}
@@ -133,7 +156,7 @@ export const NavigationArrowPlacementEditor = ({
       ) : (
         <NavigationArrowPlacementEditor3D
           hotspotId={hotspotId}
-          panoramaUrl={panoramaUrl}
+          panoramaUrl={currentPanoramaUrl}
           existingPoints={filteredPoints}
           availableTargets={availableTargets}
           currentCaptureDate={currentCaptureDate}
