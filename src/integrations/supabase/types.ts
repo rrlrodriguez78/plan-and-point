@@ -55,6 +55,50 @@ export type Database = {
           },
         ]
       }
+      backup_destination_audit: {
+        Row: {
+          action: string
+          created_at: string | null
+          destination_id: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          tenant_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          destination_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          tenant_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          destination_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          tenant_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_destination_audit_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "backup_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_destinations: {
         Row: {
           auto_backup_enabled: boolean | null
@@ -71,6 +115,9 @@ export type Database = {
           is_active: boolean | null
           last_backup_at: string | null
           tenant_id: string
+          token_expires_at: string | null
+          token_last_refreshed_at: string | null
+          token_refresh_count: number | null
           updated_at: string | null
         }
         Insert: {
@@ -88,6 +135,9 @@ export type Database = {
           is_active?: boolean | null
           last_backup_at?: string | null
           tenant_id: string
+          token_expires_at?: string | null
+          token_last_refreshed_at?: string | null
+          token_refresh_count?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -105,6 +155,9 @@ export type Database = {
           is_active?: boolean | null
           last_backup_at?: string | null
           tenant_id?: string
+          token_expires_at?: string | null
+          token_last_refreshed_at?: string | null
+          token_refresh_count?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1905,6 +1958,7 @@ export type Database = {
         }[]
       }
       cleanup_expired_oauth_states: { Args: never; Returns: undefined }
+      cleanup_inactive_backup_destinations: { Args: never; Returns: number }
       cleanup_old_backup_jobs: { Args: never; Returns: number }
       cleanup_old_queue_items: { Args: never; Returns: number }
       cleanup_orphaned_backups: {
@@ -2066,6 +2120,10 @@ export type Database = {
         Returns: undefined
       }
       reset_queue_for_tour: { Args: { p_tour_id: string }; Returns: number }
+      revoke_cloud_storage_access: {
+        Args: { p_destination_id: string }
+        Returns: undefined
+      }
       run_backup_system_tests: {
         Args: never
         Returns: {
@@ -2093,6 +2151,10 @@ export type Database = {
           successful_backups: number
           test_type: string
         }[]
+      }
+      should_rotate_backup_tokens: {
+        Args: { p_destination_id: string }
+        Returns: boolean
       }
       suggest_hotspot_connections: {
         Args: { p_floor_plan_id: string; p_max_distance?: number }
