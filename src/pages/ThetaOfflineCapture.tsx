@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useThetaCamera } from '@/hooks/useThetaCamera';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
+import { OfflineQuickGuide } from '@/components/shared/OfflineQuickGuide';
 import { useIntelligentSync } from '@/hooks/useIntelligentSync';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
 import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
@@ -186,6 +187,9 @@ export default function ThetaOfflineCapture() {
             />
           </CardContent>
         </Card>
+
+        {/* Quick Guide */}
+        <OfflineQuickGuide variant="card" />
 
         {/* Tour Selection */}
         {cachedTours.length === 0 ? (

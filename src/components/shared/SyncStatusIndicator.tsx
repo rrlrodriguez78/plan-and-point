@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface SyncStatusIndicatorProps {
   isOnline: boolean;
@@ -10,6 +11,7 @@ interface SyncStatusIndicatorProps {
   currentOperation?: string | null;
   pendingCount?: number;
   variant?: 'compact' | 'detailed';
+  clickable?: boolean;
 }
 
 export function SyncStatusIndicator({
@@ -18,12 +20,28 @@ export function SyncStatusIndicator({
   syncProgress = 0,
   currentOperation,
   pendingCount = 0,
-  variant = 'compact'
+  variant = 'compact',
+  clickable = true,
 }: SyncStatusIndicatorProps) {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (clickable && variant === 'compact') {
+      navigate('/app/offline-cache');
+    }
+  };
   
   if (variant === 'compact') {
     return (
-      <div className="flex items-center gap-2">
+      <div 
+        className={cn(
+          "flex items-center gap-2",
+          clickable && "cursor-pointer transition-opacity hover:opacity-80"
+        )}
+        onClick={handleClick}
+        role={clickable ? "button" : undefined}
+        tabIndex={clickable ? 0 : undefined}
+      >
         {/* Connection status */}
         <Badge 
           variant={isOnline ? "default" : "secondary"}

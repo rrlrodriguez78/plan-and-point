@@ -14,6 +14,7 @@ import { TourTypeSelector } from '@/components/editor/TourTypeSelector';
 import { useTranslation } from 'react-i18next';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { CacheStatusWidget } from '@/components/shared/CacheStatusWidget';
 import { TourPasswordDialog } from '@/components/editor/TourPasswordDialog';
 
 interface Organization {
@@ -281,6 +282,13 @@ const Dashboard = () => {
             tourType={selectedTourType}
           />
         </div>
+
+        {/* Info Widgets */}
+        {tours.length > 0 && (
+          <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
+            <CacheStatusWidget />
+          </div>
+        )}
 
         {tours.length === 0 ? (
           <Card className="p-12 text-center">
