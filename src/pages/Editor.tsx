@@ -899,7 +899,12 @@ const Editor = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem 
+                            disabled={offlineMode}
                             onClick={() => {
+                              if (offlineMode) {
+                                toast.error('No disponible en modo offline');
+                                return;
+                              }
                               const newMoveMode = !moveMode;
                               setMoveMode(newMoveMode);
                               if (newMoveMode) {
@@ -917,7 +922,12 @@ const Editor = () => {
                             {moveMode ? 'Desactivar' : 'Activar'} Mover
                           </DropdownMenuItem>
                           <DropdownMenuItem 
+                            disabled={offlineMode}
                             onClick={() => {
+                              if (offlineMode) {
+                                toast.error('No disponible en modo offline');
+                                return;
+                              }
                               const newSelectMode = !selectMode;
                               setSelectMode(newSelectMode);
                               if (newSelectMode) {
