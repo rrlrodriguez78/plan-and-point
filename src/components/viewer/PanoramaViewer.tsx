@@ -121,6 +121,7 @@ export default function PanoramaViewer({
   const [isLoadingScene, setIsLoadingScene] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [navigationPoints, setNavigationPoints] = useState<NavigationPoint[]>([]);
+  const [destinationPhotos, setDestinationPhotos] = useState<Record<string, string>>({});
   const [fadeTransition, setFadeTransition] = useState(false);
 
   // Z-index dinámico para fullscreen
@@ -130,6 +131,7 @@ export default function PanoramaViewer({
   useEffect(() => {
     if (!activePhoto?.hotspot_id || tourType !== 'tour_360') {
       setNavigationPoints([]);
+      setDestinationPhotos({});
       return;
     }
     
@@ -146,6 +148,28 @@ export default function PanoramaViewer({
       
       if (!error && data) {
         setNavigationPoints(data as any);
+        
+        // Cargar las fotos de los hotspots de destino
+        const targetHotspotIds = data.map((p: any) => p.to_hotspot_id).filter(Boolean);
+        if (targetHotspotIds.length > 0) {
+          const { data: photosData } = await supabase
+            .from('panorama_photos')
+            .select('hotspot_id, photo_url, photo_url_mobile')
+            .in('hotspot_id', targetHotspotIds)
+            .order('created_at', { ascending: true });
+          
+          if (photosData) {
+            const photoMap: Record<string, string> = {};
+            photosData.forEach((photo: any) => {
+              if (!photoMap[photo.hotspot_id]) {
+                // Usar la primera foto de cada hotspot (priorizar mobile si existe)
+                photoMap[photo.hotspot_id] = photo.photo_url_mobile || photo.photo_url;
+              }
+            });
+            setDestinationPhotos(photoMap);
+            console.log('✅ Fotos de destino cargadas:', photoMap);
+          }
+        }
       }
     };
     
@@ -588,19 +612,9 @@ export default function PanoramaViewer({
                   }
                 }}
                 getPhotoPreview={(hotspotId) => {
-                  const hotspot = allHotspotsOnFloor.find(h => h.id === hotspotId);
-                  if (!hotspot) {
-                    console.log('❌ Preview: Hotspot no encontrado', hotspotId);
-                    return null;
-                  }
-                  const photo = photos.find(p => p.hotspot_id === hotspotId);
-                  if (!photo) {
-                    console.log('❌ Preview: Foto no encontrada para hotspot', hotspotId);
-                    return null;
-                  }
-                  const photoUrl = getPhotoUrl(photo);
-                  console.log('✅ Preview URL:', photoUrl, 'para hotspot:', hotspotId);
-                  return photoUrl;
+                  const photoUrl = destinationPhotos[hotspotId];
+                  console.log('🔍 Preview solicitado para:', hotspotId, '→', photoUrl || 'NO ENCONTRADA');
+                  return photoUrl || null;
                 }}
               />
             )}
