@@ -32,8 +32,8 @@ export const NavigationArrow3D = ({
       const theta = THREE.MathUtils.degToRad(point.theta);
       const phi = THREE.MathUtils.degToRad(point.phi);
       
-      // ✅ Compensar inversión de esfera (scale.x = -1) negando componente X
-      const x = -radius * Math.sin(phi) * Math.cos(theta);
+      // ✅ Conversión estándar esférica → cartesiana (la esfera ya maneja la inversión con scale)
+      const x = radius * Math.sin(phi) * Math.cos(theta);
       const y = radius * Math.cos(phi) + (point.height_offset || 0);
       const z = radius * Math.sin(phi) * Math.sin(theta);
       
