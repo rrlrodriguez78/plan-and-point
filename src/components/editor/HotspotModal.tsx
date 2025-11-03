@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Upload, Info, Palette, Camera, MapPin, Home, Star, Heart, Eye, Compass } from 'lucide-react';
+import { Info, Palette, MapPin, Home, Star, Heart, Eye, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import PanoramaManager from './PanoramaManager';
 import { NavigationPointsEditor } from './NavigationPointsEditor';
@@ -38,7 +38,6 @@ export default function HotspotModal({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('info');
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState<HotspotData>(() => {
     // Siempre priorizar initialData si existe
@@ -95,34 +94,6 @@ export default function HotspotModal({
     }
   };
 
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `hotspots/${initialData?.id || 'temp'}-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('tour-images')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('tour-images')
-        .getPublicUrl(fileName);
-
-      setFormData({ ...formData, media_url: publicUrl });
-      toast.success(t('hotspot.imageUploaded'));
-    } catch (error) {
-      console.error('Error uploading media:', error);
-      toast.error(t('hotspot.uploadError'));
-    } finally {
-      setUploading(false);
-    }
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -138,7 +109,13 @@ export default function HotspotModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${tourType === 'tour_360' ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          <TabsList className={`grid w-full ${
+            mode === 'create' 
+              ? 'grid-cols-2' 
+              : tourType === 'tour_360' 
+                ? 'grid-cols-4' 
+                : 'grid-cols-3'
+          }`}>
             <TabsTrigger value="info" className="gap-2">
               <Info className="w-4 h-4" />
               {t('hotspot.information')}
@@ -147,20 +124,18 @@ export default function HotspotModal({
               <Palette className="w-4 h-4" />
               {t('hotspot.style')}
             </TabsTrigger>
-            <TabsTrigger value="panorama" className="gap-2">
-              <Eye className="w-4 h-4" />
-              {t('hotspot.photos360')}
-            </TabsTrigger>
-            {tourType === 'tour_360' && (
+            {mode === 'edit' && (
+              <TabsTrigger value="panorama" className="gap-2">
+                <Eye className="w-4 h-4" />
+                {t('hotspot.photos360')}
+              </TabsTrigger>
+            )}
+            {mode === 'edit' && tourType === 'tour_360' && (
               <TabsTrigger value="navigation" className="gap-2">
                 <Compass className="w-4 h-4" />
                 {t('hotspot.navigation')}
               </TabsTrigger>
             )}
-            <TabsTrigger value="media" className="gap-2">
-              <Camera className="w-4 h-4" />
-              {t('hotspot.media')}
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
@@ -323,84 +298,44 @@ export default function HotspotModal({
             </div>
           </TabsContent>
 
-          <TabsContent value="panorama" className="space-y-4 mt-4">
-            {initialData?.id ? (
-              <PanoramaManager hotspotId={initialData.id} />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">{t('hotspot.saveFirst')}</p>
-              </div>
-            )}
-          </TabsContent>
+          {mode === 'edit' && (
+            <TabsContent value="panorama" className="space-y-4 mt-4">
+              {initialData?.id ? (
+                <PanoramaManager hotspotId={initialData.id} />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">{t('hotspot.saveFirst')}</p>
+                </div>
+              )}
+            </TabsContent>
+          )}
 
-          <TabsContent value="navigation" className="space-y-4 mt-4">
-            {initialData?.id && initialData.has_panorama && tourType === 'tour_360' ? (
-              <NavigationPointsEditor
-                hotspot={formData as Hotspot}
-                allHotspots={allHotspots}
-                onSave={() => {
-                  toast.success(t('hotspot.navigationUpdated'));
-                }}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Compass className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm font-medium mb-2">
-                  {t('hotspot.navigationUnavailable')}
-                </p>
-                <p className="text-xs">
-                  {tourType !== 'tour_360'
-                    ? t('hotspot.onlyFor360Tours')
-                    : !initialData?.id 
+          {mode === 'edit' && tourType === 'tour_360' && (
+            <TabsContent value="navigation" className="space-y-4 mt-4">
+              {initialData?.id && initialData.has_panorama ? (
+                <NavigationPointsEditor
+                  hotspot={formData as Hotspot}
+                  allHotspots={allHotspots}
+                  onSave={() => {
+                    toast.success(t('hotspot.navigationUpdated'));
+                  }}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Compass className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm font-medium mb-2">
+                    {t('hotspot.navigationUnavailable')}
+                  </p>
+                  <p className="text-xs">
+                    {!initialData?.id 
                       ? t('hotspot.saveFirstForNavigation')
                       : t('hotspot.addPanoramasFirst')
-                  }
-                </p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="media" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>{t('hotspot.media')}</Label>
-              <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                {formData.media_url ? (
-                  <div className="space-y-2">
-                    <img
-                      src={formData.media_url}
-                      alt="Preview"
-                      className="max-h-48 mx-auto rounded-lg"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData({ ...formData, media_url: undefined })}
-                    >
-                      {t('common.delete')}
-                    </Button>
-                  </div>
-                ) : (
-                  <label htmlFor="media-upload" className="cursor-pointer">
-                    <Upload className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {t('hotspot.uploadImage')}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('hotspot.formats')}
-                    </p>
-                    <input
-                      id="media-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleMediaUpload}
-                      disabled={uploading}
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
-          </TabsContent>
+                    }
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
 
         <div className="flex justify-end gap-2 mt-6">
