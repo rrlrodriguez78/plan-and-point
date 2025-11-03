@@ -21,8 +21,8 @@ export const NavigationArrow3D = ({
   const raycaster = useRef(new THREE.Raycaster());
   const animationFrameRef = useRef<number>();
   
-  // Calcular escala base según zoom (FOV 120 = grande, FOV 30 = pequeño)
-  const baseScale = 1.0 - ((currentZoom - 30) / (120 - 30)) * 0.65;
+  // Calcular escala base según zoom (FOV 120 = 0% zoom = grande, FOV 30 = 100% zoom = pequeño)
+  const baseScale = 0.35 + ((currentZoom - 30) / (120 - 30)) * 0.65;
   
   useEffect(() => {
     if (!scene) return;
@@ -243,22 +243,22 @@ function createArrowMesh(style?: NavigationPoint['style']) {
   const arrowShape = new THREE.Shape();
   const arrowSize = 6 * size;
   
-  // Primera chevron
-  arrowShape.moveTo(-arrowSize, 2);
-  arrowShape.lineTo(0, -arrowSize + 2);
-  arrowShape.lineTo(arrowSize, 2);
-  arrowShape.lineTo(arrowSize - 1.5, 2);
-  arrowShape.lineTo(0, -arrowSize + 5);
-  arrowShape.lineTo(-arrowSize + 1.5, 2);
+  // Primera chevron (apuntando hacia arriba)
+  arrowShape.moveTo(-arrowSize, -2);
+  arrowShape.lineTo(0, arrowSize - 2);
+  arrowShape.lineTo(arrowSize, -2);
+  arrowShape.lineTo(arrowSize - 1.5, -2);
+  arrowShape.lineTo(0, arrowSize - 5);
+  arrowShape.lineTo(-arrowSize + 1.5, -2);
   arrowShape.closePath();
   
-  // Segunda chevron (más arriba)
-  arrowShape.moveTo(-arrowSize, 7);
-  arrowShape.lineTo(0, -arrowSize + 7);
-  arrowShape.lineTo(arrowSize, 7);
-  arrowShape.lineTo(arrowSize - 1.5, 7);
-  arrowShape.lineTo(0, -arrowSize + 10);
-  arrowShape.lineTo(-arrowSize + 1.5, 7);
+  // Segunda chevron (más abajo, también apuntando hacia arriba)
+  arrowShape.moveTo(-arrowSize, -7);
+  arrowShape.lineTo(0, arrowSize - 7);
+  arrowShape.lineTo(arrowSize, -7);
+  arrowShape.lineTo(arrowSize - 1.5, -7);
+  arrowShape.lineTo(0, arrowSize - 10);
+  arrowShape.lineTo(-arrowSize + 1.5, -7);
   arrowShape.closePath();
   
   const arrowGeometry = new THREE.ShapeGeometry(arrowShape);
