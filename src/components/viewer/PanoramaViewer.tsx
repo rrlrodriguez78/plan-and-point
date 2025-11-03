@@ -555,7 +555,7 @@ export default function PanoramaViewer({
     }, 300);
   };
 
-  // Animación cinematográfica para navegación 3D con dolly zoom
+  // Animación cinematográfica para navegación 3D
   const animateTransition = useCallback(async (navigationPoint: NavigationPoint, targetHotspot: Hotspot) => {
     if (isTransitioning || !cameraRef.current) return;
     
@@ -587,41 +587,25 @@ export default function PanoramaViewer({
         })
       ]);
       
-      // Fase 2: Zoom IN hacia el destino con dolly zoom (400ms)
+      // Fase 2: Zoom IN hacia el destino manteniendo orientación (400ms)
       await new Promise<void>((resolve) => {
-        const startFov = cameraRef.current!.fov;
-        const targetFov = 30;
-        const startTime = Date.now();
-        const duration = 400;
-
-        const animateZoom = () => {
-          const elapsed = Date.now() - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          
-          // Suavizar la animación
-          const easeProgress = 1 - Math.pow(1 - progress, 3);
-          
-          // Interpolar FOV
-          const currentFov = startFov + (targetFov - startFov) * easeProgress;
-          
-          if (cameraRef.current) {
-            // MANTENER la orientación hacia la flecha durante TODO el zoom
-            lon.current = navigationPoint.theta;
-            lat.current = navigationPoint.phi;
-            
-            cameraRef.current.fov = currentFov;
-            cameraRef.current.updateProjectionMatrix();
-            setCurrentZoom(currentFov);
-          }
-
-          if (progress < 1) {
-            requestAnimationFrame(animateZoom);
-          } else {
-            resolve();
-          }
-        };
-
-        animateZoom();
+        const targetTheta = navigationPoint.theta;
+        const targetPhi = navigationPoint.phi;
+        
+        animateValue(startFov, 30, 400, 
+          (value) => { 
+            if (cameraRef.current) {
+              // Mantener la orientación hacia la flecha durante TODO el zoom
+              lon.current = targetTheta;
+              lat.current = targetPhi;
+              
+              cameraRef.current.fov = value;
+              cameraRef.current.updateProjectionMatrix();
+              setCurrentZoom(value);
+            }
+          },
+          resolve
+        );
       });
       
       // Fase 3: Fade out, cambio de foto, fade in (400ms total)
@@ -639,37 +623,19 @@ export default function PanoramaViewer({
       
       // Fase 4: Zoom OUT manteniendo la dirección de entrada (400ms)
       await new Promise<void>((resolve) => {
-        const startFov = 30;
-        const targetFov = 120;
-        const startTime = Date.now();
-        const duration = 400;
-
-        const animateZoomOut = () => {
-          const elapsed = Date.now() - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          
-          const easeProgress = 1 - Math.pow(1 - progress, 3);
-          const currentFov = startFov + (targetFov - startFov) * easeProgress;
-          
-          if (cameraRef.current) {
-            // Mantener la dirección de entrada durante el zoom out
-            lon.current = entryTheta;
-            lat.current = entryPhi;
-            
-            cameraRef.current.fov = currentFov;
-            cameraRef.current.updateProjectionMatrix();
-            setCurrentZoom(currentFov);
-          }
-
-          if (progress < 1) {
-            requestAnimationFrame(animateZoomOut);
-          } else {
-            resolve();
-          }
-        };
-
-        animateZoomOut();
+        animateValue(30, 120, 400, 
+          (value) => { 
+            if (cameraRef.current) {
+              cameraRef.current.fov = value;
+              cameraRef.current.updateProjectionMatrix();
+              setCurrentZoom(value);
+            }
+          },
+          resolve
+        );
       });
+      
+      // La cámara se queda mirando hacia donde entró (sin reorientar a neutral)
       
     } catch (error) {
       console.error('Error during transition:', error);
