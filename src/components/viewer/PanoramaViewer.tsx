@@ -589,9 +589,18 @@ export default function PanoramaViewer({
                 }}
                 getPhotoPreview={(hotspotId) => {
                   const hotspot = allHotspotsOnFloor.find(h => h.id === hotspotId);
-                  if (!hotspot) return null;
+                  if (!hotspot) {
+                    console.log('❌ Preview: Hotspot no encontrado', hotspotId);
+                    return null;
+                  }
                   const photo = photos.find(p => p.hotspot_id === hotspotId);
-                  return photo ? getPhotoUrl(photo) : null;
+                  if (!photo) {
+                    console.log('❌ Preview: Foto no encontrada para hotspot', hotspotId);
+                    return null;
+                  }
+                  const photoUrl = getPhotoUrl(photo);
+                  console.log('✅ Preview URL:', photoUrl, 'para hotspot:', hotspotId);
+                  return photoUrl;
                 }}
               />
             )}
