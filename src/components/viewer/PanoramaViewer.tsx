@@ -587,11 +587,18 @@ export default function PanoramaViewer({
         })
       ]);
       
-      // Fase 2: Zoom IN hacia el destino (400ms)
+      // Fase 2: Zoom IN hacia el destino manteniendo orientación (400ms)
       await new Promise<void>((resolve) => {
+        const targetTheta = navigationPoint.theta;
+        const targetPhi = navigationPoint.phi;
+        
         animateValue(startFov, 30, 400, 
           (value) => { 
             if (cameraRef.current) {
+              // Mantener la orientación hacia la flecha durante TODO el zoom
+              lon.current = targetTheta;
+              lat.current = targetPhi;
+              
               cameraRef.current.fov = value;
               cameraRef.current.updateProjectionMatrix();
               setCurrentZoom(value);
