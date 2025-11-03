@@ -9,6 +9,7 @@ import { UserSettingsProvider } from "./contexts/UserSettingsContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import { A11ySkipLink } from "./components/A11ySkipLink";
 import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
+import { NetworkStatusBanner } from "./components/shared/NetworkStatusBanner";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
@@ -47,6 +48,7 @@ const App = () => (
             <TenantProvider>
               <UserSettingsProvider>
                 <PWAUpdatePrompt />
+                <NetworkStatusBanner />
                 <main id="main-content">
                   <Routes>
                   {/* Public routes */}

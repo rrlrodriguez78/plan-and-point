@@ -9,6 +9,9 @@ interface SyncStatus {
   pendingCount: number;
   lastSyncAt: Date | null;
   error: string | null;
+  currentlySyncing: number;
+  successCount: number;
+  errorCount: number;
 }
 
 export const useOfflineSync = (hotspotId?: string) => {
@@ -17,6 +20,9 @@ export const useOfflineSync = (hotspotId?: string) => {
     pendingCount: 0,
     lastSyncAt: null,
     error: null,
+    currentlySyncing: 0,
+    successCount: 0,
+    errorCount: 0,
   });
 
   const syncInProgressRef = useRef(false);
@@ -78,14 +84,22 @@ export const useOfflineSync = (hotspotId?: string) => {
       }
 
       console.log(`Sincronizando ${pendingPhotos.length} fotos pendientes...`);
-      toast.info(`Sincronizando ${pendingPhotos.length} foto(s)...`, { duration: 3000 });
-
+      
       let successCount = 0;
       let errorCount = 0;
+      
+      // Limitar a 3 fotos concurrentes
+      const MAX_CONCURRENT = 3;
+      const chunks: PendingPhoto[][] = [];
+      for (let i = 0; i < pendingPhotos.length; i += MAX_CONCURRENT) {
+        chunks.push(pendingPhotos.slice(i, i + MAX_CONCURRENT));
+      }
 
-      for (const photo of pendingPhotos) {
-        try {
-          await offlineStorage.updatePhotoStatus(photo.id, 'syncing');
+      for (const chunk of chunks) {
+        const chunkPromises = chunk.map(async (photo) => {
+          try {
+            setStatus(prev => ({ ...prev, currentlySyncing: prev.currentlySyncing + 1 }));
+            await offlineStorage.updatePhotoStatus(photo.id, 'syncing');
 
           // 1. Convertir Blob a File
           const file = new File([photo.blob], photo.filename, { type: photo.blob.type });
@@ -180,19 +194,26 @@ export const useOfflineSync = (hotspotId?: string) => {
             .eq('id', photo.hotspotId);
 
           // 10. Marcar como sincronizada y eliminar
-          await offlineStorage.updatePhotoStatus(photo.id, 'synced');
-          await offlineStorage.deletePhoto(photo.id);
+            await offlineStorage.updatePhotoStatus(photo.id, 'synced');
+            await offlineStorage.deletePhoto(photo.id);
 
-          successCount++;
-        } catch (error: any) {
-          console.error(`Error sincronizando foto ${photo.id}:`, error);
-          await offlineStorage.updatePhotoStatus(
-            photo.id,
-            'error',
-            error.message || 'Error desconocido'
-          );
-          errorCount++;
-        }
+            successCount++;
+            setStatus(prev => ({ ...prev, successCount: prev.successCount + 1 }));
+          } catch (error: any) {
+            console.error(`Error sincronizando foto ${photo.id}:`, error);
+            await offlineStorage.updatePhotoStatus(
+              photo.id,
+              'error',
+              error.message || 'Error desconocido'
+            );
+            errorCount++;
+            setStatus(prev => ({ ...prev, errorCount: prev.errorCount + 1 }));
+          } finally {
+            setStatus(prev => ({ ...prev, currentlySyncing: prev.currentlySyncing - 1 }));
+          }
+        });
+
+        await Promise.all(chunkPromises);
       }
 
       // Mostrar resultado
