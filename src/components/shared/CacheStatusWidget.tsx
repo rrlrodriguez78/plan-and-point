@@ -3,13 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { HardDrive, ArrowRight, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { HardDrive, ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react';
+import { useResourceMonitor } from '@/hooks/useResourceMonitor';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function CacheStatusWidget() {
   const navigate = useNavigate();
+  const { 
+    cacheSize, 
+    cacheUsagePercentage, 
+    cachedToursCount, 
+    isNearLimit, 
+    isAtLimit,
+    isLoading: statsLoading,
+    refresh 
+  } = useResourceMonitor(10000); // Refresh cada 10s
+  
   const [cacheInfo, setCacheInfo] = useState({
     toursCount: 0,
     totalSize: 0,
@@ -53,23 +65,18 @@ export function CacheStatusWidget() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const getStoragePercentage = () => {
-    const maxStorage = 50 * 1024 * 1024; // 50MB limit
-    return Math.min((cacheInfo.totalSize / maxStorage) * 100, 100);
-  };
-
   const handleCleanExpired = async () => {
     try {
       await tourOfflineCache.cleanExpiredTours();
       toast.success('Tours expirados eliminados');
-      await loadCacheInfo();
+      await Promise.all([loadCacheInfo(), refresh()]);
     } catch (error) {
       console.error('Error cleaning expired tours:', error);
       toast.error('Error al limpiar caché');
     }
   };
 
-  if (isLoading) {
+  if (isLoading || statsLoading) {
     return (
       <Card>
         <CardContent className="pt-6 flex items-center justify-center h-48">
@@ -86,6 +93,18 @@ export function CacheStatusWidget() {
           <div className="flex items-center gap-2">
             <HardDrive className="w-5 h-5" />
             Caché Offline
+            {isAtLimit && (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Lleno
+              </Badge>
+            )}
+            {isNearLimit && !isAtLimit && (
+              <Badge variant="secondary" className="gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Casi lleno
+              </Badge>
+            )}
           </div>
           {cacheInfo.toursCount > 0 && (
             <Badge variant="secondary">{cacheInfo.toursCount}</Badge>
@@ -93,6 +112,17 @@ export function CacheStatusWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {(isNearLimit || isAtLimit) && (
+          <Alert variant={isAtLimit ? "destructive" : "default"}>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {isAtLimit 
+                ? 'Caché lleno. Elimina tours antiguos para liberar espacio.'
+                : 'Caché cerca del límite. Considera limpiar tours antiguos.'
+              }
+            </AlertDescription>
+          </Alert>
+        )}
         {cacheInfo.toursCount === 0 ? (
           <div className="text-center py-6">
             <HardDrive className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
@@ -112,9 +142,16 @@ export function CacheStatusWidget() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Espacio usado</span>
-                <span className="font-semibold">{formatBytes(cacheInfo.totalSize)}</span>
+                <span className="font-semibold">{formatBytes(cacheSize)}</span>
               </div>
-              <Progress value={getStoragePercentage()} className="h-2" />
+              <Progress 
+                value={cacheUsagePercentage} 
+                className={`h-2 ${isAtLimit ? '[&>div]:bg-destructive' : isNearLimit ? '[&>div]:bg-yellow-500' : ''}`} 
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{Math.round(cacheUsagePercentage)}% usado</span>
+                <span>Límite: 100MB</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

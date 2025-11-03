@@ -8,6 +8,7 @@ import { ThemeProvider } from "./components/contexts/ThemeContext";
 import { UserSettingsProvider } from "./contexts/UserSettingsContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import { useOfflineRedirect } from "./hooks/useOfflineRedirect";
+import { useAutoCleanup } from "./hooks/useAutoCleanup";
 import { A11ySkipLink } from "./components/A11ySkipLink";
 import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import { NetworkStatusBanner } from "./components/shared/NetworkStatusBanner";
@@ -42,6 +43,7 @@ const queryClient = new QueryClient();
 // Componente interno que usa el hook de redirección offline
 const AppRoutes = () => {
   useOfflineRedirect();
+  useAutoCleanup({ enabled: true, interval: 30 }); // Limpieza cada 30 min
   
   return (
     <main id="main-content">

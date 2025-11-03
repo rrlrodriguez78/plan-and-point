@@ -38,24 +38,35 @@ interface CachedTourInfo {
   tour: Tour;
   floorPlans: FloorPlan[];
   hotspots: Hotspot[];
+  floorPlanImages: Map<string, Blob>;
   cachedAt: Date;
   expiresAt: Date;
   imagesCount: number;
+  size: number;
 }
+
+import { useResourceMonitor } from '@/hooks/useResourceMonitor';
 
 export default function OfflineCacheManager() {
   const navigate = useNavigate();
   const [cachedTours, setCachedTours] = useState<CachedTourInfo[]>([]);
-  const [totalCacheSize, setTotalCacheSize] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tourToDelete, setTourToDelete] = useState<string | null>(null);
+  
+  const { 
+    cacheSize, 
+    cacheUsagePercentage, 
+    isNearLimit, 
+    isAtLimit,
+    limits,
+    refresh: refreshResourceStats 
+  } = useResourceMonitor(5000);
 
   const loadCacheData = async () => {
     setIsLoading(true);
     try {
       const tours = await tourOfflineCache.getAllCachedTours();
-      const size = await tourOfflineCache.getCacheSize();
       
       const toursInfo: CachedTourInfo[] = tours.map(cached => ({
         ...cached,
@@ -63,7 +74,7 @@ export default function OfflineCacheManager() {
       }));
 
       setCachedTours(toursInfo);
-      setTotalCacheSize(size);
+      await refreshResourceStats();
     } catch (error) {
       console.error('Error loading cache data:', error);
       toast.error('Error al cargar datos de caché');
@@ -130,11 +141,6 @@ export default function OfflineCacheManager() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const getStoragePercentage = () => {
-    const maxStorage = 50 * 1024 * 1024; // 50MB como límite sugerido
-    return Math.min((totalCacheSize / maxStorage) * 100, 100);
-  };
-
   const isExpiringSoon = (expiresAt: Date) => {
     const daysUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return daysUntilExpiry <= 1;
@@ -189,23 +195,52 @@ export default function OfflineCacheManager() {
             <CardTitle className="flex items-center gap-2">
               <HardDrive className="w-5 h-5" />
               Espacio de Almacenamiento
+              {isAtLimit && (
+                <Badge variant="destructive">Lleno</Badge>
+              )}
+              {isNearLimit && !isAtLimit && (
+                <Badge variant="secondary">Casi lleno</Badge>
+              )}
             </CardTitle>
             <CardDescription>
-              Uso actual del caché local
+              Uso actual del caché local ({Math.round(cacheUsagePercentage)}% usado)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {(isNearLimit || isAtLimit) && (
+              <Alert variant={isAtLimit ? "destructive" : "default"}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {isAtLimit 
+                    ? 'Caché lleno. Elimina tours para liberar espacio o se eliminarán automáticamente los más antiguos.'
+                    : 'Caché cerca del límite. Se recomienda limpiar tours antiguos para evitar eliminaciones automáticas.'
+                  }
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Espacio usado</span>
-              <span className="text-2xl font-bold">{formatBytes(totalCacheSize)}</span>
+              <span className="text-2xl font-bold">{formatBytes(cacheSize)}</span>
             </div>
             
-            <Progress value={getStoragePercentage()} className="h-3" />
+            <Progress 
+              value={cacheUsagePercentage} 
+              className={`h-3 ${isAtLimit ? '[&>div]:bg-destructive' : isNearLimit ? '[&>div]:bg-yellow-500' : ''}`}
+            />
+            
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Límite: {formatBytes(limits.maxCacheSize)}</span>
+              <span>Disponible: {formatBytes(limits.maxCacheSize - cacheSize)}</span>
+            </div>
             
             <div className="grid grid-cols-3 gap-4 pt-2">
               <div className="text-center p-3 bg-muted rounded-lg">
                 <div className="text-2xl font-bold">{cachedTours.length}</div>
                 <div className="text-sm text-muted-foreground">Tours</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Máx: {limits.maxTours}
+                </div>
               </div>
               <div className="text-center p-3 bg-muted rounded-lg">
                 <div className="text-2xl font-bold">
@@ -220,15 +255,6 @@ export default function OfflineCacheManager() {
                 <div className="text-sm text-muted-foreground">Imágenes</div>
               </div>
             </div>
-
-            {getStoragePercentage() > 80 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  El caché está cerca de su límite. Considera eliminar tours que no uses.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
@@ -278,7 +304,11 @@ export default function OfflineCacheManager() {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <HardDrive className="w-4 h-4" />
+                            <span>{formatBytes(cachedTour.size)}</span>
+                          </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Layers className="w-4 h-4" />
                             <span>{cachedTour.floorPlans.length} planos</span>
