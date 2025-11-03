@@ -7,7 +7,8 @@ import { Wifi, WifiOff, Camera, CheckCircle2, Loader2, Battery, RefreshCw, MapPi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useThetaCamera } from '@/hooks/useThetaCamera';
 import { offlineStorage } from '@/utils/offlineStorage';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
+import { useIntelligentSync } from '@/hooks/useIntelligentSync';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
 import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import { toast } from 'sonner';
@@ -27,11 +28,12 @@ export default function ThetaOfflineCapture() {
   const { 
     isOnline, 
     isSyncing: syncInProgress,
-    pendingCount,
-    successCount,
-    syncNow, 
-    refreshCount 
-  } = useOfflineSync();
+    syncProgress,
+    currentOperation,
+    pendingPhotosCount: pendingCount,
+    syncPhotos: syncNow, 
+    refreshCounts: refreshCount 
+  } = useIntelligentSync({ autoSync: true });
   
   const [captureCount, setCaptureCount] = useState(0);
   const [lastPhotoPreview, setLastPhotoPreview] = useState<string | null>(null);
@@ -168,15 +170,21 @@ export default function ThetaOfflineCapture() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Modo Offline - Theta Z1</CardTitle>
-              <Badge variant={isOnline ? "default" : "destructive"}>
-                {isOnline ? <Wifi className="w-4 h-4 mr-1" /> : <WifiOff className="w-4 h-4 mr-1" />}
-                {isOnline ? 'Online' : 'Offline'}
-              </Badge>
             </div>
             <CardDescription>
               Captura fotos 360° sin conexión a internet
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <SyncStatusIndicator 
+              isOnline={isOnline}
+              isSyncing={syncInProgress}
+              syncProgress={syncProgress}
+              currentOperation={currentOperation}
+              pendingCount={pendingCount}
+              variant="detailed"
+            />
+          </CardContent>
         </Card>
 
         {/* Tour Selection */}
@@ -424,7 +432,7 @@ export default function ThetaOfflineCapture() {
                 {syncInProgress ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sincronizando... {successCount}/{pendingCount}
+                    {currentOperation || 'Sincronizando...'} ({syncProgress}%)
                   </>
                 ) : (
                   <>

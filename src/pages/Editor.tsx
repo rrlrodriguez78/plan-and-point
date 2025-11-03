@@ -51,7 +51,9 @@ import { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import { useBulkHotspotCreation } from '@/hooks/useBulkHotspotCreation';
 import type { Match } from '@/utils/photoMatcher';
 import { cn } from '@/lib/utils';
+import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
+import { useIntelligentSync } from '@/hooks/useIntelligentSync';
 
 const Editor = () => {
   const { id } = useParams();
@@ -85,8 +87,17 @@ const Editor = () => {
   // Offline mode
   const [offlineMode, setOfflineMode] = useState(false);
   const [isTourCached, setIsTourCached] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isPreparingOffline, setIsPreparingOffline] = useState(false);
+  
+  // Intelligent sync
+  const { 
+    isOnline, 
+    isSyncing, 
+    syncProgress, 
+    currentOperation,
+    pendingPhotosCount,
+    syncNow 
+  } = useIntelligentSync({ autoSync: true });
   
   // Auto-save
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -121,26 +132,17 @@ const Editor = () => {
     }
   }, [user, id]);
 
-  // Monitor online/offline status
+  // Sync notification with progress
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      toast.success('🌐 Conexión restaurada');
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast.warning('📴 Sin conexión - Modo offline activo');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+    if (isSyncing && currentOperation) {
+      toast.loading(`${currentOperation} (${syncProgress}%)`, {
+        id: 'sync-progress',
+        duration: Infinity,
+      });
+    } else {
+      toast.dismiss('sync-progress');
+    }
+  }, [isSyncing, currentOperation, syncProgress]);
 
   // Check if tour is cached on mount
   useEffect(() => {
@@ -750,18 +752,15 @@ const Editor = () => {
           </div>
 
           <div className="flex gap-2 items-center">
-            {/* Online/Offline indicator */}
-            {isOnline ? (
-              <Badge variant="outline" className="gap-1">
-                <Wifi className="w-3 h-3" />
-                Online
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="gap-1">
-                <WifiOff className="w-3 h-3" />
-                Offline
-              </Badge>
-            )}
+            {/* Sync Status Indicator */}
+            <SyncStatusIndicator 
+              isOnline={isOnline}
+              isSyncing={isSyncing}
+              syncProgress={syncProgress}
+              currentOperation={currentOperation}
+              pendingCount={pendingPhotosCount}
+              variant="compact"
+            />
 
             {/* Offline cache indicator */}
             {isTourCached && (
