@@ -70,6 +70,7 @@ export interface NavigationPoint {
   label?: string;
   is_active: boolean;
   display_order?: number;
+  capture_date?: string;
   created_at?: string;
   
   // Datos del hotspot destino (joined data)

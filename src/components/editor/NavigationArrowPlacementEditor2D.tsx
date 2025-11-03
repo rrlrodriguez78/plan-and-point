@@ -13,6 +13,7 @@ interface NavigationArrowPlacementEditor2DProps {
   panoramaUrl: string;
   existingPoints: NavigationPoint[];
   availableTargets: Array<{ id: string; title: string }>;
+  currentCaptureDate: string | null;
   onSave?: () => void;
   onToggle3D?: () => void;
 }
@@ -36,6 +37,7 @@ export function NavigationArrowPlacementEditor2D({
   panoramaUrl,
   existingPoints,
   availableTargets,
+  currentCaptureDate,
   onSave,
   onToggle3D
 }: NavigationArrowPlacementEditor2DProps) {
@@ -295,6 +297,11 @@ export function NavigationArrowPlacementEditor2D({
       return;
     }
 
+    if (!currentCaptureDate) {
+      toast.error('No hay fecha seleccionada');
+      return;
+    }
+
     setLoading(true);
     try {
       const target = availableTargets.find(t => t.id === targetHotspot);
@@ -308,13 +315,14 @@ export function NavigationArrowPlacementEditor2D({
           v,
           theta,
           phi,
+          capture_date: currentCaptureDate,
           label: target?.title,
           is_active: true
         });
 
       if (error) throw error;
 
-      toast.success('✅ Flecha colocada con sistema UV');
+      toast.success(`✅ Flecha colocada para ${currentCaptureDate}`);
       onSave?.();
       setMode('view');
       setTargetHotspot('');

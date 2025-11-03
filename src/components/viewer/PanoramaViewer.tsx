@@ -149,7 +149,7 @@ export default function PanoramaViewer({
     }
     
     const fetchNavigationPoints = async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('hotspot_navigation_points')
         .select(`
           *,
@@ -158,6 +158,13 @@ export default function PanoramaViewer({
         .eq('from_hotspot_id', activePhoto.hotspot_id)
         .eq('is_active', true)
         .order('display_order');
+      
+      // Filtrar por fecha si está disponible
+      if (currentCaptureDate) {
+        query = query.eq('capture_date', currentCaptureDate);
+      }
+      
+      const { data, error } = await query;
       
       if (!error && data) {
         setNavigationPoints(data as any);
@@ -187,7 +194,7 @@ export default function PanoramaViewer({
     };
     
     fetchNavigationPoints();
-  }, [activePhoto?.hotspot_id, tourType]);
+  }, [activePhoto?.hotspot_id, currentCaptureDate, tourType]);
 
   // Cleanup al desmontar el componente (evita memory leaks en sesiones largas)
   useEffect(() => {

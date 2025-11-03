@@ -833,6 +833,7 @@ export type Database = {
       }
       hotspot_navigation_points: {
         Row: {
+          capture_date: string | null
           created_at: string | null
           display_order: number | null
           from_hotspot_id: string
@@ -848,6 +849,7 @@ export type Database = {
           v: number | null
         }
         Insert: {
+          capture_date?: string | null
           created_at?: string | null
           display_order?: number | null
           from_hotspot_id: string
@@ -863,6 +865,7 @@ export type Database = {
           v?: number | null
         }
         Update: {
+          capture_date?: string | null
           created_at?: string | null
           display_order?: number | null
           from_hotspot_id?: string
