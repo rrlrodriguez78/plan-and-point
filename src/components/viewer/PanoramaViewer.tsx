@@ -567,11 +567,11 @@ export default function PanoramaViewer({
       // ✅ SOLUCIÓN SIMPLE: ELIMINAR LA ROTACIÓN INICIAL
       // El usuario YA está viendo la flecha, no mover la cámara
       
-      // Fase 1: Zoom IN directo hacia donde ya estamos mirando (400ms)
+      // Fase 1: Zoom IN directo hacia donde ya estamos mirando (800ms)
       await new Promise<void>((resolve) => {
         const targetFov = 30;
         const startTime = Date.now();
-        const duration = 400;
+        const duration = 800;
 
         const animateZoom = () => {
           const elapsed = Date.now() - startTime;
