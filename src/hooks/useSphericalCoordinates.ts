@@ -174,11 +174,11 @@ export const useSphericalCoordinates = () => {
    * v: 0 (arriba) → 1 (abajo) = phi: 0° → 180°
    */
   const uvToSpherical = useCallback((uv: UVCoordinates): SphericalCoordinates => {
-    // Invertir theta para compensar scale(-1, 1, 1) de la esfera
-    // u = 0 (izquierda) → theta = +180°
+    // OPCIÓN 1: Canvas invertido, theta directo
+    // u = 0 (izquierda) → theta = -180°
     // u = 0.5 (centro) → theta = 0°
-    // u = 1 (derecha) → theta = -180°
-    const theta = -(uv.u - 0.5) * 360; // Invertido para match con esfera mirrored
+    // u = 1 (derecha) → theta = +180°
+    const theta = (uv.u - 0.5) * 360; // Directo porque canvas ya está invertido
     const phi = uv.v * 180; // 0 to 180 (sin cambios)
     
     console.log('🔄 [uvToSpherical]', {

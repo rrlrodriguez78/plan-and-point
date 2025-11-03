@@ -125,8 +125,11 @@ export function NavigationArrowPlacementEditor2D({
       canvas.height = (container.clientWidth * (zoom / 100)) / 2; // Ratio 2:1 para equirectangular
     }
 
-    // Dibujar imagen
-    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    // ✅ OPCIÓN 1: Invertir canvas horizontalmente para alinear vista 2D con 3D
+    ctx.save(); // Guardar estado
+    ctx.scale(-1, 1); // Invertir eje X
+    ctx.drawImage(image, -canvas.width, 0, canvas.width, canvas.height); // Dibujar invertido
+    ctx.restore(); // Restaurar estado para dibujar flechas normalmente
 
     // Dibujar grid
     if (showGrid) {
@@ -228,8 +231,7 @@ export function NavigationArrowPlacementEditor2D({
 
     // Modo colocar
     if (mode === 'place' && targetHotspot) {
-      // OPCIÓN 2: Invertir 'u' para compensar diferencia entre vista 2D y 3D
-      const u = 1 - (canvasX / canvas.width);
+      const u = canvasX / canvas.width;
       const v = canvasY / canvas.height;
       
       if (u < 0 || u > 1 || v < 0 || v > 1) {
@@ -265,8 +267,7 @@ export function NavigationArrowPlacementEditor2D({
 
     // Arrastrar punto
     if (draggedPoint && mode === 'drag') {
-      // OPCIÓN 2: Invertir 'u' para compensar diferencia entre vista 2D y 3D
-      const u = 1 - (canvasX / canvas.width);
+      const u = canvasX / canvas.width;
       const v = canvasY / canvas.height;
       
       if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
