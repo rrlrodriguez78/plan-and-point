@@ -144,16 +144,10 @@ export const GlobalHotspotList = ({
                             <h3 className="font-semibold truncate">
                               {hotspot.title}
                             </h3>
-                            {hotspot.has_panorama && (
+                            {hotspot.panorama_count && hotspot.panorama_count > 0 && (
                               <Badge variant="secondary" className="text-xs">
                                 <Maximize2 className="w-3 h-3 mr-1" />
-                                360°
-                              </Badge>
-                            )}
-                            {hotspot.media_url && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Image className="w-3 h-3 mr-1" />
-                                Media
+                                {hotspot.panorama_count} {hotspot.panorama_count === 1 ? 'foto' : 'fotos'}
                               </Badge>
                             )}
                           </div>

@@ -14,7 +14,7 @@ interface Hotspot {
   id: string;
   title: string;
   description?: string;
-  media_url?: string;
+  first_photo_url?: string;
 }
 
 interface HotspotModalProps {
@@ -159,10 +159,10 @@ export const HotspotModal = ({
           )}
 
           {/* Media */}
-          {hotspot.media_url ? (
+          {hotspot.first_photo_url ? (
             <div className="rounded-lg overflow-hidden mb-4">
               <img
-                src={hotspot.media_url}
+                src={hotspot.first_photo_url}
                 alt={hotspot.title}
                 className="w-full h-auto"
               />

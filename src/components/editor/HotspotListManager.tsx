@@ -118,9 +118,10 @@ export default function HotspotListManager({
                           <MapPin className="w-3 h-3 mr-1" />
                           X: {Math.round(hotspot.x_position)}, Y: {Math.round(hotspot.y_position)}
                         </Badge>
-                        {hotspot.media_url && (
+                        {hotspot.panorama_count && hotspot.panorama_count > 0 && (
                           <Badge variant="secondary" className="text-xs">
-                            {hotspot.media_type === 'image' ? '📷' : '🌐'} Media
+                            <Eye className="w-3 h-3 mr-1" />
+                            {hotspot.panorama_count} {hotspot.panorama_count === 1 ? 'foto' : 'fotos'}
                           </Badge>
                         )}
                       </div>

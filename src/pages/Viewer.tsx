@@ -273,12 +273,35 @@ const Viewer = () => {
         setFloorPlans(plansData);
         setCurrentFloorPlanId(plansData[0].id);
 
-        // Load ALL hotspots for the tour in a single query (70% less DB queries)
+        // Load ALL hotspots for the tour
         const floorPlanIds = plansData.map(plan => plan.id);
         const { data: allHotspotsData } = await supabase
           .from('hotspots')
-          .select('id, title, description, x_position, y_position, media_url, has_panorama, panorama_count, floor_plan_id')
+          .select(`
+            id, title, description, x_position, y_position, 
+            has_panorama, panorama_count, floor_plan_id
+          `)
           .in('floor_plan_id', floorPlanIds);
+        
+        // Load first photo for each hotspot
+        const hotspotIds = allHotspotsData?.map(h => h.id) || [];
+        const { data: photosData } = hotspotIds.length > 0 ? await supabase
+          .from('panorama_photos')
+          .select('hotspot_id, photo_url, display_order')
+          .in('hotspot_id', hotspotIds)
+          .order('display_order', { ascending: true })
+          : { data: [] };
+        
+        // Create a map with only the first photo per hotspot
+        const firstPhotosMap = new Map<string, string>();
+        if (photosData) {
+          photosData.forEach(photo => {
+            if (!firstPhotosMap.has(photo.hotspot_id)) {
+              firstPhotosMap.set(photo.hotspot_id, photo.photo_url);
+            }
+          });
+        }
+
 
         // Group hotspots by floor plan
         const hotspotsMap: Record<string, Hotspot[]> = {};
@@ -287,13 +310,14 @@ const Viewer = () => {
             if (!hotspotsMap[h.floor_plan_id!]) {
               hotspotsMap[h.floor_plan_id!] = [];
             }
+            
             hotspotsMap[h.floor_plan_id!].push({
               id: h.id,
               title: h.title,
               description: h.description,
               x_position: h.x_position,
               y_position: h.y_position,
-              media_url: h.media_url,
+              first_photo_url: firstPhotosMap.get(h.id),
               has_panorama: h.has_panorama ?? false,
               panorama_count: h.panorama_count ?? 0,
             } as Hotspot);

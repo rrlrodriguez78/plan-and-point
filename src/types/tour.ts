@@ -32,8 +32,7 @@ export interface Hotspot {
   description?: string;
   x_position: number;
   y_position: number;
-  media_url?: string;
-  media_type?: string;
+  first_photo_url?: string;
   has_panorama?: boolean;
   panorama_count?: number;
   floor_plan_id?: string;

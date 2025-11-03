@@ -383,8 +383,6 @@ const PhotoEditor = () => {
             description: data.description,
             x_position: data.x_position,
             y_position: data.y_position,
-            media_url: data.media_url,
-            media_type: data.media_type,
           })
           .eq('id', data.id);
 
@@ -403,8 +401,6 @@ const PhotoEditor = () => {
             description: data.description,
             x_position: data.x_position,
             y_position: data.y_position,
-            media_url: data.media_url,
-            media_type: data.media_type,
           })
           .select()
           .single();
@@ -449,8 +445,6 @@ const PhotoEditor = () => {
         description: h.description,
         x_position: h.x_position,
         y_position: h.y_position,
-        media_url: h.media_url,
-        media_type: h.media_type,
       }));
 
       const { data, error } = await supabase
@@ -500,8 +494,6 @@ const PhotoEditor = () => {
           description: hotspot.description,
           x_position: hotspot.x_position + 20,
           y_position: hotspot.y_position + 20,
-          media_url: hotspot.media_url,
-          media_type: hotspot.media_type,
         })
         .select()
         .single();
