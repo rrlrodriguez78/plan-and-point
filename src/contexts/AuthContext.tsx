@@ -106,6 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // Redirigir a la página principal del dominio
+    window.location.href = 'https://virtual-tour-360-simba.com/';
   };
 
   const resetPassword = async (email: string) => {
