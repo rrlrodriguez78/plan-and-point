@@ -174,17 +174,24 @@ export const useSphericalCoordinates = () => {
    * v: 0 (arriba) → 1 (abajo) = phi: 0° → 180°
    */
   const uvToSpherical = useCallback((uv: UVCoordinates): SphericalCoordinates => {
-    // OPCIÓN 1: Canvas invertido, theta directo
-    // u = 0 (izquierda) → theta = -180°
-    // u = 0.5 (centro) → theta = 0°
-    // u = 1 (derecha) → theta = +180°
-    const theta = (uv.u - 0.5) * 360; // Directo porque canvas ya está invertido
-    const phi = uv.v * 180; // 0 to 180 (sin cambios)
+    // ✅ Fórmula correcta según proyección equirectangular estándar
+    // u = 0 (izquierda) → theta = 0°
+    // u = 0.5 (centro) → theta = 180° (frente en 360°)
+    // u = 1 (derecha) → theta = 360° → normalizado a -180°/180°
+    let theta = uv.u * 360;
     
-    console.log('🔄 [uvToSpherical]', {
+    // Normalizar theta a rango [-180, 180] para consistencia con interfaz
+    if (theta > 180) theta -= 360;
+    
+    // v = 0 (arriba) → phi = 0°
+    // v = 0.5 (horizonte) → phi = 90°
+    // v = 1 (abajo) → phi = 180°
+    const phi = uv.v * 180;
+    
+    console.log('🔄 [uvToSpherical] FÓRMULA CORRECTA', {
       input: { u: uv.u.toFixed(3), v: uv.v.toFixed(3) },
       output: { theta: theta.toFixed(1), phi: phi.toFixed(1) },
-      note: 'Theta invertido para compensar scale(-1, 1, 1)'
+      note: 'Mapeo estándar UV → Esféricas con normalización'
     });
     
     return { theta, phi };
@@ -194,14 +201,18 @@ export const useSphericalCoordinates = () => {
    * Convierte coordenadas esféricas a UV
    */
   const sphericalToUV = useCallback((coords: SphericalCoordinates): UVCoordinates => {
-    // Invertir para match con uvToSpherical
-    const u = -(coords.theta / 360) + 0.5; // -180..180 → 0..1 (invertido)
-    const v = coords.phi / 180; // 0..180 → 0..1 (sin cambios)
+    // ✅ Inversa exacta de uvToSpherical
+    // theta puede estar en rango [-180, 180], normalizar a [0, 360] primero
+    let theta = coords.theta;
+    if (theta < 0) theta += 360; // -180..180 → 0..360
     
-    console.log('🔄 [sphericalToUV]', {
+    const u = theta / 360; // 0..360 → 0..1
+    const v = coords.phi / 180; // 0..180 → 0..1
+    
+    console.log('🔄 [sphericalToUV] FÓRMULA CORRECTA', {
       input: { theta: coords.theta.toFixed(1), phi: coords.phi.toFixed(1) },
       output: { u: u.toFixed(3), v: v.toFixed(3) },
-      note: 'U invertido para consistencia'
+      note: 'Inversa exacta de uvToSpherical con normalización'
     });
     
     return { u, v };
