@@ -216,7 +216,6 @@ function createArrowMesh(style?: NavigationPoint['style']) {
     side: THREE.DoubleSide
   });
   const outerCircle = new THREE.Mesh(outerCircleGeometry, outerCircleMaterial);
-  outerCircle.rotation.x = Math.PI / 2;
   
   // Círculo medio (fondo sólido)
   const middleCircleGeometry = new THREE.CircleGeometry(16 * size, 64);
@@ -227,8 +226,7 @@ function createArrowMesh(style?: NavigationPoint['style']) {
     side: THREE.DoubleSide
   });
   const middleCircle = new THREE.Mesh(middleCircleGeometry, middleCircleMaterial);
-  middleCircle.position.y = 0.5;
-  middleCircle.rotation.x = Math.PI / 2;
+  middleCircle.position.z = 0.5;
   
   // Anillo interior (borde decorativo)
   const ringGeometry = new THREE.RingGeometry(12 * size, 14 * size, 64);
@@ -239,29 +237,28 @@ function createArrowMesh(style?: NavigationPoint['style']) {
     side: THREE.DoubleSide
   });
   const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-  ring.position.y = 1;
-  ring.rotation.x = Math.PI / 2;
+  ring.position.z = 1;
   
   // Flecha hacia arriba (chevron doble estilizado)
   const arrowShape = new THREE.Shape();
   const arrowSize = 6 * size;
   
   // Primera chevron
-  arrowShape.moveTo(-arrowSize, -2);
-  arrowShape.lineTo(0, -arrowSize - 2);
-  arrowShape.lineTo(arrowSize, -2);
-  arrowShape.lineTo(arrowSize - 1.5, -2);
-  arrowShape.lineTo(0, -arrowSize + 1);
-  arrowShape.lineTo(-arrowSize + 1.5, -2);
+  arrowShape.moveTo(-arrowSize, 2);
+  arrowShape.lineTo(0, -arrowSize + 2);
+  arrowShape.lineTo(arrowSize, 2);
+  arrowShape.lineTo(arrowSize - 1.5, 2);
+  arrowShape.lineTo(0, -arrowSize + 5);
+  arrowShape.lineTo(-arrowSize + 1.5, 2);
   arrowShape.closePath();
   
   // Segunda chevron (más arriba)
-  arrowShape.moveTo(-arrowSize, 3);
-  arrowShape.lineTo(0, -arrowSize + 3);
-  arrowShape.lineTo(arrowSize, 3);
-  arrowShape.lineTo(arrowSize - 1.5, 3);
-  arrowShape.lineTo(0, -arrowSize + 6);
-  arrowShape.lineTo(-arrowSize + 1.5, 3);
+  arrowShape.moveTo(-arrowSize, 7);
+  arrowShape.lineTo(0, -arrowSize + 7);
+  arrowShape.lineTo(arrowSize, 7);
+  arrowShape.lineTo(arrowSize - 1.5, 7);
+  arrowShape.lineTo(0, -arrowSize + 10);
+  arrowShape.lineTo(-arrowSize + 1.5, 7);
   arrowShape.closePath();
   
   const arrowGeometry = new THREE.ShapeGeometry(arrowShape);
@@ -272,8 +269,7 @@ function createArrowMesh(style?: NavigationPoint['style']) {
     side: THREE.DoubleSide
   });
   const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-  arrow.position.y = 2;
-  arrow.rotation.x = Math.PI / 2;
+  arrow.position.z = 2;
   
   group.add(outerCircle, middleCircle, ring, arrow);
   return group;
