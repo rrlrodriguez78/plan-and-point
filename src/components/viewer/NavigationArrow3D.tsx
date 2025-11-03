@@ -68,17 +68,6 @@ export const NavigationArrow3D = ({
       };
       
       arrowGroup.add(arrowMesh);
-      
-      // Añadir sprite de texto (label)
-      if (point.label) {
-        const labelSprite = createTextSprite(point.label);
-        labelSprite.position.set(x, y + 40, z);
-        labelSprite.userData = {
-          targetHotspotId: point.to_hotspot_id,
-          isLabel: true
-        };
-        arrowGroup.add(labelSprite);
-      }
     });
     
     scene.add(arrowGroup);
@@ -342,29 +331,6 @@ function createArrowMesh(style?: NavigationPoint['style']) {
   return group;
 }
 
-// Helper: crear sprite de texto
-function createTextSprite(text: string): THREE.Sprite {
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d')!;
-  canvas.width = 256;
-  canvas.height = 64;
-  
-  context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  
-  context.font = 'Bold 20px Arial';
-  context.fillStyle = 'white';
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.fillText(text, canvas.width / 2, canvas.height / 2);
-  
-  const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.SpriteMaterial({ map: texture });
-  const sprite = new THREE.Sprite(material);
-  sprite.scale.set(50, 12.5, 1);
-  
-  return sprite;
-}
 
 function disposeGroup(group: THREE.Group) {
   group.children.forEach((child) => {
