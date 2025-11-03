@@ -566,6 +566,10 @@ export default function PanoramaViewer({
     const startPhi = lat.current;
     const startFov = cameraRef.current.fov;
     
+    // Calcular dirección de entrada inversa (desde donde venimos)
+    const entryTheta = (navigationPoint.theta + 180) % 360;
+    const entryPhi = navigationPoint.phi;
+    
     try {
       // Fase 1: Rotar hacia la dirección de la flecha (300ms)
       await Promise.all([
@@ -601,12 +605,16 @@ export default function PanoramaViewer({
       setFadeTransition(true);
       await delay(200);
       
+      // Establecer la dirección de entrada ANTES de cambiar la foto
+      lon.current = entryTheta;
+      lat.current = entryPhi;
+      
       await onNavigate(targetHotspot);
       
       await delay(200);
       setFadeTransition(false);
       
-      // Fase 4: Zoom OUT en el nuevo espacio (400ms)
+      // Fase 4: Zoom OUT manteniendo la dirección de entrada (400ms)
       await new Promise<void>((resolve) => {
         animateValue(30, 120, 400, 
           (value) => { 
@@ -620,21 +628,7 @@ export default function PanoramaViewer({
         );
       });
       
-      // Fase 5: Reorientar cámara a la vista frontal (300ms)
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          animateValue(lon.current, 0, 300, 
-            (value) => { lon.current = value; },
-            resolve
-          );
-        }),
-        new Promise<void>((resolve) => {
-          animateValue(lat.current, 0, 300, 
-            (value) => { lat.current = value; },
-            resolve
-          );
-        })
-      ]);
+      // La cámara se queda mirando hacia donde entró (sin reorientar a neutral)
       
     } catch (error) {
       console.error('Error during transition:', error);
