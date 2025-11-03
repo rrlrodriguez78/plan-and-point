@@ -561,56 +561,66 @@ export default function PanoramaViewer({
     
     setIsTransitioning(true);
     
-    // ✅ CALCULAR la dirección CORRECTA hacia el destino
-    // La flecha está en (theta, phi) pero apunta en dirección opuesta
-    const targetTheta = (navigationPoint.theta + 180) % 360;
-    const targetPhi = navigationPoint.phi;
-    
-    setTransitionDirection({ theta: targetTheta, phi: targetPhi });
-    
-    const startTheta = lon.current;
-    const startPhi = lat.current;
     const startFov = cameraRef.current.fov;
     
-    // Calcular dirección de entrada inversa para el nuevo panorama
-    const entryTheta = (targetTheta + 180) % 360;
-    const entryPhi = targetPhi;
-    
     try {
-      // Fase 1: Rotar hacia la dirección CORRECTA del destino (300ms)
-      await Promise.all([
-        new Promise<void>((resolve) => {
-          animateValue(startTheta, targetTheta, 300, 
-            (value) => { lon.current = value; },
-            resolve
-          );
-        }),
-        new Promise<void>((resolve) => {
-          animateValue(startPhi, targetPhi, 300, 
-            (value) => { lat.current = value; },
-            resolve
-          );
-        })
-      ]);
+      // ✅ SOLUCIÓN SIMPLE: ELIMINAR LA ROTACIÓN INICIAL
+      // El usuario YA está viendo la flecha, no mover la cámara
       
-      // Fase 2: Zoom IN hacia el destino con control frame-by-frame (400ms)
+      // Fase 1: Zoom IN directo hacia donde ya estamos mirando (400ms)
       await new Promise<void>((resolve) => {
-        const startFov = cameraRef.current!.fov;
-        const zoomTargetFov = 30;
+        const targetFov = 30;
         const startTime = Date.now();
         const duration = 400;
 
-        const animateZoomIn = () => {
+        const animateZoom = () => {
           const elapsed = Date.now() - startTime;
           const progress = Math.min(elapsed / duration, 1);
-          const easedProgress = easeInOutCubic(progress);
           
-          // ✅ MANTENER orientación hacia el destino correcto
-          lon.current = targetTheta;
-          lat.current = targetPhi;
+          const easeProgress = 1 - Math.pow(1 - progress, 3);
+          const currentFov = startFov + (targetFov - startFov) * easeProgress;
           
-          // Interpolar FOV
-          const currentFov = startFov + (zoomTargetFov - startFov) * easedProgress;
+          if (cameraRef.current) {
+            // 🔥 IMPORTANTE: NO TOCAR lon.current ni lat.current
+            // Mantener la orientación actual donde el usuario ve la flecha
+            cameraRef.current.fov = currentFov;
+            cameraRef.current.updateProjectionMatrix();
+            setCurrentZoom(currentFov);
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animateZoom);
+          } else {
+            resolve();
+          }
+        };
+
+        animateZoom();
+      });
+      
+      // Fase 2: Fade out y cambio de escena
+      setFadeTransition(true);
+      await delay(200);
+      
+      // Aquí cambiamos a la nueva foto
+      await onNavigate(targetHotspot);
+      
+      await delay(200);
+      setFadeTransition(false);
+      
+      // Fase 3: Zoom OUT en la nueva escena
+      await new Promise<void>((resolve) => {
+        const startFov = 30;
+        const targetFov = 120;
+        const startTime = Date.now();
+        const duration = 400;
+
+        const animateZoomOut = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          const easeProgress = 1 - Math.pow(1 - progress, 3);
+          const currentFov = startFov + (targetFov - startFov) * easeProgress;
           
           if (cameraRef.current) {
             cameraRef.current.fov = currentFov;
@@ -619,51 +629,20 @@ export default function PanoramaViewer({
           }
 
           if (progress < 1) {
-            requestAnimationFrame(animateZoomIn);
+            requestAnimationFrame(animateZoomOut);
           } else {
             resolve();
           }
         };
 
-        animateZoomIn();
+        animateZoomOut();
       });
-      
-      // Fase 3: Fade out, cambio de foto, fade in (400ms total)
-      setFadeTransition(true);
-      await delay(200);
-      
-      // Establecer la dirección de entrada ANTES de cambiar la foto
-      lon.current = entryTheta;
-      lat.current = entryPhi;
-      
-      await onNavigate(targetHotspot);
-      
-      await delay(200);
-      setFadeTransition(false);
-      
-      // Fase 4: Zoom OUT manteniendo la dirección de entrada (400ms)
-      await new Promise<void>((resolve) => {
-        animateValue(30, 120, 400, 
-          (value) => { 
-            if (cameraRef.current) {
-              cameraRef.current.fov = value;
-              cameraRef.current.updateProjectionMatrix();
-              setCurrentZoom(value);
-            }
-          },
-          resolve
-        );
-      });
-      
-      // La cámara se queda mirando hacia donde entró (sin reorientar a neutral)
       
     } catch (error) {
       console.error('Error during transition:', error);
-      // Fallback: resetear vista
       resetView();
     } finally {
       setIsTransitioning(false);
-      setTransitionDirection(null);
     }
   }, [isTransitioning, onNavigate, resetView]);
 
