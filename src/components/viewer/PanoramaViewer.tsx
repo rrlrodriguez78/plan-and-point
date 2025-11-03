@@ -446,12 +446,15 @@ export default function PanoramaViewer({
     // ✅ Configurar crossOrigin para evitar problemas de CORS
     textureLoader.crossOrigin = 'anonymous';
     
-    console.log('🔄 Cargando panorama:', photoUrl);
+    console.log('🔄 Cargando panorama desde:', {
+      url: photoUrl,
+      substring: photoUrl.substring(0, 150)
+    });
     
     textureLoader.load(
       photoUrl,
       (texture) => {
-        console.log('✅ Panorama cargado exitosamente:', photoUrl);
+        console.log('✅ Panorama cargado exitosamente');
         if (!sceneRef.current) {
             texture.dispose();
             sphereGeometry.dispose();
@@ -495,20 +498,36 @@ export default function PanoramaViewer({
       },
       undefined,
       (error) => {
-        console.error("❌ Failed to load panorama texture:", error);
-        console.error("❌ URL que falló:", photoUrl);
-        console.error("❌ Tipo de error:", typeof error);
+        console.error("❌ Failed to load panorama texture");
+        console.error("❌ URL:", photoUrl);
+        console.error("❌ Error type:", error?.constructor?.name || typeof error);
+        console.error("❌ Error details:", error);
+        
+        // Try to provide more specific error info
+        if (error instanceof ErrorEvent) {
+          console.error("❌ ErrorEvent - likely CORS or network issue");
+        }
+        
         sphereGeometry.dispose();
         
-        // ✅ Intentar proporcionar un mensaje de error más específico
+        // ✅ Create detailed error message
         let errorMessage = t('viewer.networkError');
         
-        // Verificar si es un problema de CORS
-        if (error instanceof ErrorEvent) {
-          console.error("❌ ErrorEvent detectado - posible problema de CORS o imagen corrupta");
-          errorMessage = `Error loading image. URL: ${photoUrl.substring(0, 100)}...`;
-        } else if (error instanceof Error && error.message) {
+        // Check if it's a CORS issue by trying to load as regular image
+        const testImg = new Image();
+        testImg.crossOrigin = 'anonymous';
+        testImg.onload = () => {
+          console.log('✅ Image loads fine with regular <img> tag, might be Three.js specific issue');
+        };
+        testImg.onerror = (imgError) => {
+          console.error('❌ Image also fails with <img> tag:', imgError);
+        };
+        testImg.src = photoUrl;
+        
+        if (error instanceof Error && error.message) {
           errorMessage = t('viewer.errorLoadingImageDescription', { error: error.message });
+        } else {
+          errorMessage = `Failed to load panorama. Please check if the image exists and is accessible. URL: ${photoUrl.substring(photoUrl.lastIndexOf('/') + 1)}`;
         }
         
         setLoadingError(errorMessage);

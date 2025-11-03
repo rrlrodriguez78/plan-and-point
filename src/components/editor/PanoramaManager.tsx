@@ -572,10 +572,29 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                 </div>
                 
                 <img
-                  src={photo.photo_url_thumbnail || photo.photo_url}
+                  src={photo.photo_url_thumbnail || photo.photo_url_mobile || photo.photo_url}
                   alt={`Panorama ${index + 1}`}
                   className="w-16 h-16 object-cover rounded"
                   loading="lazy"
+                  onError={(e) => {
+                    // Fallback: intentar mobile, luego original, luego placeholder
+                    const target = e.currentTarget;
+                    if (target.src === photo.photo_url_thumbnail && photo.photo_url_mobile) {
+                      target.src = photo.photo_url_mobile;
+                    } else if (target.src === photo.photo_url_mobile && photo.photo_url) {
+                      target.src = photo.photo_url;
+                    } else {
+                      // Mostrar placeholder gris
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.placeholder-image')) {
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'placeholder-image w-16 h-16 bg-muted rounded flex items-center justify-center';
+                        placeholder.innerHTML = '<span class="text-xs text-muted-foreground">360°</span>';
+                        parent.appendChild(placeholder);
+                      }
+                    }
+                  }}
                 />
                 
                 <div className="flex-1 space-y-1">
