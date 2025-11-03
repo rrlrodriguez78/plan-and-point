@@ -584,8 +584,14 @@ export default function PanoramaViewer({
                 onPointClick={(targetHotspotId) => {
                   const targetHotspot = allHotspotsOnFloor.find(h => h.id === targetHotspotId);
                   if (targetHotspot) {
-                    handleNavClick(targetHotspot);
+                    onNavigate(targetHotspot);
                   }
+                }}
+                getPhotoPreview={(hotspotId) => {
+                  const hotspot = allHotspotsOnFloor.find(h => h.id === hotspotId);
+                  if (!hotspot) return null;
+                  const photo = photos.find(p => p.hotspot_id === hotspotId);
+                  return photo ? getPhotoUrl(photo) : null;
                 }}
               />
             )}

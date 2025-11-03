@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavigationPoint } from '@/types/tour';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavigationArrow3DProps {
   navigationPoints: NavigationPoint[];
@@ -8,6 +9,7 @@ interface NavigationArrow3DProps {
   camera: THREE.Camera;
   currentZoom: number;
   onPointClick: (targetHotspotId: string) => void;
+  getPhotoPreview?: (hotspotId: string) => string | null;
 }
 
 export const NavigationArrow3D = ({
@@ -15,11 +17,19 @@ export const NavigationArrow3D = ({
   scene,
   camera,
   currentZoom,
-  onPointClick
+  onPointClick,
+  getPhotoPreview
 }: NavigationArrow3DProps) => {
   const arrowGroupRef = useRef<THREE.Group | null>(null);
   const raycaster = useRef(new THREE.Raycaster());
   const animationFrameRef = useRef<number>();
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    targetHotspotId: string;
+    label: string;
+    x: number;
+    y: number;
+    previewUrl: string | null;
+  } | null>(null);
   
   // Calcular escala base según zoom (FOV 120 = 0% zoom = grande, FOV 30 = 100% zoom = pequeño)
   const baseScale = 0.35 + ((currentZoom - 30) / (120 - 30)) * 0.65;
@@ -137,7 +147,7 @@ export const NavigationArrow3D = ({
         }
       });
       
-      // Escalar flecha bajo hover
+      // Escalar flecha bajo hover y mostrar preview
       if (intersects.length > 0) {
         let obj = intersects[0].object;
         
@@ -150,9 +160,25 @@ export const NavigationArrow3D = ({
           if (obj.userData.isNavigation) {
             obj.scale.set(1.3, 1.3, 1.3);
           }
+          
+          const targetId = obj.userData.targetHotspotId;
+          const label = obj.userData.label || '';
+          
+          if (targetId) {
+            const previewUrl = getPhotoPreview?.(targetId) || null;
+            setHoveredPoint({
+              targetHotspotId: targetId,
+              label,
+              x: event.clientX,
+              y: event.clientY,
+              previewUrl
+            });
+          }
+          
           document.body.style.cursor = 'pointer';
         }
       } else {
+        setHoveredPoint(null);
         document.body.style.cursor = 'default';
       }
     };
@@ -194,9 +220,50 @@ export const NavigationArrow3D = ({
       window.removeEventListener('click', handleClick);
       document.body.style.cursor = 'default';
     };
-  }, [camera, onPointClick]);
+  }, [camera, onPointClick, getPhotoPreview]);
   
-  return null;
+  return (
+    <>
+      <AnimatePresence>
+        {hoveredPoint && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+            className="fixed pointer-events-none z-50"
+            style={{
+              left: hoveredPoint.x + 20,
+              top: hoveredPoint.y - 80,
+            }}
+          >
+            <div className="bg-background/95 backdrop-blur-sm border-2 border-primary/30 rounded-full p-2 shadow-xl">
+              {hoveredPoint.previewUrl ? (
+                <div className="relative">
+                  <img
+                    src={hoveredPoint.previewUrl}
+                    alt={hoveredPoint.label}
+                    className="w-32 h-32 rounded-full object-cover"
+                  />
+                  {hoveredPoint.label && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-1 px-2 text-center rounded-b-full">
+                      {hoveredPoint.label}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center">
+                  <div className="text-center text-xs text-muted-foreground px-2">
+                    {hoveredPoint.label || 'Preview no disponible'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 };
 
 // Helper: crear mesh de flecha con diseño circular moderno
