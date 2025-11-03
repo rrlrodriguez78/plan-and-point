@@ -5,13 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Trash2, GripVertical, Eye, Calendar as CalendarIcon } from 'lucide-react';
+import { Upload, Trash2, GripVertical, Eye, Calendar as CalendarIcon, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ThetaCameraConnector } from './ThetaCameraConnector';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useTenant } from '@/contexts/TenantContext';
 import { 
   createImageVersions, 
   validateImageFile, 
@@ -32,6 +36,7 @@ interface PanoramaPhoto {
 
 interface PanoramaManagerProps {
   hotspotId: string;
+  tourId?: string;
 }
 
 interface TourInfo {
@@ -59,12 +64,15 @@ const imageVersions = {
 
 const previewSize = 1000; // Preview rápido
 
-export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
+export default function PanoramaManager({ hotspotId, tourId }: PanoramaManagerProps) {
   const { t } = useTranslation();
   const [photos, setPhotos] = useState<PanoramaPhoto[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tourInfo, setTourInfo] = useState<TourInfo | null>(null);
+  const [photoSubTab, setPhotoSubTab] = useState<'upload' | 'theta'>('upload');
+  const { currentTenant } = useTenant();
+  const { pendingCount, isSyncing, isOnline, syncNow } = useOfflineSync(hotspotId);
   
   // Recuperar la última fecha usada de localStorage, o usar hoy por defecto
   const [uploadDate, setUploadDate] = useState<Date>(() => {
@@ -487,8 +495,26 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>{t('panorama.upload')}</Label>
+      <Tabs value={photoSubTab} onValueChange={(v) => setPhotoSubTab(v as 'upload' | 'theta')}>
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="upload" className="gap-2">
+            <Upload className="w-4 h-4" />
+            Subir Fotos
+            {pendingCount > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {pendingCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="theta" className="gap-2">
+            <Camera className="w-4 h-4" />
+            Theta Z1
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upload" className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t('panorama.upload')}</Label>
         
         {/* Selector de fecha antes de subir */}
         <div className="flex items-center gap-2 mb-2">
@@ -548,12 +574,11 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
             <Progress value={uploadProgress.progress} className="h-2" />
           </div>
         )}
-      </div>
 
-      {photos.length > 0 && (
-        <div className="space-y-2">
-          <Label>{t('panorama.photos')} ({photos.length})</Label>
+        {photos.length > 0 && (
           <div className="space-y-2">
+            <Label>{t('panorama.photos')} ({photos.length})</Label>
+            <div className="space-y-2">
             {photos.map((photo, index) => (
               <div
                 key={photo.id}
@@ -649,16 +674,38 @@ export default function PanoramaManager({ hotspotId }: PanoramaManagerProps) {
                 </div>
               </div>
             ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {photos.length === 0 && !uploading && (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">{t('panorama.noPhotos')}</p>
-          <p className="text-xs">{t('panorama.uploadFirst')}</p>
-        </div>
-      )}
+        {photos.length === 0 && !uploading && (
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-sm">{t('panorama.noPhotos')}</p>
+            <p className="text-xs">{t('panorama.uploadFirst')}</p>
+          </div>
+        )}
+      </div>
+        </TabsContent>
+
+        <TabsContent value="theta" className="space-y-4">
+          {tourInfo && currentTenant ? (
+            <ThetaCameraConnector
+              hotspotId={hotspotId}
+              tourId={tourId || tourInfo.tourId}
+              tenantId={currentTenant.tenant_id}
+              onPhotoSaved={() => {
+                syncNow();
+                loadPhotos();
+              }}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Camera className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-sm">Cargando información del tour...</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

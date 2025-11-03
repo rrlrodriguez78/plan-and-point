@@ -24,6 +24,7 @@ interface HotspotModalProps {
   mode: 'create' | 'edit';
   allHotspots?: Hotspot[];
   tourType?: 'tour_360' | 'photo_tour';
+  tourId?: string;
 }
 
 export default function HotspotModal({
@@ -34,6 +35,7 @@ export default function HotspotModal({
   mode,
   allHotspots = [],
   tourType,
+  tourId,
 }: HotspotModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('info');
@@ -301,7 +303,7 @@ export default function HotspotModal({
           {mode === 'edit' && (
             <TabsContent value="panorama" className="space-y-4 mt-4">
               {initialData?.id ? (
-                <PanoramaManager hotspotId={initialData.id} />
+                <PanoramaManager hotspotId={initialData.id} tourId={tourId} />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <p className="text-sm">{t('hotspot.saveFirst')}</p>

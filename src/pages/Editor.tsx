@@ -1013,6 +1013,7 @@ const Editor = () => {
         mode={editingHotspot?.id ? 'edit' : 'create'}
         allHotspots={hotspots}
         tourType={tour?.tour_type}
+        tourId={tour?.id}
       />
 
       {/* Hotspot List Manager */}
