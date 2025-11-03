@@ -3,13 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Wifi, WifiOff, Camera, CheckCircle2, Loader2, Battery, RefreshCw, MapPin, Map } from 'lucide-react';
+import { Wifi, WifiOff, Camera, CheckCircle2, Loader2, Battery, RefreshCw, MapPin, Map, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useThetaCamera } from '@/hooks/useThetaCamera';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { OfflineQuickGuide } from '@/components/shared/OfflineQuickGuide';
 import { useIntelligentSync } from '@/hooks/useIntelligentSync';
+import { useThetaWiFiDetector } from '@/hooks/useThetaWiFiDetector';
 import { tourOfflineCache } from '@/utils/tourOfflineCache';
 import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import { toast } from 'sonner';
@@ -35,6 +36,8 @@ export default function ThetaOfflineCapture() {
     syncPhotos: syncNow, 
     refreshCounts: refreshCount 
   } = useIntelligentSync({ autoSync: true });
+
+  const { isThetaWiFi, hasRealInternet, currentSSID } = useThetaWiFiDetector();
   
   const [captureCount, setCaptureCount] = useState(0);
   const [lastPhotoPreview, setLastPhotoPreview] = useState<string | null>(null);
@@ -106,6 +109,15 @@ export default function ThetaOfflineCapture() {
   }, [isOnline, pendingCount, syncInProgress]);
 
   const handleConnect = async () => {
+    // Verificar que estamos en WiFi de Theta antes de intentar conectar
+    if (!isThetaWiFi && hasRealInternet) {
+      toast.error('No estás conectado al WiFi de la cámara', {
+        description: 'Conéctate a la red WiFi THETAXXXXX.OSC de tu cámara primero',
+        duration: 5000
+      });
+      return;
+    }
+
     try {
       await connect();
       toast.success('Theta Z1 conectada exitosamente');
@@ -176,15 +188,34 @@ export default function ThetaOfflineCapture() {
               Captura fotos 360° sin conexión a internet
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <SyncStatusIndicator 
-              isOnline={isOnline}
+              isOnline={hasRealInternet}
               isSyncing={syncInProgress}
               syncProgress={syncProgress}
               currentOperation={currentOperation}
               pendingCount={pendingCount}
               variant="detailed"
             />
+            
+            {/* Estado de WiFi de Theta */}
+            {isThetaWiFi && (
+              <Alert>
+                <Wifi className="w-4 h-4" />
+                <AlertDescription>
+                  ✅ Conectado al WiFi de la Theta Z1{currentSSID && ` (${currentSSID})`}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {!isThetaWiFi && !hasRealInternet && (
+              <Alert variant="destructive">
+                <AlertTriangle className="w-4 h-4" />
+                <AlertDescription>
+                  ⚠️ No estás conectado al WiFi de la Theta ni a internet. Conéctate a la red THETAXXXXX.OSC de tu cámara.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
 
@@ -323,7 +354,8 @@ export default function ThetaOfflineCapture() {
           <AlertDescription>
             <ol className="list-decimal list-inside space-y-2">
               <li>Selecciona el tour y punto donde guardar las fotos</li>
-              <li>Conecta tu dispositivo al WiFi de la Theta Z1</li>
+              <li><strong>Conecta tu dispositivo al WiFi de la Theta Z1</strong> (THETAXXXXX.OSC)</li>
+              <li>Espera a que aparezca "✅ Conectado al WiFi de la Theta Z1"</li>
               <li>Presiona "Conectar Theta Z1"</li>
               <li>Captura todas las fotos que necesites</li>
               <li>Cuando tengas internet, sincroniza las fotos</li>

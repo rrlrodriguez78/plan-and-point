@@ -35,33 +35,62 @@ export interface ThetaState {
 }
 
 export class ThetaAPI {
-  private baseUrl = 'http://192.168.1.1';
+  private baseUrl: string = '';
+  private readonly possibleIPs = [
+    '192.168.1.1',      // IP más común en Theta Z1
+    '192.168.1.100',    // Algunas versiones usan esta
+    '192.168.1.254',    // Alternativa menos común
+  ];
 
   /**
    * Verifica si la cámara está accesible
+   * Prueba múltiples IPs comunes de Theta Z1
    */
   async checkConnection(): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
-      const response = await fetch(`${this.baseUrl}/osc/info`, {
-        method: 'GET',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch (error) {
-      console.error('Theta connection check failed:', error);
-      return false;
+    console.log('🔍 Buscando cámara Theta Z1...');
+    
+    for (const ip of this.possibleIPs) {
+      try {
+        console.log(`🔄 Probando IP: ${ip}...`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        
+        const response = await fetch(`http://${ip}/osc/info`, {
+          method: 'GET',
+          signal: controller.signal,
+          mode: 'cors',
+          cache: 'no-cache',
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Cámara encontrada en ${ip}:`, data.model);
+          this.baseUrl = `http://${ip}`;
+          return true;
+        }
+      } catch (error: any) {
+        console.warn(`⚠️ No se encontró cámara en ${ip}:`, error.message);
+        // Continuar probando otras IPs
+      }
     }
+    
+    console.error('❌ No se pudo conectar con la cámara Theta Z1 en ninguna IP');
+    return false;
   }
 
   /**
    * Obtiene información del dispositivo
    */
   async getDeviceInfo(): Promise<ThetaDeviceInfo> {
+    if (!this.baseUrl) {
+      throw new Error('No hay conexión establecida con la cámara');
+    }
+    
+    console.log('📡 Obteniendo información del dispositivo...');
+    
     const response = await fetch(`${this.baseUrl}/osc/info`, {
       method: 'GET',
     });
@@ -70,13 +99,21 @@ export class ThetaAPI {
       throw new Error('Failed to get device info');
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log('✅ Información del dispositivo:', data);
+    return data;
   }
 
   /**
    * Inicia una sesión con la cámara
    */
   async startSession(): Promise<string> {
+    if (!this.baseUrl) {
+      throw new Error('No hay conexión establecida con la cámara');
+    }
+    
+    console.log('🔐 Iniciando sesión con la cámara...');
+    
     const response = await fetch(`${this.baseUrl}/osc/commands/execute`, {
       method: 'POST',
       headers: { 
@@ -94,6 +131,7 @@ export class ThetaAPI {
     }
     
     const data = await response.json();
+    console.log('✅ Sesión iniciada:', data.results.sessionId);
     return data.results.sessionId;
   }
 
@@ -101,6 +139,10 @@ export class ThetaAPI {
    * Cierra la sesión actual
    */
   async closeSession(sessionId: string): Promise<void> {
+    if (!this.baseUrl) return;
+    
+    console.log('🔒 Cerrando sesión...');
+    
     await fetch(`${this.baseUrl}/osc/commands/execute`, {
       method: 'POST',
       headers: { 
@@ -118,6 +160,10 @@ export class ThetaAPI {
    * Obtiene el estado actual de la cámara
    */
   async getState(): Promise<ThetaState> {
+    if (!this.baseUrl) {
+      throw new Error('No hay conexión establecida con la cámara');
+    }
+    
     const response = await fetch(`${this.baseUrl}/osc/state`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -134,6 +180,12 @@ export class ThetaAPI {
    * Captura una foto
    */
   async takePicture(sessionId: string): Promise<string> {
+    if (!this.baseUrl) {
+      throw new Error('No hay conexión establecida con la cámara');
+    }
+    
+    console.log('📸 Capturando foto...');
+    
     const response = await fetch(`${this.baseUrl}/osc/commands/execute`, {
       method: 'POST',
       headers: { 
@@ -157,6 +209,7 @@ export class ThetaAPI {
       return await this.pollCommandStatus(data.id);
     }
     
+    console.log('✅ Foto capturada:', data.results.fileUrl);
     return data.results.fileUrl;
   }
 
@@ -166,6 +219,8 @@ export class ThetaAPI {
   private async pollCommandStatus(commandId: string): Promise<string> {
     const maxAttempts = 30; // 30 segundos máximo
     const pollInterval = 1000; // 1 segundo
+    
+    console.log('⏳ Esperando finalización de captura...');
     
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, pollInterval));
@@ -183,6 +238,7 @@ export class ThetaAPI {
       const data = await response.json();
       
       if (data.state === 'done') {
+        console.log('✅ Captura completada');
         return data.results.fileUrl;
       }
       
@@ -198,13 +254,17 @@ export class ThetaAPI {
    * Descarga una imagen desde la cámara
    */
   async downloadImage(fileUrl: string): Promise<Blob> {
+    console.log('⬇️ Descargando imagen...');
+    
     const response = await fetch(fileUrl);
     
     if (!response.ok) {
       throw new Error('Failed to download image');
     }
     
-    return await response.blob();
+    const blob = await response.blob();
+    console.log(`✅ Imagen descargada: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+    return blob;
   }
 
   /**
@@ -212,6 +272,10 @@ export class ThetaAPI {
    * Nota: Este endpoint requiere que la cámara esté en modo live view
    */
   async getLivePreview(): Promise<ReadableStream<Uint8Array>> {
+    if (!this.baseUrl) {
+      throw new Error('No hay conexión establecida con la cámara');
+    }
+    
     const response = await fetch(`${this.baseUrl}/osc/commands/execute`, {
       method: 'POST',
       headers: { 
@@ -235,6 +299,10 @@ export class ThetaAPI {
    * Lista los archivos en la cámara
    */
   async listFiles(maxResults: number = 10): Promise<any[]> {
+    if (!this.baseUrl) {
+      throw new Error('No hay conexión establecida con la cámara');
+    }
+    
     const response = await fetch(`${this.baseUrl}/osc/commands/execute`, {
       method: 'POST',
       headers: { 

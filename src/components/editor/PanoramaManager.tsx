@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, Trash2, GripVertical, Eye, Calendar as CalendarIcon, Camera, Loader2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ import { ThetaCameraConnector } from './ThetaCameraConnector';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useTenant } from '@/contexts/TenantContext';
 import { SyncQueuePanel } from './SyncQueuePanel';
+import { useThetaWiFiDetector } from '@/hooks/useThetaWiFiDetector';
 import { 
   createImageVersions, 
   validateImageFile, 
@@ -74,6 +76,7 @@ export default function PanoramaManager({ hotspotId, tourId }: PanoramaManagerPr
   const [photoSubTab, setPhotoSubTab] = useState<'upload' | 'theta'>('upload');
   const { currentTenant } = useTenant();
   const { pendingCount, isSyncing, isOnline, syncNow, refreshCount } = useOfflineSync(hotspotId);
+  const { isThetaWiFi, hasRealInternet } = useThetaWiFiDetector();
   const [showSyncQueue, setShowSyncQueue] = useState(false);
   
   // Recuperar la última fecha usada de localStorage, o usar hoy por defecto
@@ -92,9 +95,15 @@ export default function PanoramaManager({ hotspotId, tourId }: PanoramaManagerPr
   } | null>(null);
 
   useEffect(() => {
-    loadPhotos();
-    loadTourInfo();
-  }, [hotspotId]);
+    // Solo cargar fotos si tenemos internet real (no WiFi de Theta)
+    if (!isThetaWiFi) {
+      loadPhotos();
+      loadTourInfo();
+    } else {
+      console.log('⚠️ Modo WiFi Theta detectado - No se cargan fotos desde Supabase');
+      setLoading(false);
+    }
+  }, [hotspotId, isThetaWiFi]);
 
   const loadTourInfo = async () => {
     try {
@@ -497,9 +506,19 @@ export default function PanoramaManager({ hotspotId, tourId }: PanoramaManagerPr
 
   return (
     <div className="space-y-4">
+      {/* Alerta cuando está conectado al WiFi de la Theta */}
+      {isThetaWiFi && (
+        <Alert>
+          <Camera className="w-4 h-4" />
+          <AlertDescription>
+            🔷 Conectado al WiFi de Theta Z1 - Solo captura disponible. Las fotos desde Supabase se cargarán cuando reconectes a internet.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Tabs value={photoSubTab} onValueChange={(v) => setPhotoSubTab(v as 'upload' | 'theta')}>
         <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="upload" className="gap-2">
+          <TabsTrigger value="upload" className="gap-2" disabled={isThetaWiFi}>
             <Upload className="w-4 h-4" />
             Subir Fotos
             {pendingCount > 0 && (

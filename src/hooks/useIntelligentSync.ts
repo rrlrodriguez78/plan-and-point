@@ -3,6 +3,7 @@ import { tourOfflineCache } from '@/utils/tourOfflineCache';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useThetaWiFiDetector } from './useThetaWiFiDetector';
 
 interface SyncState {
   isOnline: boolean;
@@ -47,6 +48,9 @@ export function useIntelligentSync(options: SyncOptions = {}) {
   const syncInProgressRef = useRef(false);
   const retryCountRef = useRef(0);
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Detectar WiFi de Theta para evitar sincronizaciones innecesarias
+  const { isThetaWiFi, hasRealInternet } = useThetaWiFiDetector();
 
   // Actualizar contadores
   const updateCounts = useCallback(async () => {
@@ -68,6 +72,11 @@ export function useIntelligentSync(options: SyncOptions = {}) {
 
   // Detectar cambios de red con verificación real
   const checkOnlineStatus = useCallback(async () => {
+    // Si estamos en WiFi de Theta, no hay internet real
+    if (isThetaWiFi) {
+      return false;
+    }
+    
     if (!navigator.onLine) {
       return false;
     }
@@ -79,10 +88,16 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     } catch {
       return false;
     }
-  }, []);
+  }, [isThetaWiFi]);
 
   // Sincronizar fotos pendientes con reintentos
   const syncPendingPhotos = useCallback(async () => {
+    // No sincronizar si estamos en WiFi de Theta
+    if (isThetaWiFi) {
+      console.log('⚠️ En WiFi de Theta - sincronización deshabilitada');
+      return { success: false, message: 'Connected to Theta WiFi' };
+    }
+    
     if (syncInProgressRef.current) {
       console.log('Sync already in progress, skipping');
       return { success: false, message: 'Sync in progress' };
@@ -234,10 +249,16 @@ export function useIntelligentSync(options: SyncOptions = {}) {
       
       return { success: false, message: error.message };
     }
-  }, [checkOnlineStatus, maxRetries, updateCounts]);
+  }, [checkOnlineStatus, maxRetries, updateCounts, isThetaWiFi]);
 
   // Actualizar cache de tours (descargar actualizaciones)
   const updateCachedTours = useCallback(async () => {
+    // No actualizar si estamos en WiFi de Theta
+    if (isThetaWiFi) {
+      console.log('⚠️ En WiFi de Theta - actualización de cache deshabilitada');
+      return;
+    }
+    
     const online = await checkOnlineStatus();
     if (!online) return;
 
@@ -258,7 +279,7 @@ export function useIntelligentSync(options: SyncOptions = {}) {
       console.error('Error updating cached tours:', error);
       setState(prev => ({ ...prev, currentOperation: null }));
     }
-  }, [checkOnlineStatus]);
+  }, [checkOnlineStatus, isThetaWiFi]);
 
   // Sincronización completa
   const performFullSync = useCallback(async () => {
@@ -280,12 +301,20 @@ export function useIntelligentSync(options: SyncOptions = {}) {
   useEffect(() => {
     const handleOnline = async () => {
       console.log('🌐 Conexión detectada, verificando...');
+      
+      // Si estamos en WiFi de Theta, no es internet real
+      if (isThetaWiFi) {
+        console.log('⚠️ Conexión detectada es WiFi de Theta, no internet real');
+        setState(prev => ({ ...prev, isOnline: false }));
+        return;
+      }
+      
       const reallyOnline = await checkOnlineStatus();
       
       setState(prev => ({ ...prev, isOnline: reallyOnline }));
       
       if (reallyOnline) {
-        toast.success('🌐 Conexión restaurada');
+        toast.success('🌐 Conexión a internet restaurada');
         if (autoSync) {
           setTimeout(() => performFullSync(), 1000); // Dar 1s para estabilizar
         }
@@ -295,7 +324,11 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     const handleOffline = () => {
       console.log('📴 Sin conexión');
       setState(prev => ({ ...prev, isOnline: false }));
-      toast.warning('📴 Sin conexión - Modo offline activo');
+      
+      // Solo mostrar toast si no estamos cambiando a WiFi de Theta
+      if (!isThetaWiFi) {
+        toast.warning('📴 Sin conexión - Modo offline activo');
+      }
     };
 
     window.addEventListener('online', handleOnline);
@@ -303,11 +336,22 @@ export function useIntelligentSync(options: SyncOptions = {}) {
 
     // Verificación periódica
     const intervalId = setInterval(async () => {
+      // Siempre offline si estamos en WiFi de Theta
+      if (isThetaWiFi) {
+        setState(prev => {
+          if (prev.isOnline !== false) {
+            console.log('📴 Cambiado a WiFi de Theta');
+          }
+          return { ...prev, isOnline: false };
+        });
+        return;
+      }
+      
       const online = await checkOnlineStatus();
       setState(prev => {
         if (prev.isOnline !== online) {
           if (online) {
-            toast.success('🌐 Conexión restaurada');
+            toast.success('🌐 Conexión a internet restaurada');
             if (autoSync) performFullSync();
           } else {
             toast.warning('📴 Conexión perdida');
@@ -322,7 +366,7 @@ export function useIntelligentSync(options: SyncOptions = {}) {
       window.removeEventListener('offline', handleOffline);
       clearInterval(intervalId);
     };
-  }, [checkOnlineStatus, autoSync, performFullSync]);
+  }, [checkOnlineStatus, autoSync, performFullSync, isThetaWiFi]);
 
   // Sincronización periódica automática
   useEffect(() => {
