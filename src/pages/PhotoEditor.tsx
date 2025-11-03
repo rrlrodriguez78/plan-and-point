@@ -69,7 +69,7 @@ const PhotoEditor = () => {
   // UI state
   const [loading, setLoading] = useState(true);
   const [hotspotModalOpen, setHotspotModalOpen] = useState(false);
-  const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
+  const [editingHotspot, setEditingHotspot] = useState<(Hotspot & { tour_id?: string }) | null>(null);
   const [floorPlansOpen, setFloorPlansOpen] = useState(true);
   const [hotspotsOpen, setHotspotsOpen] = useState(true);
   const [manageHotspotsOpen, setManageHotspotsOpen] = useState(false);
@@ -233,7 +233,7 @@ const PhotoEditor = () => {
     } else {
       const hotspot = hotspots.find((h) => h.id === hotspotId);
       if (hotspot) {
-        setEditingHotspot(hotspot);
+        setEditingHotspot({ ...hotspot, tour_id: tour?.id });
         setHotspotModalOpen(true);
       }
     }
