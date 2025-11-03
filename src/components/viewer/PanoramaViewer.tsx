@@ -32,6 +32,7 @@ import { NavigationArrow3D } from './NavigationArrow3D';
 import { ImageNotFoundFallback } from './ImageNotFoundFallback';
 import { supabase } from '@/integrations/supabase/client';
 import { animateValue, delay, easeInOutCubic } from '@/utils/cameraAnimation';
+import { DateSelector } from './DateSelector';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -127,9 +128,17 @@ export default function PanoramaViewer({
   const [fadeTransition, setFadeTransition] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionDirection, setTransitionDirection] = useState<{ theta: number; phi: number } | null>(null);
+  const [currentCaptureDate, setCurrentCaptureDate] = useState<string | null>(null);
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 99998 : 30;
+  
+  // Actualizar fecha actual cuando cambia la foto activa
+  useEffect(() => {
+    if (activePhoto?.capture_date) {
+      setCurrentCaptureDate(activePhoto.capture_date);
+    }
+  }, [activePhoto]);
 
   // Fetch navigation points para el hotspot activo
   useEffect(() => {
@@ -689,15 +698,10 @@ export default function PanoramaViewer({
   }, [isTransitioning, onNavigate, resetView]);
 
   const handleDateSelect = (date: string) => {
-    // Encontrar la primera foto de esa fecha
+    // Encontrar la primera foto de esa fecha en el hotspot actual
     const photoForDate = filteredPhotos.find(p => p.capture_date === date);
     if (photoForDate) {
       setActivePhoto(photoForDate);
-    } else {
-      // Si no hay foto para esa fecha, mostrar notificación y quedarse en la fecha actual
-      toast.error(t('viewer.noPhotoForDate'), {
-        description: t('viewer.noPhotoForDateDescription', { date: formatDate(date) }),
-      });
     }
   };
 
@@ -743,13 +747,42 @@ export default function PanoramaViewer({
                 scene={sceneRef.current}
                 camera={cameraRef.current}
                 currentZoom={currentZoom}
-                onPointClick={(targetHotspotId) => {
+                onPointClick={async (targetHotspotId) => {
                   const targetHotspot = allHotspotsOnFloor.find(h => h.id === targetHotspotId);
                   const navigationPoint = navigationPoints.find(p => p.to_hotspot_id === targetHotspotId);
                   
                   if (targetHotspot && navigationPoint) {
-                    // Usar transición cinematográfica
-                    animateTransition(navigationPoint, targetHotspot);
+                    // Buscar foto del hotspot destino con la misma fecha
+                    if (currentCaptureDate) {
+                      const { data: photoForDate } = await supabase
+                        .from('panorama_photos')
+                        .select('*')
+                        .eq('hotspot_id', targetHotspotId)
+                        .eq('capture_date', currentCaptureDate)
+                        .limit(1)
+                        .maybeSingle();
+                      
+                      if (photoForDate) {
+                        // Actualizar foto activa antes de animar
+                        setActivePhoto(photoForDate);
+                        animateTransition(navigationPoint, targetHotspot);
+                        return;
+                      }
+                    }
+                    
+                    // Fallback: buscar la primera foto disponible del destino
+                    const { data: fallbackPhoto } = await supabase
+                      .from('panorama_photos')
+                      .select('*')
+                      .eq('hotspot_id', targetHotspotId)
+                      .order('capture_date', { ascending: true })
+                      .limit(1)
+                      .maybeSingle();
+                    
+                    if (fallbackPhoto) {
+                      setActivePhoto(fallbackPhoto);
+                      animateTransition(navigationPoint, targetHotspot);
+                    }
                   } else if (targetHotspot) {
                     // Fallback: navegación simple sin animación
                     onNavigate(targetHotspot);
@@ -871,6 +904,11 @@ export default function PanoramaViewer({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <DateSelector
+                  availableDates={availableDates}
+                  currentDate={currentCaptureDate}
+                  onDateSelect={handleDateSelect}
+                />
                 <Button variant="ghost" size="icon" onClick={() => setShowInfo(!showInfo)} className="text-white hover:bg-white/20 rounded-full h-9 w-9">
                   <Info className="w-4 h-4" />
                 </Button>
