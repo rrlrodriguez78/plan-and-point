@@ -9,7 +9,7 @@
    - `@capacitor/ios`
 
 2. ✅ Archivo `capacitor.config.ts` creado con:
-   - **App ID**: `app.lovable.090a7828d3d34f3091e7e22507021ad8`
+   - **App ID**: `com.lovable.virtualtour360simba`
    - **App Name**: `virtual-tour-360-simba`
    - **Hot-reload** configurado desde Lovable
    - **Configuración Android**: Permite contenido mixto (necesario para Theta Z1)
@@ -31,13 +31,7 @@
 npm install
 ```
 
-### 3️⃣ Inicializar Capacitor (Solo Primera Vez)
-```bash
-npx cap init
-```
-- Cuando te pregunte, confirma el **App ID** y **App Name** (ya están en el config)
-
-### 4️⃣ Agregar Plataformas
+### 3️⃣ Agregar Plataformas
 
 **Para Android:**
 ```bash
@@ -49,18 +43,18 @@ npx cap add android
 npx cap add ios
 ```
 
-### 5️⃣ Compilar el Proyecto Web
+### 4️⃣ Compilar el Proyecto Web
 ```bash
 npm run build
 ```
 
-### 6️⃣ Sincronizar con Capacitor
+### 5️⃣ Sincronizar con Capacitor
 ```bash
 npx cap sync
 ```
 ⚠️ **IMPORTANTE**: Debes ejecutar este comando cada vez que hagas `git pull` de cambios nuevos.
 
-### 7️⃣ Ejecutar en Dispositivo/Emulador
+### 6️⃣ Ejecutar en Dispositivo/Emulador
 
 **Para Android:**
 ```bash
@@ -127,11 +121,6 @@ npx cap sync
 - Cuenta de Apple Developer (gratuita para testing, de pago para App Store)
 
 ## 🆘 Solución de Problemas
-
-### Error: "capacitor.config.ts not found"
-```bash
-npx cap init
-```
 
 ### Error al sincronizar:
 ```bash

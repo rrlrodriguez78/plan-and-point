@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.090a7828d3d34f3091e7e22507021ad8',
+  appId: 'com.lovable.virtualtour360simba',
   appName: 'virtual-tour-360-simba',
   webDir: 'dist',
   server: {
