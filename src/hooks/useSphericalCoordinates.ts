@@ -174,14 +174,17 @@ export const useSphericalCoordinates = () => {
    * v: 0 (arriba) → 1 (abajo) = phi: 0° → 180°
    */
   const uvToSpherical = useCallback((uv: UVCoordinates): SphericalCoordinates => {
-    // Mapeo equirectangular estándar
-    const theta = (uv.u - 0.5) * 360; // -180 to 180
-    const phi = uv.v * 180; // 0 to 180
+    // Invertir theta para compensar scale(-1, 1, 1) de la esfera
+    // u = 0 (izquierda) → theta = +180°
+    // u = 0.5 (centro) → theta = 0°
+    // u = 1 (derecha) → theta = -180°
+    const theta = -(uv.u - 0.5) * 360; // Invertido para match con esfera mirrored
+    const phi = uv.v * 180; // 0 to 180 (sin cambios)
     
     console.log('🔄 [uvToSpherical]', {
       input: { u: uv.u.toFixed(3), v: uv.v.toFixed(3) },
       output: { theta: theta.toFixed(1), phi: phi.toFixed(1) },
-      note: 'Mapeo equirectangular directo'
+      note: 'Theta invertido para compensar scale(-1, 1, 1)'
     });
     
     return { theta, phi };
@@ -191,8 +194,15 @@ export const useSphericalCoordinates = () => {
    * Convierte coordenadas esféricas a UV
    */
   const sphericalToUV = useCallback((coords: SphericalCoordinates): UVCoordinates => {
-    const u = (coords.theta / 360) + 0.5; // -180..180 → 0..1
-    const v = coords.phi / 180; // 0..180 → 0..1
+    // Invertir para match con uvToSpherical
+    const u = -(coords.theta / 360) + 0.5; // -180..180 → 0..1 (invertido)
+    const v = coords.phi / 180; // 0..180 → 0..1 (sin cambios)
+    
+    console.log('🔄 [sphericalToUV]', {
+      input: { theta: coords.theta.toFixed(1), phi: coords.phi.toFixed(1) },
+      output: { u: u.toFixed(3), v: v.toFixed(3) },
+      note: 'U invertido para consistencia'
+    });
     
     return { u, v };
   }, []);
