@@ -5,7 +5,7 @@ import {
   X, RotateCw, ZoomIn, ZoomOut, 
   Maximize, Minimize, Info, MapPin,
   ChevronLeft, ChevronRight, Building2, Calendar,
-  Menu, ChevronDown
+  Menu, ChevronDown, Compass
 } from "lucide-react";
 import * as THREE from 'three';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { NavigationArrow3D } from './NavigationArrow3D';
 import { supabase } from '@/integrations/supabase/client';
+import { animateValue, delay } from '@/utils/cameraAnimation';
 
 interface PanoramaViewerProps {
   isVisible: boolean;
@@ -123,6 +124,8 @@ export default function PanoramaViewer({
   const [navigationPoints, setNavigationPoints] = useState<NavigationPoint[]>([]);
   const [destinationPhotos, setDestinationPhotos] = useState<Record<string, string>>({});
   const [fadeTransition, setFadeTransition] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionDirection, setTransitionDirection] = useState<{ theta: number; phi: number } | null>(null);
 
   // Z-index dinámico para fullscreen
   const containerZIndex = isFullscreen ? 99998 : 30;
@@ -309,6 +312,7 @@ export default function PanoramaViewer({
   }, [onPointerMove]);
 
   const onPointerDown = useCallback((event: React.MouseEvent | React.TouchEvent) => {
+    if (isTransitioning) return; // Bloquear interacción durante transición
     preventDefault(event);
     isUserInteracting.current = true;
     
@@ -322,15 +326,16 @@ export default function PanoramaViewer({
     document.addEventListener('touchmove', onPointerMove as any, { passive: false });
     document.addEventListener('mouseup', onPointerUp);
     document.addEventListener('touchend', onPointerUp);
-  }, [onPointerMove, onPointerUp, getEventCoordinates, preventDefault]);
+  }, [onPointerMove, onPointerUp, getEventCoordinates, preventDefault, isTransitioning]);
 
   const onDocumentWheel = useCallback((event: WheelEvent) => {
+    if (isTransitioning) return; // Bloquear zoom durante transición
     if (!cameraRef.current) return;
     const newFov = cameraRef.current.fov + event.deltaY * 0.05;
     cameraRef.current.fov = THREE.MathUtils.clamp(newFov, 30, 120);
     cameraRef.current.updateProjectionMatrix();
     setCurrentZoom(cameraRef.current.fov);
-  }, []);
+  }, [isTransitioning]);
   
   const handleResize = useCallback(() => {
     if (cameraRef.current && rendererRef.current && mountRef.current) {
@@ -550,6 +555,97 @@ export default function PanoramaViewer({
     }, 300);
   };
 
+  // Animación cinematográfica para navegación 3D
+  const animateTransition = useCallback(async (navigationPoint: NavigationPoint, targetHotspot: Hotspot) => {
+    if (isTransitioning || !cameraRef.current) return;
+    
+    setIsTransitioning(true);
+    setTransitionDirection({ theta: navigationPoint.theta, phi: navigationPoint.phi });
+    
+    const startTheta = lon.current;
+    const startPhi = lat.current;
+    const startFov = cameraRef.current.fov;
+    
+    try {
+      // Fase 1: Rotar hacia la dirección de la flecha (300ms)
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          animateValue(startTheta, navigationPoint.theta, 300, 
+            (value) => { lon.current = value; },
+            resolve
+          );
+        }),
+        new Promise<void>((resolve) => {
+          animateValue(startPhi, navigationPoint.phi, 300, 
+            (value) => { lat.current = value; },
+            resolve
+          );
+        })
+      ]);
+      
+      // Fase 2: Zoom IN hacia el destino (400ms)
+      await new Promise<void>((resolve) => {
+        animateValue(startFov, 30, 400, 
+          (value) => { 
+            if (cameraRef.current) {
+              cameraRef.current.fov = value;
+              cameraRef.current.updateProjectionMatrix();
+              setCurrentZoom(value);
+            }
+          },
+          resolve
+        );
+      });
+      
+      // Fase 3: Fade out, cambio de foto, fade in (400ms total)
+      setFadeTransition(true);
+      await delay(200);
+      
+      await onNavigate(targetHotspot);
+      
+      await delay(200);
+      setFadeTransition(false);
+      
+      // Fase 4: Zoom OUT en el nuevo espacio (400ms)
+      await new Promise<void>((resolve) => {
+        animateValue(30, 120, 400, 
+          (value) => { 
+            if (cameraRef.current) {
+              cameraRef.current.fov = value;
+              cameraRef.current.updateProjectionMatrix();
+              setCurrentZoom(value);
+            }
+          },
+          resolve
+        );
+      });
+      
+      // Fase 5: Reorientar cámara a la vista frontal (300ms)
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          animateValue(lon.current, 0, 300, 
+            (value) => { lon.current = value; },
+            resolve
+          );
+        }),
+        new Promise<void>((resolve) => {
+          animateValue(lat.current, 0, 300, 
+            (value) => { lat.current = value; },
+            resolve
+          );
+        })
+      ]);
+      
+    } catch (error) {
+      console.error('Error during transition:', error);
+      // Fallback: resetear vista
+      resetView();
+    } finally {
+      setIsTransitioning(false);
+      setTransitionDirection(null);
+    }
+  }, [isTransitioning, onNavigate, resetView]);
+
   const handleDateSelect = (date: string) => {
     // Encontrar la primera foto de esa fecha
     const photoForDate = filteredPhotos.find(p => p.capture_date === date);
@@ -607,7 +703,13 @@ export default function PanoramaViewer({
                 currentZoom={currentZoom}
                 onPointClick={(targetHotspotId) => {
                   const targetHotspot = allHotspotsOnFloor.find(h => h.id === targetHotspotId);
-                  if (targetHotspot) {
+                  const navigationPoint = navigationPoints.find(p => p.to_hotspot_id === targetHotspotId);
+                  
+                  if (targetHotspot && navigationPoint) {
+                    // Usar transición cinematográfica
+                    animateTransition(navigationPoint, targetHotspot);
+                  } else if (targetHotspot) {
+                    // Fallback: navegación simple sin animación
                     onNavigate(targetHotspot);
                   }
                 }}
@@ -620,6 +722,20 @@ export default function PanoramaViewer({
             )}
           </div>
           
+          {/* Indicador visual durante transición cinematográfica */}
+          {isTransitioning && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+              <div className="bg-black/60 backdrop-blur-sm rounded-full p-4">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                >
+                  <Compass className="w-8 h-8 text-white" />
+                </motion.div>
+              </div>
+            </div>
+          )}
+
           {/* Loading overlay mientras se inicializa Three.js */}
           {isLoadingScene && !loadingError && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-[45]">
