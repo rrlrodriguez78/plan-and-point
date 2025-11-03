@@ -172,12 +172,16 @@ export const NavigationArrow3D = ({
       }
     };
     
-    const handleClick = (event: MouseEvent) => {
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
       if (!arrowGroupRef.current || !camera) return;
       
+      // ✅ Obtener coordenadas unificadas (mouse o touch)
+      const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+      const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+      
       const mouse = new THREE.Vector2(
-        (event.clientX / window.innerWidth) * 2 - 1,
-        -(event.clientY / window.innerHeight) * 2 + 1
+        (clientX / window.innerWidth) * 2 - 1,
+        -(clientY / window.innerHeight) * 2 + 1
       );
       
       raycaster.current.setFromCamera(mouse, camera);
@@ -196,17 +200,23 @@ export const NavigationArrow3D = ({
         
         const targetId = obj?.userData?.targetHotspotId;
         if (targetId) {
+          // ✅ Prevenir que el panorama inicie drag
+          event.stopPropagation();
+          event.preventDefault();
+          
           onPointClick(targetId);
         }
       }
     };
     
     window.addEventListener('mousemove', handlePointerMove);
-    window.addEventListener('click', handleClick);
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('touchstart', handlePointerDown as any, { passive: false });
     
     return () => {
       window.removeEventListener('mousemove', handlePointerMove);
-      window.removeEventListener('click', handleClick);
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('touchstart', handlePointerDown as any);
       document.body.style.cursor = 'default';
     };
   }, [camera, onPointClick, getPhotoPreview]);

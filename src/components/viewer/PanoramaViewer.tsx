@@ -298,8 +298,17 @@ export default function PanoramaViewer({
   const onPointerMove = useCallback((event: MouseEvent | TouchEvent) => {
     if (isUserInteracting.current === true) {
       const coords = getEventCoordinates(event);
-      lon.current = (onPointerDownMouseX.current - coords.clientX) * 0.1 + onPointerDownLon.current;
-      lat.current = (coords.clientY - onPointerDownMouseY.current) * 0.1 + onPointerDownLat.current;
+      
+      // ✅ Calcular movimiento total desde el inicio
+      const deltaX = Math.abs(onPointerDownMouseX.current - coords.clientX);
+      const deltaY = Math.abs(onPointerDownMouseY.current - coords.clientY);
+      const totalMovement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // ✅ Solo activar drag si movimiento > 5px (evita interferir con clicks en flechas)
+      if (totalMovement > 5) {
+        lon.current = (onPointerDownMouseX.current - coords.clientX) * 0.1 + onPointerDownLon.current;
+        lat.current = (coords.clientY - onPointerDownMouseY.current) * 0.1 + onPointerDownLat.current;
+      }
     }
   }, [getEventCoordinates]);
 
