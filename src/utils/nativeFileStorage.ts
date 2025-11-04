@@ -46,31 +46,39 @@ export interface StorageStats {
  */
 async function createTourFolder(tourId: string): Promise<string> {
   const basePath = `${getBasePath()}/tours/${tourId}`;
+  const storageDir = getStorageDirectory();
+  
+  console.log(`📁 [NativeStorage] Creating tour folder for: ${tourId}`);
+  console.log(`📍 [NativeStorage] Base path: ${basePath}`);
+  console.log(`💾 [NativeStorage] Storage directory: ${storageDir}`);
   
   try {
     // Crear carpeta principal del tour
     await Filesystem.mkdir({
       path: basePath,
-      directory: getStorageDirectory(),
+      directory: storageDir,
       recursive: true
     });
+    console.log(`✅ [NativeStorage] Created main folder: ${basePath}`);
 
     // Crear subcarpetas
     await Filesystem.mkdir({
       path: `${basePath}/floor_plans`,
-      directory: getStorageDirectory(),
+      directory: storageDir,
       recursive: true
     });
+    console.log(`✅ [NativeStorage] Created floor_plans subfolder`);
 
     await Filesystem.mkdir({
       path: `${basePath}/photos`,
-      directory: getStorageDirectory(),
+      directory: storageDir,
       recursive: true
     });
+    console.log(`✅ [NativeStorage] Created photos subfolder`);
 
     return basePath;
   } catch (error) {
-    console.error('Error creating tour folder:', error);
+    console.error('❌ [NativeStorage] Error creating tour folder:', error);
     throw error;
   }
 }
@@ -151,8 +159,16 @@ export async function saveTourToFilesystem(
     throw new Error('Native storage only available on mobile devices');
   }
 
+  console.log(`💾 [NativeStorage] Starting save for tour: ${tourName} (${tourId})`);
+  console.log(`📊 [NativeStorage] Data to save:`, {
+    floorPlansCount: floorPlans.length,
+    hotspotsCount: hotspots.length,
+    photosCount: photos.length
+  });
+
   try {
     const basePath = await createTourFolder(tourId);
+    console.log(`✅ [NativeStorage] Tour folder created at: ${basePath}`);
     
     // Guardar metadatos del tour
     const metadata = {
@@ -174,6 +190,8 @@ export async function saveTourToFilesystem(
       directory: getStorageDirectory(),
       encoding: Encoding.UTF8
     });
+    console.log(`✅ [NativeStorage] Metadata saved`);
+
 
     // Guardar imágenes de floor plans
     for (const floorPlan of floorPlans) {

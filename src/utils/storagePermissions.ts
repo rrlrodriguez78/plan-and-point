@@ -72,6 +72,46 @@ export async function requestStoragePermission(): Promise<boolean> {
 }
 
 /**
+ * 🆕 FASE 1: Solicita MANAGE_EXTERNAL_STORAGE usando el API nativo de Android
+ * Este permiso permite acceso completo a /storage/emulated/0/
+ */
+export async function requestManageExternalStorage(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) {
+    console.log('⚠️ Not a native platform, skipping MANAGE_EXTERNAL_STORAGE');
+    return true;
+  }
+
+  try {
+    const platform = Capacitor.getPlatform();
+    
+    if (platform !== 'android') {
+      console.log('✅ iOS uses Documents directory, no special permission needed');
+      return true;
+    }
+
+    console.log('🔍 Checking Android version for storage permissions...');
+    
+    // Android 11+ (API 30+) requires MANAGE_EXTERNAL_STORAGE
+    // First try the standard permission request
+    const granted = await requestStoragePermission();
+    
+    if (granted) {
+      console.log('✅ Storage permission granted via standard API');
+      return true;
+    }
+    
+    // If standard permission failed, show instructions for MANAGE_EXTERNAL_STORAGE
+    console.warn('⚠️ Standard storage permission denied. User must enable in Settings.');
+    console.warn('📱 Path: Settings > Apps > VirtualTour360 > Permissions > Files and Media');
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Error requesting MANAGE_EXTERNAL_STORAGE:', error);
+    return false;
+  }
+}
+
+/**
  * Abre la configuración del sistema para que el usuario conceda permisos manualmente
  */
 export async function openAppSettings(): Promise<void> {
@@ -84,7 +124,7 @@ export async function openAppSettings(): Promise<void> {
     const appName = 'VirtualTour360';
     
     if (platform === 'android') {
-      alert(`📱 Ve a: Ajustes > Aplicaciones > ${appName} > Permisos > Archivos y medios`);
+      alert(`📱 Ve a: Ajustes > Aplicaciones > ${appName} > Permisos > Archivos y medios\n\n✅ Activa "Permitir acceso a todos los archivos"`);
     } else if (platform === 'ios') {
       alert(`📱 Ve a: Ajustes > ${appName} > Permitir acceso a: Fotos`);
     }

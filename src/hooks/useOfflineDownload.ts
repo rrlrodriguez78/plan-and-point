@@ -155,23 +155,31 @@ export function useOfflineDownload() {
     try {
       // 🆕 FASE 1: Verificar y solicitar permisos ANTES de descargar
       const isNative = isNativeApp();
+      console.log(`📱 [OfflineDownload] Starting download for: ${tourName} (${tourId})`);
+      console.log(`🔍 [OfflineDownload] Is native app: ${isNative}`);
       
       if (isNative) {
-        console.log('📱 Native app detected - checking storage permissions...');
+        console.log('📱 [OfflineDownload] Native app detected - checking storage permissions...');
         const permissionStatus = await checkStoragePermission();
+        console.log('📋 [OfflineDownload] Current permission status:', permissionStatus);
         
         if (!permissionStatus.granted) {
+          console.log('⚠️ [OfflineDownload] No permissions, requesting...');
           toast.info('La app necesita permisos de almacenamiento para guardar offline');
           const granted = await requestStoragePermission();
           
           if (!granted) {
+            console.error('❌ [OfflineDownload] Permission denied by user');
             toast.error('Sin permisos de almacenamiento. Ve a Ajustes > Aplicaciones > VirtualTour360 > Permisos');
             throw new Error('Storage permission denied');
           }
           
+          console.log('✅ [OfflineDownload] Permissions granted, reinitializing storage...');
           // 🆕 FASE 2: Reinicializar storage adapter para usar Filesystem
           await hybridStorage.reinitialize();
           toast.success('✅ Permisos concedidos. Iniciando descarga...');
+        } else {
+          console.log('✅ [OfflineDownload] Permissions already granted');
         }
       }
 

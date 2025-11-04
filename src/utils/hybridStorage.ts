@@ -218,20 +218,63 @@ class HybridStorageManager {
 
   private async initialize() {
     const native = isNativeApp();
+    console.log(`🔍 [HybridStorage] Initializing... Native: ${native}`);
     
     if (native) {
+      // 🆕 FASE 2: Intentar crear carpetas reales para verificar permisos
       const permissionStatus = await checkStoragePermission();
+      console.log(`📋 [HybridStorage] Permission status:`, permissionStatus);
+      
       if (permissionStatus.granted) {
-        this.adapter = new FilesystemAdapter();
-        console.log('✅ Using Filesystem storage (native)');
+        // Verificar que REALMENTE podemos crear carpetas
+        const canCreateFolders = await this.testFolderCreation();
+        
+        if (canCreateFolders) {
+          this.adapter = new FilesystemAdapter();
+          console.log('✅ [HybridStorage] Using Filesystem storage (native) - folders verified');
+        } else {
+          console.warn('⚠️ [HybridStorage] Permission granted but cannot create folders, falling back to IndexedDB');
+          this.adapter = new IndexedDBAdapter();
+        }
       } else {
         // Fallback to IndexedDB even on mobile if no permissions
         this.adapter = new IndexedDBAdapter();
-        console.log('⚠️ No storage permissions, using IndexedDB fallback');
+        console.log('⚠️ [HybridStorage] No storage permissions, using IndexedDB fallback');
       }
     } else {
       this.adapter = new IndexedDBAdapter();
-      console.log('✅ Using IndexedDB storage (web)');
+      console.log('✅ [HybridStorage] Using IndexedDB storage (web)');
+    }
+  }
+  
+  // 🆕 FASE 2: Prueba REAL de creación de carpetas
+  private async testFolderCreation(): Promise<boolean> {
+    try {
+      console.log('🧪 [HybridStorage] Testing folder creation...');
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const { getStorageDirectory, getBasePath } = await import('./storagePermissions');
+      
+      const testPath = `${getBasePath()}/test_${Date.now()}`;
+      
+      await Filesystem.mkdir({
+        path: testPath,
+        directory: getStorageDirectory(),
+        recursive: true
+      });
+      
+      console.log(`✅ [HybridStorage] Successfully created test folder: ${testPath}`);
+      
+      // Limpiar carpeta de prueba
+      await Filesystem.rmdir({
+        path: testPath,
+        directory: getStorageDirectory(),
+        recursive: true
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('❌ [HybridStorage] Failed to create test folder:', error);
+      return false;
     }
   }
 

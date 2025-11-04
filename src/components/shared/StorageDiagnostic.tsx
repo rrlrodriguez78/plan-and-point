@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useHybridStorage } from '@/hooks/useHybridStorage';
 import { debugStorageSetup } from '@/utils/nativeFileStorage';
+import { requestManageExternalStorage } from '@/utils/storagePermissions';
+import { hybridStorage } from '@/utils/hybridStorage';
 import { toast } from 'sonner';
 
 export function StorageDiagnostic() {
@@ -37,6 +39,35 @@ export function StorageDiagnostic() {
   } | null>(null);
 
   const [isDebugging, setIsDebugging] = useState(false);
+  const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
+
+  // 🆕 FASE 4: Forzar solicitud de permisos MANAGE_EXTERNAL_STORAGE
+  const forceRequestPermissions = async () => {
+    setIsRequestingPermissions(true);
+    try {
+      console.log('🔐 [StorageDiagnostic] Forcing MANAGE_EXTERNAL_STORAGE request...');
+      const granted = await requestManageExternalStorage();
+      
+      if (granted) {
+        toast.success('✅ Permisos de almacenamiento concedidos');
+        
+        // Reinicializar el storage adapter
+        console.log('🔄 [StorageDiagnostic] Reinitializing storage adapter...');
+        await hybridStorage.reinitialize();
+        
+        // Ejecutar diagnóstico para verificar
+        await runDiagnostic();
+        await refreshStats();
+      } else {
+        toast.error('❌ Permisos denegados. Ve a Ajustes del Sistema para habilitarlos manualmente.');
+      }
+    } catch (error) {
+      console.error('❌ [StorageDiagnostic] Error requesting permissions:', error);
+      toast.error('Error al solicitar permisos');
+    } finally {
+      setIsRequestingPermissions(false);
+    }
+  };
 
   const runDiagnostic = async () => {
     setIsDebugging(true);
@@ -188,14 +219,26 @@ export function StorageDiagnostic() {
         {/* Botones de acción */}
         <div className="border-t pt-4 space-y-2">
           {!hasPermission && isNativeApp && (
-            <Button 
-              onClick={requestPermissions} 
-              className="w-full"
-              variant="default"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Solicitar Permisos
-            </Button>
+            <>
+              <Button 
+                onClick={forceRequestPermissions} 
+                className="w-full"
+                variant="default"
+                disabled={isRequestingPermissions}
+              >
+                <Settings className={`h-4 w-4 mr-2 ${isRequestingPermissions ? 'animate-spin' : ''}`} />
+                🆕 Forzar Permisos de Almacenamiento
+              </Button>
+              
+              <Button 
+                onClick={requestPermissions} 
+                className="w-full"
+                variant="secondary"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Solicitar Permisos (Estándar)
+              </Button>
+            </>
           )}
 
           <Button
