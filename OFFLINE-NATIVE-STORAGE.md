@@ -42,6 +42,83 @@ Al abrir la app en mobile por primera vez:
 4. Migra automáticamente todos los tours
 5. Elimina datos del sistema antiguo
 
+## Configuraciones que Afectan Modo Offline
+
+### Configuración Mobile (Settings → Mobile)
+
+**Image Quality**
+- **Low (60%)**: Máxima compresión, menor calidad, archivos más pequeños
+- **Medium (75%)**: Balance entre calidad y tamaño (default)
+- **High (85%)**: Mínima compresión, máxima calidad, archivos grandes
+
+Usado en: `src/utils/imageOptimization.ts` - Afecta todas las imágenes guardadas offline.
+
+**Local Storage Limit**
+- Rango: 100MB - 2000MB
+- Default: 500MB
+- Solo aplica a Web (IndexedDB)
+- Mobile usa almacenamiento nativo sin límite artificial
+
+Usado en: `src/utils/hybridStorage.ts` - Rechaza guardar tours si se excede el límite.
+
+**Data Usage**
+- **Low**: Máxima compresión en todas las operaciones
+- **Auto**: Balance automático según conexión
+- **High**: Mínima compresión, mejor calidad
+
+Afecta: Tamaño de archivos y velocidad de sincronización.
+
+### Configuración Sync (Settings → Sync)
+
+**Cloud Sync (ON/OFF)**
+- Si está OFF: No sincroniza automáticamente con servidor
+- Si está ON: Sincroniza según frecuencia configurada
+
+Usado en: `src/hooks/useIntelligentSync.ts` - Desactiva toda sincronización automática.
+
+**Backup Frequency**
+- **Manual**: No sincroniza automáticamente, solo manualmente
+- **Hourly**: Sincroniza cada hora
+- **Daily**: Sincroniza una vez al día
+- **Weekly**: Sincroniza una vez a la semana
+
+Usado en: `src/hooks/useIntelligentSync.ts` - Define intervalo de sincronización automática.
+
+**Sync Data Types**
+- **Tours**: Sincronizar estructura de tours
+- **Media**: Sincronizar fotos y archivos multimedia
+- **Settings**: Sincronizar configuraciones del usuario
+
+Usado en: `src/hooks/useIntelligentSync.ts` - Filtra qué datos sincronizar.
+
+**Cross-Device Sync**
+- Si está ON: Sincroniza entre todos los dispositivos del usuario
+- Si está OFF: Solo almacenamiento local
+
+Afecta: Disponibilidad de datos en múltiples dispositivos.
+
+### Configuración Audio/Video (Settings → Media)
+
+**Default Volume**
+- Rango: 0-100%
+- Default: 70%
+
+Usado en: `src/hooks/useMediaSettings.ts` - Volumen inicial para reproducciones.
+
+**Autoplay**
+- Si está ON: Videos se reproducen automáticamente
+- Si está OFF: Usuario debe iniciar reproducción manualmente
+
+**Sound Effects**
+- Si está ON: Sonidos de UI (clicks, notificaciones)
+- Si está OFF: UI silenciosa
+
+**Video Quality**
+- **Auto**: Ajusta según conexión
+- **Low (360p)**: Consume menos datos
+- **Medium (720p)**: Balance calidad/datos
+- **High (1080p)**: Máxima calidad
+
 ## Ubicación de Archivos
 
 ### Android

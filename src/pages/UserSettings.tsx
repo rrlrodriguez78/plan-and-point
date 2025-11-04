@@ -99,6 +99,27 @@ const UserSettings = () => {
     }
   };
 
+  const handleUpdateSettings = async (updates: any) => {
+    await updateSettings(updates);
+    
+    // Show warnings for critical settings changes
+    if (updates.cloud_sync === false) {
+      toast.warning('⚠️ Sincronización deshabilitada - datos solo se guardarán localmente');
+    }
+    
+    if (updates.local_storage_limit_mb && updates.local_storage_limit_mb < 200) {
+      toast.warning('⚠️ Límite de almacenamiento bajo - puede afectar tours grandes');
+    }
+    
+    if (updates.backup_frequency === 'manual') {
+      toast.info('ℹ️ Sincronización manual activada - recuerda sincronizar regularmente');
+    }
+    
+    if (updates.image_quality === 'low') {
+      toast.info('ℹ️ Calidad de imagen reducida - menor tamaño de archivos');
+    }
+  };
+
   if (authLoading || settingsLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -246,40 +267,40 @@ const UserSettings = () => {
           </TabsContent>
 
           <TabsContent value="appearance">
-            <AppearanceSettings settings={settings} onUpdate={updateSettings} />
+            <AppearanceSettings settings={settings} onUpdate={handleUpdateSettings} />
           </TabsContent>
 
           <TabsContent value="language">
-            <LanguageRegionSettings settings={settings} onUpdate={updateSettings} />
+            <LanguageRegionSettings settings={settings} onUpdate={handleUpdateSettings} />
           </TabsContent>
 
           <TabsContent value="privacy">
             <div className="space-y-6">
-              <PrivacySecuritySettings settings={settings} onUpdate={updateSettings} />
+              <PrivacySecuritySettings settings={settings} onUpdate={handleUpdateSettings} />
               {isSuperAdmin && <SettingsAccessAudit />}
             </div>
           </TabsContent>
 
           <TabsContent value="mobile">
             <div className="space-y-6">
-              <MobileSettings settings={settings} onUpdate={updateSettings} />
+              <MobileSettings settings={settings} onUpdate={handleUpdateSettings} />
             </div>
           </TabsContent>
 
           <TabsContent value="sync">
-            <SyncSettings settings={settings} onUpdate={updateSettings} />
+            <SyncSettings settings={settings} onUpdate={handleUpdateSettings} />
           </TabsContent>
 
           <TabsContent value="media">
-            <AudioVideoSettings settings={settings} onUpdate={updateSettings} />
+            <AudioVideoSettings settings={settings} onUpdate={handleUpdateSettings} />
           </TabsContent>
 
           <TabsContent value="analytics">
-            <AnalyticsSettings settings={settings} onUpdate={updateSettings} />
+            <AnalyticsSettings settings={settings} onUpdate={handleUpdateSettings} />
           </TabsContent>
 
           <TabsContent value="account">
-            <AccountSettings settings={settings} onUpdate={updateSettings} />
+            <AccountSettings settings={settings} onUpdate={handleUpdateSettings} />
           </TabsContent>
 
           <TabsContent value="notifications">

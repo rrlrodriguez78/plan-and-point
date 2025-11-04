@@ -227,6 +227,17 @@ class HybridStorageManager {
     photos?: any[]
   ): Promise<void> {
     await this.ensureInitialized();
+    
+    // Check storage limit (only for IndexedDB, native has no artificial limits)
+    if (this.adapter instanceof IndexedDBAdapter) {
+      const storageLimitMB = parseInt(sessionStorage.getItem('user_storage_limit') || '500');
+      const stats = await this.adapter.getStats();
+      
+      if (stats.size / 1024 / 1024 > storageLimitMB) {
+        throw new Error(`Storage limit exceeded: ${storageLimitMB}MB. Please increase the limit in settings or delete old tours.`);
+      }
+    }
+    
     return this.adapter!.saveTour(tourId, tourName, tour, floorPlans, hotspots, photos);
   }
 

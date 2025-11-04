@@ -20,6 +20,7 @@ import { OfflineQuickStart } from '@/components/shared/OfflineQuickStart';
 import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
 import { useHybridStorage } from '@/hooks/useHybridStorage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SettingsStatusWidget } from '@/components/settings/SettingsStatusWidget';
 
 interface Organization {
   id: string;
@@ -314,6 +315,7 @@ const Dashboard = () => {
         {tours.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <CacheStatusWidget />
+            <SettingsStatusWidget />
             <OfflineQuickStart onOpenTutorial={() => setTutorialOpen(true)} />
           </div>
         )}

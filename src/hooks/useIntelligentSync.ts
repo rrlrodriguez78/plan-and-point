@@ -4,6 +4,7 @@ import { offlineStorage } from '@/utils/offlineStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useThetaWiFiDetector } from './useThetaWiFiDetector';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface SyncState {
   isOnline: boolean;
@@ -35,6 +36,8 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     maxRetries = 3,
   } = options;
 
+  const { settings } = useUserSettingsContext();
+
   const [state, setState] = useState<SyncState>({
     isOnline: navigator.onLine,
     isSyncing: false,
@@ -51,6 +54,17 @@ export function useIntelligentSync(options: SyncOptions = {}) {
   
   // Detectar WiFi de Theta para evitar sincronizaciones innecesarias
   const { isThetaWiFi, hasRealInternet } = useThetaWiFiDetector();
+  
+  // Get sync interval from user settings
+  const getSyncIntervalMinutes = useCallback((frequency: string): number => {
+    switch(frequency) {
+      case 'hourly': return 60;
+      case 'daily': return 1440;
+      case 'weekly': return 10080;
+      case 'manual': return 0; // Disabled
+      default: return 5; // Default
+    }
+  }, []);
 
   // Actualizar contadores
   const updateCounts = useCallback(async () => {
@@ -92,6 +106,12 @@ export function useIntelligentSync(options: SyncOptions = {}) {
 
   // Sincronizar fotos pendientes con reintentos
   const syncPendingPhotos = useCallback(async () => {
+    // Check if cloud sync is enabled in settings
+    if (!settings.cloud_sync) {
+      console.log('⚠️ Cloud sync disabled in user settings');
+      return { success: false, message: 'Sync disabled in settings' };
+    }
+    
     // No sincronizar si estamos en WiFi de Theta
     if (isThetaWiFi) {
       console.log('⚠️ En WiFi de Theta - sincronización deshabilitada');
@@ -249,10 +269,16 @@ export function useIntelligentSync(options: SyncOptions = {}) {
       
       return { success: false, message: error.message };
     }
-  }, [checkOnlineStatus, maxRetries, updateCounts, isThetaWiFi]);
+  }, [checkOnlineStatus, maxRetries, updateCounts, isThetaWiFi, settings.cloud_sync]);
 
   // Actualizar cache de tours (descargar actualizaciones)
   const updateCachedTours = useCallback(async () => {
+    // Check if tours sync is enabled
+    if (!settings.cloud_sync || !settings.sync_data_types.tours) {
+      console.log('⚠️ Tours sync disabled in user settings');
+      return;
+    }
+    
     // No actualizar si estamos en WiFi de Theta
     if (isThetaWiFi) {
       console.log('⚠️ En WiFi de Theta - actualización de cache deshabilitada');
@@ -279,7 +305,7 @@ export function useIntelligentSync(options: SyncOptions = {}) {
       console.error('Error updating cached tours:', error);
       setState(prev => ({ ...prev, currentOperation: null }));
     }
-  }, [checkOnlineStatus, isThetaWiFi]);
+  }, [checkOnlineStatus, isThetaWiFi, settings.cloud_sync, settings.sync_data_types.tours]);
 
   // Sincronización completa
   const performFullSync = useCallback(async () => {
@@ -367,12 +393,23 @@ export function useIntelligentSync(options: SyncOptions = {}) {
 
   // Sincronización periódica automática
   useEffect(() => {
-    if (autoSync && syncInterval > 0) {
+    const userSyncInterval = getSyncIntervalMinutes(settings.backup_frequency);
+    
+    // If manual or sync disabled, don't set up interval
+    if (!autoSync || userSyncInterval === 0 || !settings.cloud_sync) {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+      return;
+    }
+    
+    if (userSyncInterval > 0) {
       syncIntervalRef.current = setInterval(() => {
         if (state.isOnline && !syncInProgressRef.current) {
           performFullSync();
         }
-      }, syncInterval * 60 * 1000);
+      }, userSyncInterval * 60 * 1000);
 
       return () => {
         if (syncIntervalRef.current) {
@@ -380,7 +417,7 @@ export function useIntelligentSync(options: SyncOptions = {}) {
         }
       };
     }
-  }, [autoSync, syncInterval, state.isOnline, performFullSync]);
+  }, [autoSync, settings.backup_frequency, settings.cloud_sync, state.isOnline, performFullSync, getSyncIntervalMinutes]);
 
   // Cargar contadores iniciales
   useEffect(() => {
