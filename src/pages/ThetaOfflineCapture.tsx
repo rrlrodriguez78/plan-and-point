@@ -12,7 +12,7 @@ import { OfflineQuickGuide } from '@/components/shared/OfflineQuickGuide';
 import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
 import { useIntelligentSync } from '@/hooks/useIntelligentSync';
 import { useThetaWiFiDetector } from '@/hooks/useThetaWiFiDetector';
-import { tourOfflineCache } from '@/utils/tourOfflineCache';
+import { hybridStorage } from '@/utils/hybridStorage';
 import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import { toast } from 'sonner';
 
@@ -55,13 +55,28 @@ export default function ThetaOfflineCapture() {
   useEffect(() => {
     const loadCachedTours = async () => {
       try {
-        const tours = await tourOfflineCache.getAllCachedTours();
-        setCachedTours(tours);
+        const toursList = await hybridStorage.listTours();
         
-        if (tours.length > 0) {
-          setSelectedTour(tours[0].tour);
-          if (tours[0].floorPlans.length > 0) {
-            setSelectedFloorPlan(tours[0].floorPlans[0]);
+        // Load full tour data for each
+        const toursData = await Promise.all(
+          toursList.map(async (t) => {
+            const fullTour = await hybridStorage.loadTour(t.id);
+            if (!fullTour) return null;
+            return {
+              tour: fullTour.data,
+              floorPlans: fullTour.floorPlans,
+              hotspots: fullTour.hotspots
+            };
+          })
+        );
+        
+        const validTours = toursData.filter((t): t is NonNullable<typeof t> => t !== null);
+        setCachedTours(validTours);
+        
+        if (validTours.length > 0) {
+          setSelectedTour(validTours[0].tour);
+          if (validTours[0].floorPlans.length > 0) {
+            setSelectedFloorPlan(validTours[0].floorPlans[0]);
           }
         }
       } catch (error) {

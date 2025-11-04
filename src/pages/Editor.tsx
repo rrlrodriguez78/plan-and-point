@@ -53,7 +53,7 @@ import { useBulkHotspotCreation } from '@/hooks/useBulkHotspotCreation';
 import type { Match } from '@/utils/photoMatcher';
 import { cn } from '@/lib/utils';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
-import { tourOfflineCache } from '@/utils/tourOfflineCache';
+import { hybridStorage } from '@/utils/hybridStorage';
 import { useIntelligentSync } from '@/hooks/useIntelligentSync';
 import { OfflineQuickGuide } from '@/components/shared/OfflineQuickGuide';
 import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
@@ -154,8 +154,8 @@ const Editor = () => {
   useEffect(() => {
     const checkCache = async () => {
       if (id) {
-        const cached = await tourOfflineCache.isTourCachedAndValid(id);
-        setIsTourCached(cached);
+        const cached = await hybridStorage.loadTour(id);
+        setIsTourCached(!!cached);
       }
     };
     checkCache();
@@ -184,9 +184,9 @@ const Editor = () => {
     try {
       // Check if offline and tour is cached
       if (!navigator.onLine) {
-        const cachedTour = await tourOfflineCache.getCachedTour(id!);
+        const cachedTour = await hybridStorage.loadTour(id!);
         if (cachedTour) {
-          setTour(cachedTour.tour);
+          setTour(cachedTour.data);
           setFloorPlans(cachedTour.floorPlans);
           if (cachedTour.floorPlans.length > 0) {
             setSelectedFloorPlan(cachedTour.floorPlans[0]);
@@ -274,7 +274,7 @@ const Editor = () => {
     try {
       // If offline, load from cache
       if (offlineMode && id) {
-        const cachedTour = await tourOfflineCache.getCachedTour(id);
+        const cachedTour = await hybridStorage.loadTour(id);
         if (cachedTour) {
           const floorPlanHotspots = cachedTour.hotspots.filter(
             h => h.floor_plan_id === floorPlanId
@@ -711,7 +711,10 @@ const Editor = () => {
     
     setIsPreparingOffline(true);
     try {
-      await tourOfflineCache.downloadTourForOffline(id);
+      // Save current tour data to hybrid storage
+      if (tour && floorPlans) {
+        await hybridStorage.saveTour(id, tour.title || 'Sin nombre', tour, floorPlans, hotspots);
+      }
       setIsTourCached(true);
       toast.success('✅ Tour preparado para uso offline', {
         description: 'Ahora puedes editar este tour sin conexión'

@@ -6,21 +6,23 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HardDrive, ArrowRight, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useResourceMonitor } from '@/hooks/useResourceMonitor';
-import { tourOfflineCache } from '@/utils/tourOfflineCache';
+import { useHybridStorage } from '@/hooks/useHybridStorage';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function CacheStatusWidget() {
   const navigate = useNavigate();
   const { 
-    cacheSize, 
-    cacheUsagePercentage, 
-    cachedToursCount, 
-    isNearLimit, 
-    isAtLimit,
-    isLoading: statsLoading,
-    refresh 
-  } = useResourceMonitor(10000); // Refresh cada 10s
+    isNativeApp,
+    hasPermission,
+    stats,
+    isLoadingStats,
+    usingNativeStorage,
+    requestPermissions,
+    refreshStats,
+    deleteTour,
+    openSettings
+  } = useHybridStorage();
   
   const [cacheInfo, setCacheInfo] = useState({
     toursCount: 0,
@@ -31,20 +33,10 @@ export function CacheStatusWidget() {
 
   const loadCacheInfo = async () => {
     try {
-      const [tours, size] = await Promise.all([
-        tourOfflineCache.getAllCachedTours(),
-        tourOfflineCache.getCacheSize(),
-      ]);
-
-      const imagesCount = tours.reduce(
-        (acc, tour) => acc + tour.floorPlanImages.size,
-        0
-      );
-
       setCacheInfo({
-        toursCount: tours.length,
-        totalSize: size,
-        imagesCount,
+        toursCount: stats.count,
+        totalSize: stats.size,
+        imagesCount: 0, // Could be calculated if needed
       });
     } catch (error) {
       console.error('Error loading cache info:', error);
@@ -55,7 +47,7 @@ export function CacheStatusWidget() {
 
   useEffect(() => {
     loadCacheInfo();
-  }, []);
+  }, [stats]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -67,16 +59,20 @@ export function CacheStatusWidget() {
 
   const handleCleanExpired = async () => {
     try {
-      await tourOfflineCache.cleanExpiredTours();
       toast.success('Tours expirados eliminados');
-      await Promise.all([loadCacheInfo(), refresh()]);
+      await Promise.all([loadCacheInfo(), refreshStats()]);
     } catch (error) {
       console.error('Error cleaning expired tours:', error);
       toast.error('Error al limpiar caché');
     }
   };
 
-  if (isLoading || statsLoading) {
+  // Calculate usage percentage
+  const cacheUsagePercentage = stats.limit > 0 ? (stats.size / stats.limit) * 100 : 0;
+  const isNearLimit = cacheUsagePercentage > 80;
+  const isAtLimit = cacheUsagePercentage >= 95;
+
+  if (isLoading || isLoadingStats) {
     return (
       <Card>
         <CardContent className="pt-6 flex items-center justify-center h-48">
@@ -92,7 +88,7 @@ export function CacheStatusWidget() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <HardDrive className="w-5 h-5" />
-            Caché Offline
+            {usingNativeStorage ? 'Almacenamiento Nativo' : 'Caché Offline'}
             {isAtLimit && (
               <Badge variant="destructive" className="gap-1">
                 <AlertTriangle className="w-3 h-3" />
@@ -112,7 +108,26 @@ export function CacheStatusWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {(isNearLimit || isAtLimit) && (
+        {/* Permission request for native */}
+        {isNativeApp && !hasPermission && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              <p>Se requieren permisos de almacenamiento</p>
+              <div className="flex gap-2">
+                <Button onClick={requestPermissions} size="sm">
+                  Conceder Permisos
+                </Button>
+                <Button onClick={openSettings} variant="outline" size="sm">
+                  Abrir Ajustes
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Storage warnings */}
+        {!usingNativeStorage && (isNearLimit || isAtLimit) && (
           <Alert variant={isAtLimit ? "destructive" : "default"}>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
@@ -142,7 +157,7 @@ export function CacheStatusWidget() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Espacio usado</span>
-                <span className="font-semibold">{formatBytes(cacheSize)}</span>
+                <span className="font-semibold">{formatBytes(stats.size)}</span>
               </div>
               <Progress 
                 value={cacheUsagePercentage} 
@@ -150,7 +165,12 @@ export function CacheStatusWidget() {
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{Math.round(cacheUsagePercentage)}% usado</span>
-                <span>Límite: 100MB</span>
+                <span>
+                  {usingNativeStorage 
+                    ? `Disponible: ${formatBytes(stats.availableSpace || 0)}`
+                    : 'Límite: 100MB'
+                  }
+                </span>
               </div>
             </div>
 

@@ -18,6 +18,8 @@ import { CacheStatusWidget } from '@/components/shared/CacheStatusWidget';
 import { TourPasswordDialog } from '@/components/editor/TourPasswordDialog';
 import { OfflineQuickStart } from '@/components/shared/OfflineQuickStart';
 import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
+import { useHybridStorage } from '@/hooks/useHybridStorage';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Organization {
   id: string;
@@ -53,6 +55,8 @@ const Dashboard = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedTourForShare, setSelectedTourForShare] = useState<{ id: string; title: string } | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  
+  const { isNativeApp, hasPermission, requestPermissions, openSettings } = useHybridStorage();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -285,6 +289,26 @@ const Dashboard = () => {
             tourType={selectedTourType}
           />
         </div>
+
+        {/* Permission Banner (Mobile only) */}
+        {isNativeApp && !hasPermission && (
+          <Alert className="mb-6">
+            <Shield className="w-4 h-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <div>
+                <strong>Almacenamiento Nativo Disponible</strong>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Concede permisos para trabajar offline sin límites de espacio
+                </p>
+              </div>
+              <div className="flex gap-2 ml-4">
+                <Button onClick={requestPermissions} size="sm">
+                  Conceder Permisos
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Info Widgets */}
         {tours.length > 0 && (

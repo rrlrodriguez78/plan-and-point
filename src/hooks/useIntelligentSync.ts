@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { tourOfflineCache } from '@/utils/tourOfflineCache';
+import { hybridStorage } from '@/utils/hybridStorage';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -57,7 +57,7 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     try {
       const [pendingCount, cachedTours] = await Promise.all([
         offlineStorage.getAllPendingCount(),
-        tourOfflineCache.getAllCachedTours(),
+        hybridStorage.listTours(),
       ]);
 
       setState(prev => ({
@@ -265,11 +265,11 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     try {
       setState(prev => ({ ...prev, currentOperation: 'Actualizando tours en caché...' }));
       
-      const cachedTours = await tourOfflineCache.getAllCachedTours();
+      const cachedTours = await hybridStorage.listTours();
       
       for (const cached of cachedTours) {
-        // Re-descargar para actualizar
-        await tourOfflineCache.downloadTourForOffline(cached.tour.id);
+        // Re-download and update
+        await updateCachedTours();
       }
       
       setState(prev => ({ ...prev, currentOperation: null }));
@@ -290,9 +290,6 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     
     // 2. Actualizar tours en caché
     await updateCachedTours();
-    
-    // 3. Limpiar tours expirados
-    await tourOfflineCache.cleanExpiredTours();
     
     console.log('✅ Sincronización completa finalizada');
   }, [syncPendingPhotos, updateCachedTours]);
