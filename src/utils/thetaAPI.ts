@@ -37,6 +37,7 @@ export interface ThetaState {
 export class ThetaAPI {
   private baseUrl: string = '';
   private readonly possibleIPs = [
+    '192.168.1.5',      // IP configurada (tu Theta Z1)
     '192.168.1.1',      // IP más común en Theta Z1
     '192.168.1.100',    // Algunas versiones usan esta
     '192.168.1.254',    // Alternativa menos común

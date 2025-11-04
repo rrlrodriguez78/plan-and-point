@@ -34,33 +34,37 @@ export function useThetaWiFiDetector() {
         return;
       }
 
-      // 2. Intentar conectar con la cámara Theta
-      const thetaController = new AbortController();
-      const thetaTimeoutId = setTimeout(() => thetaController.abort(), 3000);
+      // 2. Intentar conectar con la cámara Theta (probar múltiples IPs)
+      const thetaIPs = ['192.168.1.5', '192.168.1.1']; // Tu IP primero
       
-      try {
-        const thetaResponse = await fetch('http://192.168.1.1/osc/info', {
-          method: 'GET',
-          signal: thetaController.signal,
-          mode: 'cors',
-        });
+      for (const ip of thetaIPs) {
+        const thetaController = new AbortController();
+        const thetaTimeoutId = setTimeout(() => thetaController.abort(), 2000);
         
-        clearTimeout(thetaTimeoutId);
-        
-        if (thetaResponse.ok) {
-          // Estamos conectados al WiFi de la Theta
-          console.log('✅ Detectado WiFi de Theta Z1');
-          setState({
-            isThetaWiFi: true,
-            hasRealInternet: false,
-            isChecking: false,
-            currentSSID: 'THETA*',
+        try {
+          const thetaResponse = await fetch(`http://${ip}/osc/info`, {
+            method: 'GET',
+            signal: thetaController.signal,
+            mode: 'cors',
           });
-          return;
+          
+          clearTimeout(thetaTimeoutId);
+          
+          if (thetaResponse.ok) {
+            // Estamos conectados al WiFi de la Theta
+            console.log(`✅ Detectado WiFi de Theta Z1 en ${ip}`);
+            setState({
+              isThetaWiFi: true,
+              hasRealInternet: false,
+              isChecking: false,
+              currentSSID: `THETA (${ip})`,
+            });
+            return;
+          }
+        } catch (thetaError) {
+          clearTimeout(thetaTimeoutId);
+          // Probar siguiente IP
         }
-      } catch (thetaError) {
-        clearTimeout(thetaTimeoutId);
-        // No es WiFi de Theta, continuar verificando internet
       }
 
       // 3. Verificar si hay internet real
