@@ -295,12 +295,27 @@ export function useOfflineDownload() {
 
       setDownloadProgress(prev => prev ? {
         ...prev,
+        progress: 95,
+        currentItem: 'Verificando integridad...'
+      } : null);
+
+      // 5. Verify integrity
+      const integrity = await verifyTourIntegrity(tourId);
+      
+      if (!integrity.valid) {
+        throw new Error(`Tour incompleto: ${integrity.reason}`);
+      }
+
+      setDownloadProgress(prev => prev ? {
+        ...prev,
         progress: 100,
         stage: 'complete',
         currentItem: '¡Descarga completa!'
       } : null);
 
-      toast.success(`✅ "${tourName}" descargado para uso offline`);
+      toast.success(`✅ "${tourName}" descargado para uso offline`, {
+        description: `${integrity.totalPhotos} fotos • ${integrity.totalFloorPlans} planos`
+      });
 
       // Reset after 2 seconds
       setTimeout(() => {
@@ -327,6 +342,49 @@ export function useOfflineDownload() {
     }
   }, []);
 
+  // Verify tour integrity after download
+  const verifyTourIntegrity = useCallback(async (tourId: string): Promise<{
+    valid: boolean;
+    reason?: string;
+    totalPhotos?: number;
+    totalFloorPlans?: number;
+  }> => {
+    try {
+      const cached = await hybridStorage.loadTour(tourId);
+      if (!cached) return { valid: false, reason: 'Tour no encontrado en cache' };
+
+      // Verificar que tenga floor plans
+      if (!cached.floorPlans || cached.floorPlans.length === 0) {
+        return { valid: false, reason: 'No hay planos descargados' };
+      }
+
+      // Verificar que tenga hotspots con fotos
+      let totalPhotos = 0;
+      for (const hotspot of cached.hotspots) {
+        if ((hotspot as any).photos) {
+          totalPhotos += (hotspot as any).photos.length;
+        }
+      }
+
+      if (totalPhotos === 0) {
+        return { 
+          valid: false, 
+          reason: 'No hay fotos descargadas',
+          totalFloorPlans: cached.floorPlans.length
+        };
+      }
+
+      return { 
+        valid: true, 
+        totalPhotos,
+        totalFloorPlans: cached.floorPlans.length
+      };
+    } catch (error) {
+      console.error('Error verifying tour integrity:', error);
+      return { valid: false, reason: 'Error al verificar integridad' };
+    }
+  }, []);
+
   // Delete downloaded tour
   const deleteTourOffline = useCallback(async (tourId: string, tourName: string) => {
     try {
@@ -344,6 +402,7 @@ export function useOfflineDownload() {
     downloadProgress,
     downloadTourForOffline,
     isTourDownloaded,
-    deleteTourOffline
+    deleteTourOffline,
+    verifyTourIntegrity
   };
 }

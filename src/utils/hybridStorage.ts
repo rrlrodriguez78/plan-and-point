@@ -310,7 +310,8 @@ class HybridStorageManager {
       tourType: tourData.tourType,
       tenantId: tourData.tenantId,
       synced: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      hasLocalChanges: true
     };
 
     // Save to localStorage
@@ -320,6 +321,45 @@ class HybridStorageManager {
 
     console.log('✅ Tour creado offline:', pendingTour);
     return pendingTour;
+  }
+  
+  // Get metadata for a tour without loading all data
+  async getTourMetadata(tourId: string): Promise<{
+    exists: boolean;
+    name?: string;
+    size?: number;
+    photosCount?: number;
+    floorPlansCount?: number;
+    lastModified?: Date;
+  }> {
+    await this.ensureInitialized();
+    
+    // Check pending tours first
+    const pending = this.getPendingTours();
+    const pendingTour = pending.find(t => t.id === tourId);
+    if (pendingTour) {
+      return {
+        exists: true,
+        name: pendingTour.title,
+        photosCount: 0,
+        floorPlansCount: 0
+      };
+    }
+    
+    // Check cached tours
+    const tours = await this.listTours();
+    const tour = tours.find(t => t.id === tourId);
+    
+    if (tour) {
+      return {
+        exists: true,
+        name: tour.name,
+        size: tour.size,
+        lastModified: tour.lastModified
+      };
+    }
+    
+    return { exists: false };
   }
 
   // Get pending tours (not synced)

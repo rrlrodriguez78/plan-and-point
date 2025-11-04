@@ -175,28 +175,54 @@ const Viewer = () => {
         const cachedTour = await hybridStorage.loadTour(id);
         
         if (cachedTour) {
-          console.log('✅ Tour cargado desde almacenamiento local (offline)');
-          setIsOfflineMode(true);
-          setTour(cachedTour.data);
-          setFloorPlans(cachedTour.floorPlans);
-          setTourType((cachedTour.data.tour_type || 'tour_360') as 'tour_360' | 'photo_tour');
+          // Validar integridad del tour cacheado
+          const hasFloorPlans = cachedTour.floorPlans && cachedTour.floorPlans.length > 0;
+          const hasHotspots = cachedTour.hotspots && cachedTour.hotspots.length > 0;
           
-          // Agrupar hotspots por floor plan
-          const hotspotsMap: Record<string, Hotspot[]> = {};
-          cachedTour.hotspots.forEach(h => {
-            if (!hotspotsMap[h.floor_plan_id!]) {
-              hotspotsMap[h.floor_plan_id!] = [];
-            }
-            hotspotsMap[h.floor_plan_id!].push(h);
-          });
-          setHotspotsByFloor(hotspotsMap);
-          
-          if (cachedTour.floorPlans.length > 0) {
-            setCurrentFloorPlanId(cachedTour.floorPlans[0].id);
+          // Contar fotos totales
+          let totalPhotos = 0;
+          if (cachedTour.hotspots) {
+            cachedTour.hotspots.forEach(h => {
+              if ((h as any).photos) {
+                totalPhotos += (h as any).photos.length;
+              }
+            });
           }
           
-          setLoading(false);
-          return;
+          if (!hasFloorPlans || !hasHotspots) {
+            console.warn('⚠️ Tour incompleto en cache (faltan planos o hotspots)');
+            if (!navigator.onLine) {
+              toast.error('Tour incompleto en modo offline', {
+                description: 'Intenta volver a descargar este tour con internet'
+              });
+              setLoading(false);
+              return;
+            }
+            // Si hay internet, continuar con carga normal
+          } else {
+            console.log(`✅ Tour cargado desde offline (${totalPhotos} fotos)`);
+            setIsOfflineMode(true);
+            setTour(cachedTour.data);
+            setFloorPlans(cachedTour.floorPlans);
+            setTourType((cachedTour.data.tour_type || 'tour_360') as 'tour_360' | 'photo_tour');
+            
+            // Agrupar hotspots por floor plan
+            const hotspotsMap: Record<string, Hotspot[]> = {};
+            cachedTour.hotspots.forEach(h => {
+              if (!hotspotsMap[h.floor_plan_id!]) {
+                hotspotsMap[h.floor_plan_id!] = [];
+              }
+              hotspotsMap[h.floor_plan_id!].push(h);
+            });
+            setHotspotsByFloor(hotspotsMap);
+            
+            if (cachedTour.floorPlans.length > 0) {
+              setCurrentFloorPlanId(cachedTour.floorPlans[0].id);
+            }
+            
+            setLoading(false);
+            return;
+          }
         }
       } catch (cacheError) {
         console.log('No se pudo cargar desde caché, intentando Supabase...', cacheError);
@@ -204,7 +230,10 @@ const Viewer = () => {
 
       // 2. Si no hay cache o falló, verificar conexión antes de intentar Supabase
       if (!navigator.onLine) {
-        toast.error('Sin internet y tour no disponible offline');
+        toast.error('Sin internet y tour no disponible offline', {
+          description: 'Descarga este tour con internet para verlo offline',
+          duration: 5000
+        });
         setLoading(false);
         return;
       }
@@ -387,18 +416,29 @@ const Viewer = () => {
 
   const loadPanoramaPhotos = async (hotspotId: string) => {
     try {
-      // If in offline mode, load from cached data
-      if (isOfflineMode && id) {
+      // Prioridad 1: Cargar desde cache offline (siempre primero)
+      if (id) {
         const cachedTour = await hybridStorage.loadTour(id);
         if (cachedTour) {
           const hotspot = cachedTour.hotspots.find(h => h.id === hotspotId);
-          if (hotspot && (hotspot as any).photos) {
+          if (hotspot && (hotspot as any).photos && (hotspot as any).photos.length > 0) {
+            console.log('✅ Fotos cargadas desde offline:', (hotspot as any).photos.length);
             return (hotspot as any).photos || [];
           }
         }
       }
 
-      // Online mode - load from Supabase
+      // Prioridad 2: Solo intentar Supabase si hay internet
+      if (!navigator.onLine) {
+        console.warn('⚠️ Sin internet y sin fotos en cache para hotspot:', hotspotId);
+        toast.error('No hay fotos disponibles offline para este punto', {
+          description: 'Descarga este tour para verlo sin conexión'
+        });
+        return [];
+      }
+
+      // Prioridad 3: Cargar desde Supabase (con internet)
+      console.log('📡 Cargando fotos desde Supabase...');
       const { data, error } = await supabase
         .from('panorama_photos')
         .select('id, hotspot_id, photo_url, description, display_order, capture_date')
@@ -409,6 +449,9 @@ const Viewer = () => {
       return data || [];
     } catch (error) {
       console.error('Error loading panorama photos:', error);
+      toast.error('Error al cargar fotos panorámicas', {
+        description: 'Intenta descargar este tour para uso offline'
+      });
       return [];
     }
   };
