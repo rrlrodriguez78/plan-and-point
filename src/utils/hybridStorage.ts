@@ -10,6 +10,7 @@ import {
 import { tourOfflineCache } from './tourOfflineCache';
 import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
 import pako from 'pako';
+import { SyncEvents } from '@/services/sync-events';
 
 // Storage adapter interface
 export interface StorageAdapter {
@@ -315,7 +316,10 @@ class HybridStorageManager {
       }
     }
     
-    return this.adapter!.saveTour(tourId, tourName, tour, floorPlans, hotspots, photos);
+    await this.adapter!.saveTour(tourId, tourName, tour, floorPlans, hotspots, photos);
+    
+    // Emitir evento de cambio
+    SyncEvents.notifyDataChanged('virtual_tours', 'update', tourId);
   }
 
   async loadTour(tourId: string): Promise<StoredTour | null> {
@@ -330,7 +334,10 @@ class HybridStorageManager {
 
   async deleteTour(tourId: string): Promise<void> {
     await this.ensureInitialized();
-    return this.adapter!.deleteTour(tourId);
+    await this.adapter!.deleteTour(tourId);
+    
+    // Emitir evento de eliminación
+    SyncEvents.notifyDataChanged('virtual_tours', 'delete', tourId);
   }
 
   async getStats() {

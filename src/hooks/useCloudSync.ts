@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { hybridStorage } from '@/utils/hybridStorage';
 import { toast } from 'sonner';
+import { SyncEvents } from '@/services/sync-events';
 
 interface SyncStatus {
   isOnline: boolean;
@@ -80,6 +81,7 @@ export function useCloudSync() {
           // Sin conflicto: actualizar cache local automáticamente
           if (payload.eventType === 'DELETE') {
             await hybridStorage.deleteTour(tourId);
+            SyncEvents.notifyDataChanged('virtual_tours', 'delete', tourId);
             toast.info('Tour eliminado desde la nube');
           } else {
             // Actualizar solo si no hay cambios locales pendientes
@@ -105,6 +107,7 @@ export function useCloudSync() {
                   fullTour.floor_plans || [],
                   fullTour.floor_plans?.flatMap((fp: any) => fp.hotspots || []) || []
                 );
+                SyncEvents.notifyDataChanged('virtual_tours', 'update', tourId);
                 toast.success('Tour actualizado desde la nube', {
                   description: fullTour.title
                 });
@@ -280,6 +283,7 @@ export function useCloudSync() {
 
           // Marcar como sincronizado
           await hybridStorage.markTourSynced(tourInfo.id);
+          SyncEvents.notifyDataChanged('virtual_tours', 'sync', tourInfo.id);
           syncedCount++;
 
         } catch (error) {
