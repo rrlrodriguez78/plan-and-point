@@ -5,14 +5,18 @@ const config: CapacitorConfig = {
   appName: 'virtual-tour-360-simba',
   webDir: 'dist',
   android: {
-    allowMixedContent: true
+    allowMixedContent: true,
+    // 🆕 FASE 3: Configuración adicional para Android
+    appendUserAgent: 'VirtualTour360/1.0'
   },
   ios: {
     contentInset: 'always'
   },
   plugins: {
     Filesystem: {
-      androidDisplayName: 'VirtualTour360'
+      androidDisplayName: 'VirtualTour360',
+      // 🆕 FASE 3: Forzar almacenamiento externo en iOS
+      iosFallbackToDocuments: true
     }
   }
 };

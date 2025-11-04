@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { hybridStorage } from '@/utils/hybridStorage';
+import { isNativeApp, checkStoragePermission, requestStoragePermission } from '@/utils/storagePermissions';
 import { toast } from 'sonner';
 import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
 
@@ -146,12 +147,44 @@ export function useOfflineDownload() {
       tourName,
       stage: 'metadata',
       progress: 0,
-      currentItem: 'Cargando información del tour...',
+      currentItem: 'Verificando permisos...',
       totalItems: 1,
       currentItemNumber: 0
     });
 
     try {
+      // 🆕 FASE 1: Verificar y solicitar permisos ANTES de descargar
+      const isNative = isNativeApp();
+      
+      if (isNative) {
+        console.log('📱 Native app detected - checking storage permissions...');
+        const permissionStatus = await checkStoragePermission();
+        
+        if (!permissionStatus.granted) {
+          toast.info('La app necesita permisos de almacenamiento para guardar offline');
+          const granted = await requestStoragePermission();
+          
+          if (!granted) {
+            toast.error('Sin permisos de almacenamiento. Ve a Ajustes > Aplicaciones > VirtualTour360 > Permisos');
+            throw new Error('Storage permission denied');
+          }
+          
+          // 🆕 FASE 2: Reinicializar storage adapter para usar Filesystem
+          await hybridStorage.reinitialize();
+          toast.success('✅ Permisos concedidos. Iniciando descarga...');
+        }
+      }
+
+      setDownloadProgress({
+        tourId,
+        tourName,
+        stage: 'metadata',
+        progress: 5,
+        currentItem: 'Cargando información del tour...',
+        totalItems: 1,
+        currentItemNumber: 0
+      });
+
       // 1. Download tour metadata
       const { data: tour, error: tourError } = await supabase
         .from('virtual_tours')

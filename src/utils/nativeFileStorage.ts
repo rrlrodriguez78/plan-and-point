@@ -497,3 +497,86 @@ export async function exportTourToShare(tourId: string): Promise<string | null> 
     return null;
   }
 }
+
+/**
+ * 🆕 FASE 5: Función de diagnóstico para verificar configuración de almacenamiento
+ */
+export async function debugStorageSetup(): Promise<{
+  isNative: boolean;
+  hasPermissions: boolean;
+  storageDirectory: string;
+  basePath: string;
+  fullPath: string;
+  foldersCreated: boolean;
+  error?: string;
+}> {
+  const native = isNativeApp();
+  
+  if (!native) {
+    return {
+      isNative: false,
+      hasPermissions: false,
+      storageDirectory: 'N/A',
+      basePath: 'N/A',
+      fullPath: 'N/A',
+      foldersCreated: false
+    };
+  }
+
+  const { checkStoragePermission } = await import('./storagePermissions');
+  const permissionStatus = await checkStoragePermission();
+  const directory = getStorageDirectory();
+  const base = getBasePath();
+  const fullPath = `/storage/emulated/0/${base}`;
+  
+  try {
+    console.log('🔍 Debugging storage setup...');
+    console.log(`📂 Base path: ${base}`);
+    console.log(`📍 Directory: ${directory}`);
+    console.log(`🗂️ Full path: ${fullPath}`);
+    
+    // Intentar crear carpeta base
+    await Filesystem.mkdir({
+      path: base,
+      directory: directory,
+      recursive: true
+    });
+    console.log('✅ Base folder created/verified');
+    
+    // Intentar crear carpeta tours
+    await Filesystem.mkdir({
+      path: `${base}/tours`,
+      directory: directory,
+      recursive: true
+    });
+    console.log('✅ Tours folder created/verified');
+    
+    // Verificar que existan
+    const result = await Filesystem.readdir({
+      path: base,
+      directory: directory
+    });
+    
+    console.log(`✅ Found ${result.files.length} items in base folder`);
+    
+    return {
+      isNative: true,
+      hasPermissions: permissionStatus.granted,
+      storageDirectory: directory,
+      basePath: base,
+      fullPath,
+      foldersCreated: result.files.length > 0
+    };
+  } catch (error) {
+    console.error('❌ Debug storage setup failed:', error);
+    return {
+      isNative: true,
+      hasPermissions: permissionStatus.granted,
+      storageDirectory: directory,
+      basePath: base,
+      fullPath,
+      foldersCreated: false,
+      error: (error as Error).message
+    };
+  }
+}

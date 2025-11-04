@@ -20,6 +20,7 @@ import { TourPasswordDialog } from '@/components/editor/TourPasswordDialog';
 import { OfflineQuickStart } from '@/components/shared/OfflineQuickStart';
 import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
 import { OfflineStorageWidget } from '@/components/shared/OfflineStorageWidget';
+import { StorageDiagnostic } from '@/components/shared/StorageDiagnostic';
 import { useHybridStorage } from '@/hooks/useHybridStorage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SettingsStatusWidget } from '@/components/settings/SettingsStatusWidget';
@@ -483,12 +484,19 @@ const Dashboard = () => {
 
         {/* Info Widgets */}
         {displayTours.length > 0 && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <CacheStatusWidget />
-            <OfflineStorageWidget />
-            <SettingsStatusWidget />
-            <OfflineQuickStart onOpenTutorial={() => setTutorialOpen(true)} />
-          </div>
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <CacheStatusWidget />
+              <OfflineStorageWidget />
+              <SettingsStatusWidget />
+              <OfflineQuickStart onOpenTutorial={() => setTutorialOpen(true)} />
+            </div>
+            
+            {/* 🆕 FASE 4: Diagnóstico de Almacenamiento */}
+            <div className="mb-6">
+              <StorageDiagnostic />
+            </div>
+          </>
         )}
 
         {displayTours.length === 0 ? (

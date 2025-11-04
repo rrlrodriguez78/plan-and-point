@@ -235,6 +235,13 @@ class HybridStorageManager {
     }
   }
 
+  // 🆕 FASE 2: Método para reinicializar el adapter después de conceder permisos
+  async reinitialize() {
+    console.log('🔄 Reinitializing storage adapter...');
+    this.adapter = null; // Reset adapter
+    await this.initialize();
+  }
+
   private async ensureInitialized() {
     if (this.initPromise) {
       await this.initPromise;
