@@ -41,6 +41,7 @@ import BackupsPage from "./pages/BackupsPage";
 import AuthCallback from "./pages/AuthCallback";
 import ThetaOfflineCapture from "./pages/ThetaOfflineCapture";
 import OfflineCacheManager from "./pages/OfflineCacheManager";
+import SystemStatus from "./pages/SystemStatus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -135,6 +136,7 @@ const AppRoutes = () => {
         <Route path="/app/settings" element={<Settings />} />
         <Route path="/app/user-settings" element={<UserSettings />} />
         <Route path="/app/offline-cache" element={<OfflineCacheManager />} />
+        <Route path="/app/system-status" element={<SystemStatus />} />
         <Route path="/app/super-admin" element={<SuperAdminDashboard />} />
         <Route path="/app/user-approvals" element={<UserApprovals />} />
         <Route path="/app/tenant-admin" element={<TenantAdmin />} />

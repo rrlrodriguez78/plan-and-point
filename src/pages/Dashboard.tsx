@@ -8,26 +8,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield, Share2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Globe, Lock, Upload, Image as ImageIcon, Shield, Share2, Download, Check, Trash, HardDrive } from 'lucide-react';
 import ShareTourDialog from '@/components/share/ShareTourDialog';
 import TourSetupModal from '@/components/editor/TourSetupModal';
 import { TourTypeSelector } from '@/components/editor/TourTypeSelector';
 import { useTranslation } from 'react-i18next';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CacheStatusWidget } from '@/components/shared/CacheStatusWidget';
 import { TourPasswordDialog } from '@/components/editor/TourPasswordDialog';
-import { OfflineQuickStart } from '@/components/shared/OfflineQuickStart';
 import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog';
-import { OfflineStorageWidget } from '@/components/shared/OfflineStorageWidget';
-import { StorageDiagnostic } from '@/components/shared/StorageDiagnostic';
-import { useHybridStorage } from '@/hooks/useHybridStorage';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { SettingsStatusWidget } from '@/components/settings/SettingsStatusWidget';
-import { useTourSync } from '@/hooks/useTourSync';
 import { hybridStorage } from '@/utils/hybridStorage';
-import { getRemoteId } from '@/utils/tourIdMapping';
-import { WifiOff, RefreshCw, Download, Check, Trash, HardDrive } from 'lucide-react';
 import { useOfflineDownload } from '@/hooks/useOfflineDownload';
 import { OfflineDownloadDialog } from '@/components/editor/OfflineDownloadDialog';
 import { useEffect as useReactEffect } from 'react';
@@ -66,12 +56,8 @@ const Dashboard = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedTourForShare, setSelectedTourForShare] = useState<{ id: string; title: string } | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [downloadedTours, setDownloadedTours] = useState<Set<string>>(new Set());
   const [showOnlyOffline, setShowOnlyOffline] = useState(false);
-  
-  const { isNativeApp, hasPermission, requestPermissions, openSettings } = useHybridStorage();
-  const { pendingCount, isSyncing, syncProgress, syncNow, refreshCount } = useTourSync();
   const { 
     isDownloading, 
     downloadProgress, 
@@ -91,31 +77,6 @@ const Dashboard = () => {
       loadData();
     }
   }, [user, currentTenant]);
-
-  // Monitor online status
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setShowOnlyOffline(false); // Reset filter when going online
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      setShowOnlyOffline(true); // Auto-enable filter when offline
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // Refresh pending count when tours change
-  useEffect(() => {
-    refreshCount();
-  }, [tours, refreshCount]);
 
   // Check which tours are downloaded
   useReactEffect(() => {
@@ -189,38 +150,7 @@ const Dashboard = () => {
       return;
     }
 
-    setSavingTour(true);
-    
-    // Check if offline
-    if (!navigator.onLine) {
-      try {
-        const pendingTour = await hybridStorage.createTourOffline({
-          title: tourData.title,
-          description: tourData.description,
-          coverImageUrl: tourData.coverImageUrl,
-          tourType: selectedTourType === '360' ? 'tour_360' : 'photo_tour',
-          tenantId: currentTenant.tenant_id
-        });
-
-        toast.success('📴 Tour creado offline - Se sincronizará cuando vuelva internet');
-        setModalOpen(false);
-        refreshCount();
-        
-        // Navigate to editor with local ID
-        const editorPath = pendingTour.tourType === 'photo_tour' 
-          ? `/app/photo-editor/${pendingTour.id}` 
-          : `/app/editor/${pendingTour.id}`;
-        navigate(editorPath);
-      } catch (error) {
-        console.error('Error creating offline tour:', error);
-        toast.error('Error al crear tour offline');
-      } finally {
-        setSavingTour(false);
-      }
-      return;
-    }
-
-    // Online mode - save to Supabase
+        setSavingTour(true);
     try {
       const { data, error } = await supabase
         .from('virtual_tours')
@@ -426,78 +356,6 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Offline Status Banner */}
-        {!isOnline && (
-          <Alert className="mb-6 border-orange-500/50 bg-orange-500/10">
-            <WifiOff className="w-4 h-4 text-orange-500" />
-            <AlertDescription>
-              <strong>Sin conexión a Internet</strong>
-              <p className="text-sm text-muted-foreground mt-1">
-                Puedes seguir creando tours. Se sincronizarán automáticamente cuando vuelva la conexión.
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Pending Tours Sync Banner */}
-        {pendingCount > 0 && (
-          <Alert className="mb-6 border-blue-500/50 bg-blue-500/10">
-            <RefreshCw className={`w-4 h-4 text-blue-500 ${isSyncing ? 'animate-spin' : ''}`} />
-            <AlertDescription className="flex items-center justify-between">
-              <div>
-                <strong>{pendingCount} {pendingCount === 1 ? 'tour sin sincronizar' : 'tours sin sincronizar'}</strong>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {isSyncing 
-                    ? `Sincronizando... ${syncProgress}%` 
-                    : 'Se subirán automáticamente cuando tengas internet'
-                  }
-                </p>
-              </div>
-              {isOnline && !isSyncing && (
-                <Button onClick={syncNow} size="sm" variant="outline">
-                  Sincronizar Ahora
-                </Button>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Permission Banner (Mobile only) */}
-        {isNativeApp && !hasPermission && (
-          <Alert className="mb-6">
-            <Shield className="w-4 h-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <div>
-                <strong>Almacenamiento Nativo Disponible</strong>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Concede permisos para trabajar offline sin límites de espacio
-                </p>
-              </div>
-              <div className="flex gap-2 ml-4">
-                <Button onClick={requestPermissions} size="sm">
-                  Conceder Permisos
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Info Widgets */}
-        {displayTours.length > 0 && (
-          <>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-              <CacheStatusWidget />
-              <OfflineStorageWidget />
-              <SettingsStatusWidget />
-              <OfflineQuickStart onOpenTutorial={() => setTutorialOpen(true)} />
-            </div>
-            
-            {/* 🆕 FASE 4: Diagnóstico de Almacenamiento */}
-            <div className="mb-6">
-              <StorageDiagnostic />
-            </div>
-          </>
-        )}
 
         {displayTours.length === 0 ? (
           <Card className="p-12 text-center">

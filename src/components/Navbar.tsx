@@ -87,6 +87,12 @@ export const Navbar = () => {
                       Caché Offline
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/system-status" className="flex items-center cursor-pointer">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Estado del Sistema
+                    </Link>
+                  </DropdownMenuItem>
                 
                 {/* Tenant Admin Section */}
                   {isTenantAdmin && (
