@@ -182,18 +182,28 @@ const Editor = () => {
 
   const loadTourData = async () => {
     try {
-      // Check if offline and tour is cached
+      // Check if offline and tour is cached or pending
       if (!navigator.onLine) {
-        const cachedTour = await hybridStorage.loadTour(id!);
-        if (cachedTour) {
-          setTour(cachedTour.data);
-          setFloorPlans(cachedTour.floorPlans);
-          if (cachedTour.floorPlans.length > 0) {
-            setSelectedFloorPlan(cachedTour.floorPlans[0]);
+        // Try loading from hybrid storage (supports both cached and pending tours)
+        const offlineTour = await hybridStorage.loadTourOffline(id!);
+        if (offlineTour) {
+          setTour(offlineTour.data);
+          setFloorPlans(offlineTour.floorPlans || []);
+          if (offlineTour.floorPlans?.length > 0) {
+            setSelectedFloorPlan(offlineTour.floorPlans[0]);
           }
           setOfflineMode(true);
           setLoading(false);
-          toast.info('📴 Modo offline - Usando datos en caché');
+          
+          // Check if it's a pending tour
+          const pending = hybridStorage.getPendingTours();
+          const isPending = pending.some(t => t.id === id);
+          
+          if (isPending) {
+            toast.info('📴 Tour offline - Edita y se sincronizará cuando vuelva internet');
+          } else {
+            toast.info('📴 Modo offline - Usando datos en caché');
+          }
           return;
         } else {
           toast.error('Tour no disponible offline. Prepáralo para uso offline cuando tengas internet.');

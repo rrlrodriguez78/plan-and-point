@@ -180,10 +180,23 @@ class IndexedDBAdapter implements StorageAdapter {
   }
 }
 
+// Pending Tour interface for offline creation
+export interface PendingTour {
+  id: string; // Local UUID
+  title: string;
+  description: string;
+  coverImageUrl?: string;
+  tourType: 'tour_360' | 'photo_tour';
+  tenantId: string;
+  synced: false;
+  createdAt: string;
+}
+
 // Hybrid Storage Manager
 class HybridStorageManager {
   private adapter: StorageAdapter | null = null;
   private initPromise: Promise<void> | null = null;
+  private readonly PENDING_TOURS_KEY = 'pending_tours';
 
   constructor() {
     this.initPromise = this.initialize();
@@ -264,6 +277,89 @@ class HybridStorageManager {
   async isUsingNativeStorage(): Promise<boolean> {
     await this.ensureInitialized();
     return this.adapter instanceof FilesystemAdapter;
+  }
+
+  // Create tour offline (stores in localStorage with synced: false)
+  async createTourOffline(tourData: {
+    title: string;
+    description: string;
+    coverImageUrl?: string;
+    tourType: 'tour_360' | 'photo_tour';
+    tenantId: string;
+  }): Promise<PendingTour> {
+    const localId = crypto.randomUUID();
+    const pendingTour: PendingTour = {
+      id: localId,
+      title: tourData.title,
+      description: tourData.description,
+      coverImageUrl: tourData.coverImageUrl,
+      tourType: tourData.tourType,
+      tenantId: tourData.tenantId,
+      synced: false,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save to localStorage
+    const pending = this.getPendingTours();
+    pending.push(pendingTour);
+    localStorage.setItem(this.PENDING_TOURS_KEY, JSON.stringify(pending));
+
+    console.log('✅ Tour creado offline:', pendingTour);
+    return pendingTour;
+  }
+
+  // Get pending tours (not synced)
+  getPendingTours(): PendingTour[] {
+    try {
+      const stored = localStorage.getItem(this.PENDING_TOURS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading pending tours:', error);
+      return [];
+    }
+  }
+
+  // Mark tour as synced and update its ID
+  async markTourSynced(localId: string, remoteId?: string): Promise<void> {
+    const pending = this.getPendingTours();
+    const updated = pending.filter(t => t.id !== localId);
+    localStorage.setItem(this.PENDING_TOURS_KEY, JSON.stringify(updated));
+    
+    if (remoteId) {
+      // Update ID mapping
+      const { updateMapping } = await import('./tourIdMapping');
+      await updateMapping(localId, remoteId);
+    }
+  }
+
+  // Load tour offline (supports both local and remote IDs)
+  async loadTourOffline(tourId: string): Promise<any> {
+    // Check if it's a pending tour
+    const pending = this.getPendingTours();
+    const pendingTour = pending.find(t => t.id === tourId);
+    
+    if (pendingTour) {
+      // Return minimal tour data for editing
+      return {
+        data: {
+          id: pendingTour.id,
+          title: pendingTour.title,
+          description: pendingTour.description,
+          cover_image_url: pendingTour.coverImageUrl,
+          tour_type: pendingTour.tourType,
+          tenant_id: pendingTour.tenantId,
+          is_published: false,
+          created_at: pendingTour.createdAt,
+          updated_at: pendingTour.createdAt
+        },
+        floorPlans: [],
+        hotspots: [],
+        photos: []
+      };
+    }
+
+    // Try loading from cache
+    return await this.loadTour(tourId);
   }
 }
 

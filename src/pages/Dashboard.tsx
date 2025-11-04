@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
@@ -21,6 +22,10 @@ import { OfflineTutorialDialog } from '@/components/shared/OfflineTutorialDialog
 import { useHybridStorage } from '@/hooks/useHybridStorage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SettingsStatusWidget } from '@/components/settings/SettingsStatusWidget';
+import { useTourSync } from '@/hooks/useTourSync';
+import { hybridStorage } from '@/utils/hybridStorage';
+import { getRemoteId } from '@/utils/tourIdMapping';
+import { WifiOff, RefreshCw } from 'lucide-react';
 
 interface Organization {
   id: string;
@@ -56,8 +61,10 @@ const Dashboard = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedTourForShare, setSelectedTourForShare] = useState<{ id: string; title: string } | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   const { isNativeApp, hasPermission, requestPermissions, openSettings } = useHybridStorage();
+  const { pendingCount, isSyncing, syncProgress, syncNow, refreshCount } = useTourSync();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -70,6 +77,25 @@ const Dashboard = () => {
       loadData();
     }
   }, [user, currentTenant]);
+
+  // Monitor online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Refresh pending count when tours change
+  useEffect(() => {
+    refreshCount();
+  }, [tours, refreshCount]);
 
   const loadData = async () => {
     if (!currentTenant) {
@@ -109,6 +135,37 @@ const Dashboard = () => {
     }
 
     setSavingTour(true);
+    
+    // Check if offline
+    if (!navigator.onLine) {
+      try {
+        const pendingTour = await hybridStorage.createTourOffline({
+          title: tourData.title,
+          description: tourData.description,
+          coverImageUrl: tourData.coverImageUrl,
+          tourType: selectedTourType === '360' ? 'tour_360' : 'photo_tour',
+          tenantId: currentTenant.tenant_id
+        });
+
+        toast.success('📴 Tour creado offline - Se sincronizará cuando vuelva internet');
+        setModalOpen(false);
+        refreshCount();
+        
+        // Navigate to editor with local ID
+        const editorPath = pendingTour.tourType === 'photo_tour' 
+          ? `/app/photo-editor/${pendingTour.id}` 
+          : `/app/editor/${pendingTour.id}`;
+        navigate(editorPath);
+      } catch (error) {
+        console.error('Error creating offline tour:', error);
+        toast.error('Error al crear tour offline');
+      } finally {
+        setSavingTour(false);
+      }
+      return;
+    }
+
+    // Online mode - save to Supabase
     try {
       const { data, error } = await supabase
         .from('virtual_tours')
@@ -291,6 +348,42 @@ const Dashboard = () => {
           />
         </div>
 
+        {/* Offline Status Banner */}
+        {!isOnline && (
+          <Alert className="mb-6 border-orange-500/50 bg-orange-500/10">
+            <WifiOff className="w-4 h-4 text-orange-500" />
+            <AlertDescription>
+              <strong>Sin conexión a Internet</strong>
+              <p className="text-sm text-muted-foreground mt-1">
+                Puedes seguir creando tours. Se sincronizarán automáticamente cuando vuelva la conexión.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Pending Tours Sync Banner */}
+        {pendingCount > 0 && (
+          <Alert className="mb-6 border-blue-500/50 bg-blue-500/10">
+            <RefreshCw className={`w-4 h-4 text-blue-500 ${isSyncing ? 'animate-spin' : ''}`} />
+            <AlertDescription className="flex items-center justify-between">
+              <div>
+                <strong>{pendingCount} {pendingCount === 1 ? 'tour sin sincronizar' : 'tours sin sincronizar'}</strong>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {isSyncing 
+                    ? `Sincronizando... ${syncProgress}%` 
+                    : 'Se subirán automáticamente cuando tengas internet'
+                  }
+                </p>
+              </div>
+              {isOnline && !isSyncing && (
+                <Button onClick={syncNow} size="sm" variant="outline">
+                  Sincronizar Ahora
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Permission Banner (Mobile only) */}
         {isNativeApp && !hasPermission && (
           <Alert className="mb-6">
@@ -337,7 +430,19 @@ const Dashboard = () => {
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tours.map((tour) => (
+            {[...hybridStorage.getPendingTours().map(p => ({
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              is_published: false,
+              created_at: p.createdAt,
+              cover_image_url: p.coverImageUrl,
+              password_protected: false,
+              tour_type: p.tourType,
+              _isPending: true
+            })), ...tours].map((tour) => {
+              const isPending = (tour as any)._isPending;
+              return (
               <Card key={tour.id} className="p-0 hover:shadow-lg transition-all overflow-hidden">
                 <div className="relative h-32 bg-muted overflow-hidden">
                   {tour.cover_image_url ? (
@@ -367,8 +472,17 @@ const Dashboard = () => {
                   
                   {/* Title and Status Overlay - Top */}
                   <div className="absolute top-1.5 left-1.5 right-1.5 z-10 flex justify-between items-start gap-2">
-                    <div className="backdrop-blur-sm bg-black/40 px-2 py-1 rounded border border-white/20 flex-1 min-w-0">
+                    <div className="backdrop-blur-sm bg-black/40 px-2 py-1 rounded border border-white/20 flex-1 min-w-0 flex items-center gap-1.5">
                       <h3 className="text-white font-semibold text-xs truncate">{tour.title}</h3>
+                      {(() => {
+                        const pending = hybridStorage.getPendingTours();
+                        const isPending = pending.some(t => t.id === tour.id);
+                        return isPending && (
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-orange-500/80 text-white border-orange-600">
+                            📴 Local
+                          </Badge>
+                        );
+                      })()}
                     </div>
                     <TooltipProvider>
                       <Tooltip>
@@ -524,7 +638,8 @@ const Dashboard = () => {
                   </TooltipProvider>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
