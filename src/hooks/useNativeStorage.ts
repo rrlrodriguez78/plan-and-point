@@ -103,17 +103,42 @@ export function useNativeStorage() {
   ): Promise<boolean> => {
     if (!hasPermission) {
       const granted = await requestPermissions();
-      if (!granted) return false;
+      if (!granted) {
+        toast.error(
+          'No se puede guardar sin permisos de almacenamiento',
+          {
+            action: {
+              label: 'Abrir Ajustes',
+              onClick: openAppSettings
+            }
+          }
+        );
+        return false;
+      }
     }
 
     try {
       await saveTourToFilesystem(tourId, tourName, tourData, floorPlans, hotspots, photos);
       await refreshStats();
-      toast.success(`Tour "${tourName}" guardado en almacenamiento nativo`);
+      toast.success(`✅ Tour "${tourName}" guardado en almacenamiento nativo`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving tour:', error);
-      toast.error('Error al guardar el tour');
+      
+      // Errores específicos
+      if (error.message?.includes('permission') || error.message?.includes('denied')) {
+        toast.error('❌ Error de permisos - verifica los ajustes de la app', {
+          action: {
+            label: 'Abrir Ajustes',
+            onClick: openAppSettings
+          }
+        });
+      } else if (error.message?.includes('space') || error.message?.includes('storage')) {
+        toast.error('❌ No hay suficiente espacio en el dispositivo');
+      } else {
+        toast.error('❌ Error al guardar el tour');
+      }
+      
       return false;
     }
   }, [hasPermission, requestPermissions, refreshStats]);

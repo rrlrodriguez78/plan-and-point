@@ -4,6 +4,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 export interface PermissionStatus {
   granted: boolean;
   canRequest: boolean;
+  deniedPermanently?: boolean;
 }
 
 /**
@@ -11,18 +12,23 @@ export interface PermissionStatus {
  */
 export async function checkStoragePermission(): Promise<PermissionStatus> {
   if (!Capacitor.isNativePlatform()) {
-    return { granted: true, canRequest: false }; // Web siempre tiene acceso
+    return { granted: true, canRequest: false };
   }
 
   try {
     const permission = await Filesystem.checkPermissions();
+    const isDenied = permission.publicStorage === 'denied';
+    const isGranted = permission.publicStorage === 'granted';
+    const canPrompt = permission.publicStorage === 'prompt' || permission.publicStorage === 'prompt-with-rationale';
+    
     return {
-      granted: permission.publicStorage === 'granted',
-      canRequest: permission.publicStorage === 'prompt' || permission.publicStorage === 'prompt-with-rationale'
+      granted: isGranted,
+      canRequest: canPrompt,
+      deniedPermanently: isDenied && !canPrompt
     };
   } catch (error) {
     console.error('Error checking storage permissions:', error);
-    return { granted: false, canRequest: true };
+    return { granted: false, canRequest: true, deniedPermanently: false };
   }
 }
 
@@ -31,7 +37,7 @@ export async function checkStoragePermission(): Promise<PermissionStatus> {
  */
 export async function requestStoragePermission(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) {
-    return true; // Web no necesita permisos
+    return true;
   }
 
   try {
@@ -41,13 +47,24 @@ export async function requestStoragePermission(): Promise<boolean> {
       return true;
     }
 
+    if (currentStatus.deniedPermanently) {
+      console.warn('⚠️ Storage permission permanently denied - user must enable in settings');
+      return false;
+    }
+
     if (!currentStatus.canRequest) {
-      console.warn('Cannot request storage permission - user must enable it in settings');
+      console.warn('Cannot request storage permission');
       return false;
     }
 
     const permission = await Filesystem.requestPermissions();
-    return permission.publicStorage === 'granted';
+    const granted = permission.publicStorage === 'granted';
+    
+    if (granted) {
+      console.log('✅ Storage permissions granted');
+    }
+    
+    return granted;
   } catch (error) {
     console.error('Error requesting storage permissions:', error);
     return false;
@@ -63,8 +80,14 @@ export async function openAppSettings(): Promise<void> {
   }
 
   try {
-    // En plataformas nativas, el usuario debe ir manualmente a ajustes
-    alert('Por favor, ve a Ajustes > Aplicaciones > VirtualTour360 > Permisos para conceder acceso al almacenamiento');
+    const platform = Capacitor.getPlatform();
+    const appName = 'VirtualTour360';
+    
+    if (platform === 'android') {
+      alert(`📱 Ve a: Ajustes > Aplicaciones > ${appName} > Permisos > Archivos y medios`);
+    } else if (platform === 'ios') {
+      alert(`📱 Ve a: Ajustes > ${appName} > Permitir acceso a: Fotos`);
+    }
   } catch (error) {
     console.error('Error opening app settings:', error);
   }

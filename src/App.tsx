@@ -14,7 +14,9 @@ import { A11ySkipLink } from "./components/A11ySkipLink";
 import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import { NetworkStatusBanner } from "./components/shared/NetworkStatusBanner";
 import { hybridStorage } from "./utils/hybridStorage";
+import { isNativeApp, requestStoragePermission, openAppSettings } from "./utils/storagePermissions";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
@@ -151,28 +153,54 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TooltipProvider>
-        <A11ySkipLink />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <TenantProvider>
-              <UserSettingsProvider>
-                <PWAUpdatePrompt />
-                <NetworkStatusBanner />
-                <StorageMigrationDialog />
-                <AppRoutes />
-              </UserSettingsProvider>
-            </TenantProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Solicitar permisos de almacenamiento al iniciar la app
+  useEffect(() => {
+    const initializePermissions = async () => {
+      if (isNativeApp()) {
+        const granted = await requestStoragePermission();
+        
+        if (!granted) {
+          toast.warning(
+            '⚠️ La app necesita permisos de almacenamiento para funcionar offline',
+            {
+              action: {
+                label: 'Abrir Ajustes',
+                onClick: openAppSettings
+              },
+              duration: 10000
+            }
+          );
+        }
+      }
+    };
+
+    initializePermissions();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <A11ySkipLink />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <TenantProvider>
+                <UserSettingsProvider>
+                  <PWAUpdatePrompt />
+                  <NetworkStatusBanner />
+                  <StorageMigrationDialog />
+                  <AppRoutes />
+                </UserSettingsProvider>
+              </TenantProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
