@@ -271,6 +271,58 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     }
   }, [checkOnlineStatus, maxRetries, updateCounts, isThetaWiFi, settings.cloud_sync]);
 
+  // Sincronizar cambios remotos (detectar actualizaciones del servidor)
+  const syncRemoteChanges = useCallback(async () => {
+    if (!settings.cloud_sync || !settings.sync_data_types.tours) {
+      return;
+    }
+    
+    if (isThetaWiFi) {
+      return;
+    }
+    
+    const online = await checkOnlineStatus();
+    if (!online) return;
+
+    try {
+      setState(prev => ({ ...prev, currentOperation: 'Verificando cambios remotos...' }));
+      
+      const downloadedTours = await hybridStorage.listTours();
+      
+      for (const localTour of downloadedTours) {
+        const { data: remoteTour } = await supabase
+          .from('virtual_tours')
+          .select('id, updated_at, title')
+          .eq('id', localTour.id)
+          .single();
+
+        if (!remoteTour) continue;
+
+        const localSyncTime = localTour.lastSyncedAt ? new Date(localTour.lastSyncedAt) : new Date(0);
+        const remoteUpdateTime = new Date(remoteTour.updated_at);
+
+        if (remoteUpdateTime > localSyncTime) {
+          console.log(`🔄 Cambios remotos detectados: ${remoteTour.title}`);
+          
+          if (localTour.hasLocalChanges) {
+            toast.warning(`⚠️ Conflicto en "${remoteTour.title}"`, {
+              description: 'Tienes cambios locales y hay actualizaciones remotas',
+              duration: 5000,
+            });
+          } else {
+            toast.info(`⬇️ Actualizando "${remoteTour.title}"`);
+          }
+        }
+      }
+      
+      setState(prev => ({ ...prev, currentOperation: null }));
+      
+    } catch (error) {
+      console.error('Error syncing remote changes:', error);
+      setState(prev => ({ ...prev, currentOperation: null }));
+    }
+  }, [checkOnlineStatus, isThetaWiFi, settings.cloud_sync, settings.sync_data_types.tours]);
+
   // Actualizar cache de tours (descargar actualizaciones)
   const updateCachedTours = useCallback(async () => {
     // Check if tours sync is enabled
@@ -293,13 +345,8 @@ export function useIntelligentSync(options: SyncOptions = {}) {
       
       const cachedTours = await hybridStorage.listTours();
       
-      for (const cached of cachedTours) {
-        // Re-download and update
-        await updateCachedTours();
-      }
-      
       setState(prev => ({ ...prev, currentOperation: null }));
-      toast.success(`✅ ${cachedTours.length} tours actualizados`);
+      toast.success(`✅ ${cachedTours.length} tours verificados`);
       
     } catch (error) {
       console.error('Error updating cached tours:', error);
@@ -314,11 +361,14 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     // 1. Sincronizar fotos pendientes
     await syncPendingPhotos();
     
-    // 2. Actualizar tours en caché
+    // 2. Verificar cambios remotos
+    await syncRemoteChanges();
+    
+    // 3. Actualizar tours en caché
     await updateCachedTours();
     
     console.log('✅ Sincronización completa finalizada');
-  }, [syncPendingPhotos, updateCachedTours]);
+  }, [syncPendingPhotos, syncRemoteChanges, updateCachedTours]);
 
   // Monitorear estado de red
   useEffect(() => {
@@ -429,6 +479,7 @@ export function useIntelligentSync(options: SyncOptions = {}) {
     syncNow: performFullSync,
     syncPhotos: syncPendingPhotos,
     updateTours: updateCachedTours,
+    syncRemoteChanges,
     refreshCounts: updateCounts,
   };
 }

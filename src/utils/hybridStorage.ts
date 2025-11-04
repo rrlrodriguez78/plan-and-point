@@ -75,7 +75,9 @@ class FilesystemAdapter implements StorageAdapter {
       id: t.id,
       name: t.name,
       size: t.size,
-      lastModified: new Date(t.cachedAt)
+      lastModified: new Date(t.cachedAt),
+      lastSyncedAt: t.metadata.lastSyncedAt,
+      hasLocalChanges: t.metadata.hasLocalChanges
     }));
   }
 
@@ -161,7 +163,9 @@ class IndexedDBAdapter implements StorageAdapter {
       id: t.tour.id!,
       name: t.tour.title || 'Sin nombre',
       size: 0, // IndexedDB doesn't track individual sizes
-      lastModified: new Date(t.cachedAt)
+      lastModified: new Date(t.cachedAt),
+      lastSyncedAt: undefined,
+      hasLocalChanges: false
     }));
   }
 
@@ -190,6 +194,9 @@ export interface PendingTour {
   tenantId: string;
   synced: false;
   createdAt: string;
+  lastSyncedAt?: string;
+  hasLocalChanges?: boolean;
+  remoteId?: string;
 }
 
 // Hybrid Storage Manager

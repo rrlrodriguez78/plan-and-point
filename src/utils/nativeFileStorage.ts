@@ -13,6 +13,8 @@ export interface StoredTour {
     cachedAt: string;
     size: number;
     photosCount: number;
+    lastSyncedAt?: string;
+    hasLocalChanges?: boolean;
   };
 }
 
@@ -32,6 +34,10 @@ export interface StorageStats {
     name: string;
     size: number;
     cachedAt: string;
+    metadata?: {
+      lastSyncedAt?: string;
+      hasLocalChanges?: boolean;
+    };
   }>;
 }
 
@@ -266,7 +272,9 @@ export async function loadTourFromFilesystem(tourId: string): Promise<StoredTour
       metadata: {
         cachedAt: metadata.cachedAt,
         size: await getTourSize(tourId),
-        photosCount: photos.length
+        photosCount: photos.length,
+        lastSyncedAt: metadata.lastSyncedAt,
+        hasLocalChanges: metadata.hasLocalChanges
       }
     };
   } catch (error) {
@@ -278,7 +286,16 @@ export async function loadTourFromFilesystem(tourId: string): Promise<StoredTour
 /**
  * Lista todos los tours guardados
  */
-export async function getToursList(): Promise<Array<{ id: string; name: string; size: number; cachedAt: string }>> {
+export async function getToursList(): Promise<Array<{ 
+  id: string; 
+  name: string; 
+  size: number; 
+  cachedAt: string;
+  metadata: {
+    lastSyncedAt?: string;
+    hasLocalChanges?: boolean;
+  };
+}>> {
   if (!isNativeApp()) {
     return [];
   }
@@ -309,7 +326,11 @@ export async function getToursList(): Promise<Array<{ id: string; name: string; 
               id: dir.name,
               name: meta.name,
               size,
-              cachedAt: meta.cachedAt
+              cachedAt: meta.cachedAt,
+              metadata: {
+                lastSyncedAt: meta.lastSyncedAt,
+                hasLocalChanges: meta.hasLocalChanges
+              }
             };
           } catch (error) {
             console.warn(`Could not read tour metadata: ${dir.name}`);
@@ -318,7 +339,16 @@ export async function getToursList(): Promise<Array<{ id: string; name: string; 
         })
     );
 
-    return tours.filter(t => t !== null) as Array<{ id: string; name: string; size: number; cachedAt: string }>;
+    return tours.filter(t => t !== null) as Array<{ 
+      id: string; 
+      name: string; 
+      size: number; 
+      cachedAt: string;
+      metadata: {
+        lastSyncedAt?: string;
+        hasLocalChanges?: boolean;
+      };
+    }>;
   } catch (error) {
     console.error('Error listing tours:', error);
     return [];
