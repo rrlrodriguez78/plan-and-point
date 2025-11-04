@@ -44,6 +44,31 @@ Al abrir la app en mobile por primera vez:
 
 ## Configuraciones que Afectan Modo Offline
 
+### 🔄 Sistema de Sincronización de Configuraciones
+
+**✅ Las configuraciones ahora funcionan 100% offline:**
+- Se guardan instantáneamente en `localStorage` (sin internet requerido)
+- Se sincronizan automáticamente a la nube cuando vuelve la conexión
+- Banner visual indica cuando estás en modo offline
+- No requiere autenticación para acceder a configuraciones guardadas offline
+
+**Flujo de Guardado:**
+1. Usuario cambia configuración → Se actualiza estado React inmediatamente
+2. Se guarda a `localStorage` (siempre, incluso offline)
+3. Si online + autenticado → Intenta guardar a Supabase
+4. Si falla Supabase → Toast indica "guardado localmente, sincronizará después"
+
+**Flujo de Carga:**
+1. Se carga de `localStorage` primero (instantáneo)
+2. Si online + autenticado → Consulta Supabase
+3. Merge de configuraciones (Supabase tiene prioridad)
+4. Actualiza `localStorage` con valores más recientes
+
+**Auto-Sincronización:**
+- Listener de evento `online` detecta cuando vuelve internet
+- Automáticamente sube configuraciones cacheadas a Supabase
+- Toast de confirmación "🌐 Settings synced to cloud"
+
 ### Configuración Mobile (Settings → Mobile)
 
 **Image Quality**
@@ -51,7 +76,8 @@ Al abrir la app en mobile por primera vez:
 - **Medium (75%)**: Balance entre calidad y tamaño (default)
 - **High (85%)**: Mínima compresión, máxima calidad, archivos grandes
 
-Usado en: `src/utils/imageOptimization.ts` - Afecta todas las imágenes guardadas offline.
+Usado en: `src/utils/imageOptimization.ts` - Afecta todas las imágenes guardadas offline.  
+Se lee de `sessionStorage` (`user_image_quality`) al procesar imágenes.
 
 **Local Storage Limit**
 - Rango: 100MB - 2000MB
@@ -59,14 +85,16 @@ Usado en: `src/utils/imageOptimization.ts` - Afecta todas las imágenes guardada
 - Solo aplica a Web (IndexedDB)
 - Mobile usa almacenamiento nativo sin límite artificial
 
-Usado en: `src/utils/hybridStorage.ts` - Rechaza guardar tours si se excede el límite.
+Usado en: `src/utils/hybridStorage.ts` - Rechaza guardar tours si se excede el límite.  
+Se lee de `sessionStorage` (`user_storage_limit`) antes de guardar.
 
 **Data Usage**
 - **Low**: Máxima compresión en todas las operaciones
 - **Auto**: Balance automático según conexión
 - **High**: Mínima compresión, mejor calidad
 
-Afecta: Tamaño de archivos y velocidad de sincronización.
+Afecta: Tamaño de archivos y velocidad de sincronización.  
+Se lee de `sessionStorage` (`user_data_usage`).
 
 ### Configuración Sync (Settings → Sync)
 
@@ -74,22 +102,25 @@ Afecta: Tamaño de archivos y velocidad de sincronización.
 - Si está OFF: No sincroniza automáticamente con servidor
 - Si está ON: Sincroniza según frecuencia configurada
 
-Usado en: `src/hooks/useIntelligentSync.ts` - Desactiva toda sincronización automática.
+Usado en: `src/hooks/useIntelligentSync.ts` - Desactiva toda sincronización automática.  
+Se verifica `settings.cloud_sync` antes de cada operación de sync.
 
 **Backup Frequency**
-- **Manual**: No sincroniza automáticamente, solo manualmente
-- **Hourly**: Sincroniza cada hora
-- **Daily**: Sincroniza una vez al día
-- **Weekly**: Sincroniza una vez a la semana
+- **Manual**: No sincroniza automáticamente, solo manualmente (intervalo = 0)
+- **Hourly**: Sincroniza cada hora (intervalo = 60 min)
+- **Daily**: Sincroniza una vez al día (intervalo = 1440 min)
+- **Weekly**: Sincroniza una vez a la semana (intervalo = 10080 min)
 
-Usado en: `src/hooks/useIntelligentSync.ts` - Define intervalo de sincronización automática.
+Usado en: `src/hooks/useIntelligentSync.ts` - Define intervalo de sincronización automática.  
+Se lee `settings.backup_frequency` para calcular tiempo entre syncs.
 
 **Sync Data Types**
 - **Tours**: Sincronizar estructura de tours
 - **Media**: Sincronizar fotos y archivos multimedia
 - **Settings**: Sincronizar configuraciones del usuario
 
-Usado en: `src/hooks/useIntelligentSync.ts` - Filtra qué datos sincronizar.
+Usado en: `src/hooks/useIntelligentSync.ts` - Filtra qué datos sincronizar.  
+Se verifica `settings.sync_data_types.tours` y `settings.sync_data_types.media` antes de sincronizar.
 
 **Cross-Device Sync**
 - Si está ON: Sincroniza entre todos los dispositivos del usuario
@@ -101,23 +132,32 @@ Afecta: Disponibilidad de datos en múltiples dispositivos.
 
 **Default Volume**
 - Rango: 0-100%
-- Default: 70%
+- Default: 80%
 
-Usado en: `src/hooks/useMediaSettings.ts` - Volumen inicial para reproducciones.
+Usado en: `src/hooks/useMediaSettings.ts` - Volumen inicial para reproducciones (convertido a rango 0-1).  
+Se lee de `sessionStorage` (`app_volume`).
 
 **Autoplay**
 - Si está ON: Videos se reproducen automáticamente
 - Si está OFF: Usuario debe iniciar reproducción manualmente
 
+Usado en: `src/hooks/useMediaSettings.ts` - Control de autoplay en elementos `<video>`.  
+Se lee de `sessionStorage` (`app_autoplay`).
+
 **Sound Effects**
 - Si está ON: Sonidos de UI (clicks, notificaciones)
 - Si está OFF: UI silenciosa
+
+Usado en: `src/hooks/useMediaSettings.ts` - Habilita/deshabilita efectos de sonido.  
+Se lee de `sessionStorage` (`app_sound_effects`).
 
 **Video Quality**
 - **Auto**: Ajusta según conexión
 - **Low (360p)**: Consume menos datos
 - **Medium (720p)**: Balance calidad/datos
 - **High (1080p)**: Máxima calidad
+
+Disponible vía `useMediaSettings.videoQuality` para componentes que reproduzcan video.
 
 ## Ubicación de Archivos
 

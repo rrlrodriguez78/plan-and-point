@@ -21,8 +21,10 @@ import {
   RefreshCw,
   Volume2,
   BarChart3,
-  CreditCard
+  CreditCard,
+  WifiOff
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationsList } from '@/components/settings/NotificationsList';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
@@ -45,17 +47,46 @@ const UserSettings = () => {
   const { settings, loading: settingsLoading, updateSettings } = useUserSettingsContext();
   const { isSuperAdmin } = useIsSuperAdmin();
   const [loading, setLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [profile, setProfile] = useState({
     email: '',
     full_name: '',
     avatar_url: '',
   });
 
+  // Handle online/offline status
   useEffect(() => {
-    if (!authLoading && !user) {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Only redirect if online AND no user
+  useEffect(() => {
+    if (!authLoading && !user && navigator.onLine) {
       navigate('/login');
+    } else if (!authLoading && !user && !navigator.onLine) {
+      toast.info('📴 Viewing cached settings (offline mode)');
     }
   }, [user, authLoading, navigate]);
+
+  // Timeout for loading state
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (settingsLoading) {
+        toast.info('📴 Using cached settings (offline mode)');
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [settingsLoading]);
 
   useEffect(() => {
     if (user) {
@@ -120,7 +151,10 @@ const UserSettings = () => {
     }
   };
 
-  if (authLoading || settingsLoading) {
+  // Don't show loading forever - allow cached settings after timeout
+  const showLoading = authLoading || (settingsLoading && Date.now() < 5000);
+  
+  if (showLoading && !settings) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -144,6 +178,15 @@ const UserSettings = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Dashboard
         </Button>
+
+        {isOffline && (
+          <Alert className="mb-6 border-warning/50 bg-warning/10">
+            <WifiOff className="h-4 w-4" />
+            <AlertDescription>
+              📴 <strong>Modo Offline</strong> - Los ajustes se guardan localmente y se sincronizarán cuando vuelvas a estar en línea
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex items-center gap-3 mb-8">
           <User className="w-8 h-8 text-primary" />

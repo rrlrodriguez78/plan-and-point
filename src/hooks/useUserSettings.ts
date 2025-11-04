@@ -120,6 +120,8 @@ const defaultSettings: UserSettings = {
   pwa_check_interval: 900000
 };
 
+const STORAGE_KEY = 'user_settings_cache';
+
 export const useUserSettings = () => {
   const { user } = useAuth();
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
@@ -127,13 +129,53 @@ export const useUserSettings = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadSettings();
-    }
+    loadSettings();
+  }, [user]);
+
+  // Auto-sync settings when connection returns
+  useEffect(() => {
+    const handleOnline = async () => {
+      const cachedSettings = localStorage.getItem(STORAGE_KEY);
+      if (cachedSettings && user) {
+        try {
+          const parsedSettings = JSON.parse(cachedSettings);
+          await supabase
+            .from('user_settings')
+            .upsert({
+              user_id: user.id,
+              ...parsedSettings
+            }, {
+              onConflict: 'user_id'
+            });
+          toast.success('🌐 Settings synced to cloud');
+        } catch (error) {
+          console.error('Auto-sync failed:', error);
+        }
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
   }, [user]);
 
   const loadSettings = async () => {
-    if (!user) return;
+    // 1. Load from localStorage FIRST (instant, works offline)
+    const cachedSettings = localStorage.getItem(STORAGE_KEY);
+    if (cachedSettings) {
+      try {
+        const parsed = JSON.parse(cachedSettings);
+        setSettings(parsed);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error parsing cached settings:', error);
+      }
+    }
+
+    // 2. Then try Supabase (if online and authenticated)
+    if (!user || !navigator.onLine) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -145,7 +187,7 @@ export const useUserSettings = () => {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        setSettings({
+        const mergedSettings = {
           push_notifications: data.push_notifications,
           email_notifications: data.email_notifications,
           in_app_notifications: data.in_app_notifications,
@@ -184,39 +226,50 @@ export const useUserSettings = () => {
           pwa_auto_update_delay: data.pwa_auto_update_delay ?? defaultSettings.pwa_auto_update_delay,
           pwa_browser_notifications: data.pwa_browser_notifications ?? defaultSettings.pwa_browser_notifications,
           pwa_check_interval: data.pwa_check_interval ?? defaultSettings.pwa_check_interval
-        });
+        };
+        setSettings(mergedSettings);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSettings));
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.log('📴 Using cached settings (offline or error)');
     } finally {
       setLoading(false);
     }
   };
 
   const updateSettings = async (updates: Partial<UserSettings>) => {
-    if (!user) return;
-
     try {
       setSaving(true);
       const newSettings = { ...settings, ...updates };
       setSettings(newSettings);
 
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ...newSettings
-        }, {
-          onConflict: 'user_id'
-        });
+      // ALWAYS save to localStorage (works offline)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
 
-      if (error) throw error;
+      // Try Supabase only if online
+      if (navigator.onLine && user) {
+        try {
+          const { error } = await supabase
+            .from('user_settings')
+            .upsert({
+              user_id: user.id,
+              ...newSettings
+            }, {
+              onConflict: 'user_id'
+            });
 
-      toast.success('Settings saved successfully');
+          if (error) throw error;
+          toast.success('Settings saved and synced');
+        } catch (error) {
+          console.error('Supabase save failed:', error);
+          toast.success('Settings saved locally (will sync when online)');
+        }
+      } else {
+        toast.success('Settings saved locally');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Failed to save settings');
-      loadSettings(); // Reload on error
     } finally {
       setSaving(false);
     }
