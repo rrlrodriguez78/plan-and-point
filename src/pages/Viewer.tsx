@@ -16,6 +16,8 @@ import { OrientationWarning } from '@/components/viewer/OrientationWarning';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { Tour, FloorPlan, Hotspot, PanoramaPhoto } from '@/types/tour';
 import { TourPasswordPrompt } from '@/components/viewer/TourPasswordPrompt';
+import { hybridStorage } from '@/utils/hybridStorage';
+import { Badge } from '@/components/ui/badge';
 
 const Viewer = () => {
   const { id } = useParams();
@@ -37,6 +39,7 @@ const Viewer = () => {
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordProtected, setPasswordProtected] = useState(false);
   const [passwordUpdatedAt, setPasswordUpdatedAt] = useState<string | null>(null);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   // Auto-dismiss warning cuando el usuario rota manualmente a landscape
   useEffect(() => {
@@ -167,7 +170,48 @@ const Viewer = () => {
         return;
       }
 
-      // 1. Cargar tour básico (accesible públicamente si está publicado)
+      // 1. Intentar cargar desde almacenamiento local primero (offline-first)
+      try {
+        const cachedTour = await hybridStorage.loadTour(id);
+        
+        if (cachedTour) {
+          console.log('✅ Tour cargado desde almacenamiento local (offline)');
+          setIsOfflineMode(true);
+          setTour(cachedTour.data);
+          setFloorPlans(cachedTour.floorPlans);
+          setTourType((cachedTour.data.tour_type || 'tour_360') as 'tour_360' | 'photo_tour');
+          
+          // Agrupar hotspots por floor plan
+          const hotspotsMap: Record<string, Hotspot[]> = {};
+          cachedTour.hotspots.forEach(h => {
+            if (!hotspotsMap[h.floor_plan_id!]) {
+              hotspotsMap[h.floor_plan_id!] = [];
+            }
+            hotspotsMap[h.floor_plan_id!].push(h);
+          });
+          setHotspotsByFloor(hotspotsMap);
+          
+          if (cachedTour.floorPlans.length > 0) {
+            setCurrentFloorPlanId(cachedTour.floorPlans[0].id);
+          }
+          
+          setLoading(false);
+          return;
+        }
+      } catch (cacheError) {
+        console.log('No se pudo cargar desde caché, intentando Supabase...', cacheError);
+      }
+
+      // 2. Si no hay cache o falló, verificar conexión antes de intentar Supabase
+      if (!navigator.onLine) {
+        toast.error('Sin internet y tour no disponible offline');
+        setLoading(false);
+        return;
+      }
+
+      setIsOfflineMode(false);
+
+      // 3. Cargar desde Supabase (requiere internet)
       const { data: tourData, error: tourError } = await supabase
         .from('virtual_tours')
         .select(`
@@ -483,6 +527,15 @@ const Viewer = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Offline Mode Indicator */}
+      {isOfflineMode && (
+        <div className="bg-muted border-b border-border px-4 py-2 text-center">
+          <Badge variant="secondary" className="gap-2">
+            📴 Modo Offline
+          </Badge>
+        </div>
+      )}
+      
       {/* Orientation Warning - ACTUALIZADO con onForceLandscape */}
       {shouldShowOrientationWarning && !userDismissedWarning && (
         <OrientationWarning 

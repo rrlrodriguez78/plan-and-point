@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { StorageMigrationDialog } from "@/components/StorageMigrationDialog";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/contexts/ThemeContext";
 import { UserSettingsProvider } from "./contexts/UserSettingsContext";
 import { TenantProvider } from "./contexts/TenantContext";
@@ -13,6 +13,8 @@ import { useAutoCleanup } from "./hooks/useAutoCleanup";
 import { A11ySkipLink } from "./components/A11ySkipLink";
 import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import { NetworkStatusBanner } from "./components/shared/NetworkStatusBanner";
+import { hybridStorage } from "./utils/hybridStorage";
+import { useEffect, useState } from "react";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Inicio from "./pages/Inicio";
@@ -41,6 +43,60 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Componente para rutas con acceso offline
+const OfflineRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  const { id } = useParams();
+  const [hasOfflineAccess, setHasOfflineAccess] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkOfflineAccess = async () => {
+      if (user) {
+        setHasOfflineAccess(true);
+        setIsChecking(false);
+        return;
+      }
+
+      if (!id) {
+        setHasOfflineAccess(false);
+        setIsChecking(false);
+        return;
+      }
+
+      // Si no hay usuario, verificar si hay cache disponible y estamos offline
+      try {
+        const cachedTour = await hybridStorage.loadTour(id);
+        const hasCache = !!cachedTour;
+        const isOffline = !navigator.onLine;
+        
+        setHasOfflineAccess(hasCache && isOffline);
+      } catch (error) {
+        console.error('Error checking offline access:', error);
+        setHasOfflineAccess(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkOfflineAccess();
+  }, [user, id]);
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user && !hasOfflineAccess) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 // Componente interno que usa el hook de redirección offline
 const AppRoutes = () => {
   useOfflineRedirect();
@@ -55,7 +111,11 @@ const AppRoutes = () => {
         <Route path="/signup" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/share/:token" element={<SharedTour />} />
-        <Route path="/viewer/:id" element={<Viewer />} />
+        <Route path="/viewer/:id" element={
+          <OfflineRoute>
+            <Viewer />
+          </OfflineRoute>
+        } />
         
         {/* Offline mode - No authentication required */}
         <Route path="/offline-theta" element={<ThetaOfflineCapture />} />
@@ -64,7 +124,11 @@ const AppRoutes = () => {
         <Route path="/app/inicio" element={<Inicio />} />
         <Route path="/app/tours" element={<Dashboard />} />
         <Route path="/app/tours-publicos" element={<PublicTours />} />
-        <Route path="/app/editor/:id" element={<Editor />} />
+        <Route path="/app/editor/:id" element={
+          <OfflineRoute>
+            <Editor />
+          </OfflineRoute>
+        } />
         <Route path="/app/photo-editor/:id" element={<PhotoEditor />} />
         <Route path="/app/settings" element={<Settings />} />
         <Route path="/app/user-settings" element={<UserSettings />} />

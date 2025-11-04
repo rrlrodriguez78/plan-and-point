@@ -9,17 +9,17 @@ import { Navbar } from '@/components/Navbar';
 import { 
   HardDrive, 
   Trash2, 
-  Download, 
   RefreshCw, 
   Eye,
   Calendar,
   Image as ImageIcon,
   Layers,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  FolderOpen,
+  Settings
 } from 'lucide-react';
-import { tourOfflineCache } from '@/utils/tourOfflineCache';
-import type { Tour, FloorPlan, Hotspot } from '@/types/tour';
+import { useHybridStorage } from '@/hooks/useHybridStorage';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -33,48 +33,36 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface CachedTourInfo {
-  tour: Tour;
-  floorPlans: FloorPlan[];
-  hotspots: Hotspot[];
-  floorPlanImages: Map<string, Blob>;
-  cachedAt: Date;
-  expiresAt: Date;
-  imagesCount: number;
-  size: number;
-}
-
-import { useResourceMonitor } from '@/hooks/useResourceMonitor';
+import { Capacitor } from '@capacitor/core';
 
 export default function OfflineCacheManager() {
   const navigate = useNavigate();
-  const [cachedTours, setCachedTours] = useState<CachedTourInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tourToDelete, setTourToDelete] = useState<string | null>(null);
   
   const { 
-    cacheSize, 
-    cacheUsagePercentage, 
-    isNearLimit, 
-    isAtLimit,
-    limits,
-    refresh: refreshResourceStats 
-  } = useResourceMonitor(5000);
+    stats,
+    isNativeApp,
+    hasPermission,
+    usingNativeStorage,
+    listTours,
+    deleteTour,
+    requestPermissions
+  } = useHybridStorage();
+
+  const [cachedTours, setCachedTours] = useState<Array<{
+    id: string;
+    name: string;
+    size: number;
+    lastModified: Date;
+  }>>([]);
 
   const loadCacheData = async () => {
     setIsLoading(true);
     try {
-      const tours = await tourOfflineCache.getAllCachedTours();
-      
-      const toursInfo: CachedTourInfo[] = tours.map(cached => ({
-        ...cached,
-        imagesCount: cached.floorPlanImages.size,
-      }));
-
-      setCachedTours(toursInfo);
-      await refreshResourceStats();
+      const tours = await listTours();
+      setCachedTours(tours);
     } catch (error) {
       console.error('Error loading cache data:', error);
       toast.error('Error al cargar datos de caché');
@@ -89,7 +77,7 @@ export default function OfflineCacheManager() {
 
   const handleDeleteTour = async (tourId: string) => {
     try {
-      await tourOfflineCache.deleteCachedTour(tourId);
+      await deleteTour(tourId);
       toast.success('Tour eliminado del caché');
       await loadCacheData();
     } catch (error) {
@@ -100,36 +88,11 @@ export default function OfflineCacheManager() {
     }
   };
 
-  const handleCleanExpired = async () => {
-    setIsRefreshing(true);
-    try {
-      await tourOfflineCache.cleanExpiredTours();
-      toast.success('Tours expirados eliminados');
-      await loadCacheData();
-    } catch (error) {
-      console.error('Error cleaning expired tours:', error);
-      toast.error('Error al limpiar tours expirados');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleRefreshTour = async (tourId: string) => {
-    setIsRefreshing(true);
-    try {
-      if (!navigator.onLine) {
-        toast.error('Necesitas conexión a internet para actualizar');
-        return;
-      }
-      
-      await tourOfflineCache.downloadTourForOffline(tourId);
-      toast.success('Tour actualizado');
-      await loadCacheData();
-    } catch (error) {
-      console.error('Error refreshing tour:', error);
-      toast.error('Error al actualizar tour');
-    } finally {
-      setIsRefreshing(false);
+  const handleOpenFolder = () => {
+    if (Capacitor.isNativePlatform()) {
+      toast.info('Abre el explorador de archivos en /VirtualTour360/', {
+        description: 'Android: Mis archivos > VirtualTour360\niOS: Archivos > En mi iPhone > VirtualTour360'
+      });
     }
   };
 
@@ -141,10 +104,9 @@ export default function OfflineCacheManager() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const isExpiringSoon = (expiresAt: Date) => {
-    const daysUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    return daysUntilExpiry <= 1;
-  };
+  const cacheUsagePercentage = stats.limit > 0 ? (stats.size / stats.limit) * 100 : 0;
+  const isNearLimit = cacheUsagePercentage >= 80;
+  const isAtLimit = cacheUsagePercentage >= 95;
 
   if (isLoading) {
     return (
@@ -172,48 +134,69 @@ export default function OfflineCacheManager() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <HardDrive className="w-8 h-8" />
-              Gestión de Caché Offline
+              Gestión de Almacenamiento Offline
             </h1>
             <p className="text-muted-foreground mt-2">
-              Administra los tours disponibles sin conexión
+              {usingNativeStorage 
+                ? 'Tours guardados en el almacenamiento nativo del dispositivo'
+                : 'Tours guardados en IndexedDB del navegador'}
             </p>
           </div>
           
-          <Button
-            variant="outline"
-            onClick={handleCleanExpired}
-            disabled={isRefreshing}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Limpiar Expirados
-          </Button>
+          <div className="flex gap-2">
+            {usingNativeStorage && (
+              <Button
+                variant="outline"
+                onClick={handleOpenFolder}
+              >
+                <FolderOpen className="w-4 h-4 mr-2" />
+                Abrir Carpeta
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Permission Alert for Mobile */}
+        {isNativeApp && !hasPermission && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>Se requieren permisos de almacenamiento para usar el modo offline completo</span>
+              <Button onClick={requestPermissions} size="sm" className="ml-4">
+                <Settings className="w-4 h-4 mr-2" />
+                Conceder Permisos
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Storage Overview */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HardDrive className="w-5 h-5" />
-              Espacio de Almacenamiento
-              {isAtLimit && (
+              {usingNativeStorage ? '📂' : '💾'}
+              {usingNativeStorage ? 'Almacenamiento Nativo' : 'IndexedDB (Navegador)'}
+              {!usingNativeStorage && isAtLimit && (
                 <Badge variant="destructive">Lleno</Badge>
               )}
-              {isNearLimit && !isAtLimit && (
+              {!usingNativeStorage && isNearLimit && !isAtLimit && (
                 <Badge variant="secondary">Casi lleno</Badge>
               )}
             </CardTitle>
             <CardDescription>
-              Uso actual del caché local ({Math.round(cacheUsagePercentage)}% usado)
+              {usingNativeStorage 
+                ? `/VirtualTour360/ - Espacio real del dispositivo`
+                : `Uso actual del caché local (${Math.round(cacheUsagePercentage)}% usado)`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {(isNearLimit || isAtLimit) && (
+            {!usingNativeStorage && (isNearLimit || isAtLimit) && (
               <Alert variant={isAtLimit ? "destructive" : "default"}>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   {isAtLimit 
-                    ? 'Caché lleno. Elimina tours para liberar espacio o se eliminarán automáticamente los más antiguos.'
-                    : 'Caché cerca del límite. Se recomienda limpiar tours antiguos para evitar eliminaciones automáticas.'
+                    ? 'Caché lleno. En móvil tendrás almacenamiento ilimitado.'
+                    : 'Caché cerca del límite. Considera usar la app móvil para almacenamiento ilimitado.'
                   }
                 </AlertDescription>
               </Alert>
@@ -221,38 +204,50 @@ export default function OfflineCacheManager() {
             
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Espacio usado</span>
-              <span className="text-2xl font-bold">{formatBytes(cacheSize)}</span>
+              <span className="text-2xl font-bold">{formatBytes(stats.size)}</span>
             </div>
             
-            <Progress 
-              value={cacheUsagePercentage} 
-              className={`h-3 ${isAtLimit ? '[&>div]:bg-destructive' : isNearLimit ? '[&>div]:bg-yellow-500' : ''}`}
-            />
-            
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Límite: {formatBytes(limits.maxCacheSize)}</span>
-              <span>Disponible: {formatBytes(limits.maxCacheSize - cacheSize)}</span>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4 pt-2">
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold">{cachedTours.length}</div>
-                <div className="text-sm text-muted-foreground">Tours</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Máx: {limits.maxTours}
+            {!usingNativeStorage && (
+              <>
+                <Progress 
+                  value={cacheUsagePercentage} 
+                  className={`h-3 ${isAtLimit ? '[&>div]:bg-destructive' : isNearLimit ? '[&>div]:bg-yellow-500' : ''}`}
+                />
+                
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Límite: {formatBytes(stats.limit)}</span>
+                  <span>Disponible: {formatBytes(stats.limit - stats.size)}</span>
                 </div>
+              </>
+            )}
+
+            {usingNativeStorage && stats.availableSpace !== undefined && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Espacio disponible en dispositivo:</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">
+                  {formatBytes(stats.availableSpace)}
+                </span>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{stats.count}</div>
+                <div className="text-sm text-muted-foreground">Tours Guardados</div>
+                {!usingNativeStorage && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Máx: 5
+                  </div>
+                )}
               </div>
               <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold">
-                  {cachedTours.reduce((acc, t) => acc + t.floorPlans.length, 0)}
-                </div>
-                <div className="text-sm text-muted-foreground">Planos</div>
-              </div>
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold">
-                  {cachedTours.reduce((acc, t) => acc + t.imagesCount, 0)}
-                </div>
-                <div className="text-sm text-muted-foreground">Imágenes</div>
+                <div className="text-2xl font-bold">{formatBytes(stats.size)}</div>
+                <div className="text-sm text-muted-foreground">Espacio Total</div>
+                {usingNativeStorage && (
+                  <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    ✅ Sin límites
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -275,99 +270,63 @@ export default function OfflineCacheManager() {
         ) : (
           <div className="grid gap-4">
             {cachedTours.map((cachedTour) => {
-              const isExpiring = isExpiringSoon(cachedTour.expiresAt);
-              const isExpired = cachedTour.expiresAt < new Date();
-              
               return (
-                <Card key={cachedTour.tour.id} className="animate-fade-in">
+                <Card key={cachedTour.id} className="animate-fade-in">
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
-                          <h3 className="text-xl font-semibold">{cachedTour.tour.title}</h3>
+                          <h3 className="text-xl font-semibold">{cachedTour.name}</h3>
                           
-                          {isExpired ? (
-                            <Badge variant="destructive">Expirado</Badge>
-                          ) : isExpiring ? (
-                            <Badge variant="secondary">Expira pronto</Badge>
-                          ) : (
-                            <Badge variant="default" className="gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Activo
-                            </Badge>
-                          )}
-
-                          {cachedTour.tour.tour_type && (
-                            <Badge variant="outline">
-                              {cachedTour.tour.tour_type === 'tour_360' ? '🌐 360°' : '📸 Fotos'}
+                          <Badge variant="default" className="gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Disponible Offline
+                          </Badge>
+                          
+                          {usingNativeStorage && (
+                            <Badge variant="outline" className="gap-1">
+                              📂 Almacenamiento Nativo
                             </Badge>
                           )}
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <HardDrive className="w-4 h-4" />
                             <span>{formatBytes(cachedTour.size)}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Layers className="w-4 h-4" />
-                            <span>{cachedTour.floorPlans.length} planos</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <ImageIcon className="w-4 h-4" />
-                            <span>{cachedTour.imagesCount} imágenes</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="w-4 h-4" />
                             <span>
-                              {formatDistanceToNow(cachedTour.cachedAt, { 
+                              {formatDistanceToNow(cachedTour.lastModified, { 
                                 addSuffix: true, 
                                 locale: es 
                               })}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-4 h-4" />
-                            <span>
-                              Expira {formatDistanceToNow(cachedTour.expiresAt, { 
-                                addSuffix: true, 
-                                locale: es 
-                              })}
-                            </span>
-                          </div>
+                          {usingNativeStorage && (
+                            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Sin expiración</span>
+                            </div>
+                          )}
                         </div>
-
-                        {cachedTour.tour.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {cachedTour.tour.description}
-                          </p>
-                        )}
                       </div>
 
                       <div className="flex flex-col gap-2 ml-4">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/editor/${cachedTour.tour.id}`)}
+                          onClick={() => navigate(`/viewer/${cachedTour.id}`)}
                         >
                           <Eye className="w-4 h-4 mr-2" />
                           Abrir
                         </Button>
                         
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRefreshTour(cachedTour.tour.id)}
-                          disabled={isRefreshing || !navigator.onLine}
-                        >
-                          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                          Actualizar
-                        </Button>
-                        
-                        <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => setTourToDelete(cachedTour.tour.id)}
+                          onClick={() => setTourToDelete(cachedTour.id)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Eliminar
