@@ -22,7 +22,14 @@ export interface StorageAdapter {
     photos?: any[]
   ): Promise<void>;
   loadTour(tourId: string): Promise<StoredTour | null>;
-  listTours(): Promise<Array<{ id: string; name: string; size: number; lastModified: Date }>>;
+  listTours(): Promise<Array<{ 
+    id: string; 
+    name: string; 
+    size: number; 
+    lastModified: Date;
+    lastSyncedAt?: string;
+    hasLocalChanges?: boolean;
+  }>>;
   deleteTour(tourId: string): Promise<void>;
   getStats(): Promise<{ 
     count: number; 
