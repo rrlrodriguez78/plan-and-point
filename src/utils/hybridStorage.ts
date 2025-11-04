@@ -434,6 +434,13 @@ class HybridStorageManager {
       const { updateMapping } = await import('./tourIdMapping');
       await updateMapping(localId, remoteId);
     }
+
+    // Also update metadata to clear hasLocalChanges flag
+    const key = `tour_metadata_${remoteId || localId}`;
+    const metadata = JSON.parse(localStorage.getItem(key) || '{}');
+    metadata.hasLocalChanges = false;
+    metadata.lastSyncedAt = new Date().toISOString();
+    localStorage.setItem(key, JSON.stringify(metadata));
   }
 
   // Load tour offline (supports both local and remote IDs)

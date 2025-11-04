@@ -7,6 +7,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { useTenant } from '@/contexts/TenantContext';
 import TenantSwitcher from './TenantSwitcher';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ export const Navbar = () => {
         <div className="flex items-center gap-1 sm:gap-4">
           <TenantSwitcher className="ml-auto" />
           <LanguageSwitcher />
+          {user && <SyncStatusBadge />}
           {user ? (
             <>
               <DropdownMenu>
