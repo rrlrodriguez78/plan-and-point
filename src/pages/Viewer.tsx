@@ -387,6 +387,18 @@ const Viewer = () => {
 
   const loadPanoramaPhotos = async (hotspotId: string) => {
     try {
+      // If in offline mode, load from cached data
+      if (isOfflineMode && id) {
+        const cachedTour = await hybridStorage.loadTour(id);
+        if (cachedTour) {
+          const hotspot = cachedTour.hotspots.find(h => h.id === hotspotId);
+          if (hotspot && (hotspot as any).photos) {
+            return (hotspot as any).photos || [];
+          }
+        }
+      }
+
+      // Online mode - load from Supabase
       const { data, error } = await supabase
         .from('panorama_photos')
         .select('id, hotspot_id, photo_url, description, display_order, capture_date')
@@ -677,6 +689,8 @@ const Viewer = () => {
               }}
               hotspotsByFloor={hotspotsByFloor}
               tourType={tourType}
+              isOfflineMode={isOfflineMode}
+              tourId={id}
             />
           )}
 

@@ -18,9 +18,10 @@ export function useOfflineDownload() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
-  // Compress image blob
-  const compressImage = async (blob: Blob): Promise<Blob> => {
-    if (blob.size < 500000) return blob; // Skip compression if < 500KB
+  // Compress image blob with optimized settings for panoramas
+  const compressImage = async (blob: Blob, isPanorama = false): Promise<Blob> => {
+    const minSize = isPanorama ? 800000 : 500000; // Higher threshold for panoramas
+    if (blob.size < minSize) return blob;
 
     return new Promise((resolve) => {
       const img = new Image();
@@ -28,7 +29,8 @@ export function useOfflineDownload() {
       const ctx = canvas.getContext('2d')!;
 
       img.onload = () => {
-        const maxSize = 1920;
+        // Use higher resolution for panoramas to maintain quality
+        const maxSize = isPanorama ? 2048 : 1920;
         let width = img.width;
         let height = img.height;
 
@@ -53,7 +55,7 @@ export function useOfflineDownload() {
             resolve(compressedBlob || blob);
           },
           'image/jpeg',
-          0.8
+          isPanorama ? 0.85 : 0.80 // Higher quality for panoramas
         );
       };
 
@@ -62,13 +64,13 @@ export function useOfflineDownload() {
   };
 
   // Download floor plan image
-  const downloadFloorPlanImage = async (url: string): Promise<string> => {
+  const downloadFloorPlanImage = async (url: string, isPanorama = false): Promise<string> => {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to download image');
       
       const blob = await response.blob();
-      const compressedBlob = await compressImage(blob);
+      const compressedBlob = await compressImage(blob, isPanorama);
       
       // Convert to base64 for storage
       return new Promise((resolve, reject) => {
@@ -83,11 +85,11 @@ export function useOfflineDownload() {
     }
   };
 
-  // Download all photos for a hotspot
-  const downloadHotspotPhotos = async (hotspotId: string): Promise<string[]> => {
+  // Download all panorama photos for a hotspot (CORRECTED)
+  const downloadHotspotPhotos = async (hotspotId: string): Promise<any[]> => {
     try {
       const { data: photos, error } = await supabase
-        .from('hotspot_photos' as any)
+        .from('panorama_photos')
         .select('*')
         .eq('hotspot_id', hotspotId)
         .order('display_order', { ascending: true });
@@ -95,18 +97,43 @@ export function useOfflineDownload() {
       if (error) throw error;
       if (!photos || photos.length === 0) return [];
 
-      const downloadedPhotos: string[] = [];
+      const downloadedPhotos: any[] = [];
 
-      for (const photo of photos as any[]) {
+      for (const photo of photos) {
         if (photo.photo_url) {
           const base64Image = await downloadFloorPlanImage(photo.photo_url);
-          downloadedPhotos.push(base64Image);
+          downloadedPhotos.push({
+            ...photo,
+            photo_url: base64Image,
+            // Keep metadata for offline use
+            capture_date: photo.capture_date,
+            display_order: photo.display_order,
+            description: photo.description
+          });
         }
       }
 
       return downloadedPhotos;
     } catch (error) {
-      console.error('Error downloading hotspot photos:', error);
+      console.error('Error downloading panorama photos:', error);
+      return [];
+    }
+  };
+
+  // Download navigation arrows for a hotspot
+  const downloadNavigationArrows = async (hotspotId: string): Promise<any[]> => {
+    try {
+      const { data: arrows, error } = await supabase
+        .from('hotspot_navigation_points')
+        .select('*')
+        .eq('from_hotspot_id', hotspotId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      return arrows || [];
+    } catch (error) {
+      console.error('Error downloading navigation arrows:', error);
       return [];
     }
   };
@@ -194,22 +221,59 @@ export function useOfflineDownload() {
       const totalHotspots = hotspots?.length || 0;
       const hotspotsWithPhotos: any[] = [];
 
+      // Count total photos to download
+      let totalPhotos = 0;
+      let downloadedPhotos = 0;
+
+      for (const hotspot of hotspots || []) {
+        const { data: photoCount } = await supabase
+          .from('panorama_photos')
+          .select('id', { count: 'exact', head: true })
+          .eq('hotspot_id', hotspot.id);
+        totalPhotos += photoCount?.length || 0;
+      }
+
       for (let i = 0; i < totalHotspots; i++) {
         const hotspot = hotspots![i];
         
-        setDownloadProgress(prev => prev ? {
-          ...prev,
-          progress: 40 + (50 * (i / totalHotspots)),
-          currentItem: `Descargando fotos: ${hotspot.title}`,
-          totalItems: totalHotspots,
-          currentItemNumber: i + 1
-        } : null);
+        // Download all panorama photos
+        const { data: photosData } = await supabase
+          .from('panorama_photos')
+          .select('*')
+          .eq('hotspot_id', hotspot.id)
+          .order('display_order', { ascending: true });
 
-        const photos = await downloadHotspotPhotos(hotspot.id);
+        const photos: any[] = [];
+        const hotspotPhotoCount = photosData?.length || 0;
+
+        for (let j = 0; j < hotspotPhotoCount; j++) {
+          const photo = photosData![j];
+          downloadedPhotos++;
+          
+          setDownloadProgress(prev => prev ? {
+            ...prev,
+            progress: 40 + (50 * (downloadedPhotos / totalPhotos)),
+            currentItem: `Descargando foto ${downloadedPhotos}/${totalPhotos} - ${hotspot.title}`,
+            totalItems: totalPhotos,
+            currentItemNumber: downloadedPhotos
+          } : null);
+
+          if (photo.photo_url) {
+            const base64Image = await downloadFloorPlanImage(photo.photo_url, true); // Mark as panorama
+            photos.push({
+              ...photo,
+              photo_url: base64Image
+            });
+          }
+        }
+
+        // Download navigation arrows
+        const navigationArrows = await downloadNavigationArrows(hotspot.id);
 
         hotspotsWithPhotos.push({
           ...hotspot,
-          photos
+          photos,
+          navigation_points: navigationArrows
         });
       }
 

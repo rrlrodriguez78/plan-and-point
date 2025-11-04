@@ -831,6 +831,9 @@ const Dashboard = () => {
       )}
 
       <OfflineTutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
+      
+      {/* Download Progress Dialog */}
+      <OfflineDownloadDialog open={isDownloading} progress={downloadProgress} />
     </div>
   );
 };
